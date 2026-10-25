@@ -1,0 +1,9 @@
+*.egg-info/
+.pytest_cache/
+.venv/
+__pycache__/
+*.pyc
+.build/
+.build-test/
+.swiftpm/
+.DS_Store

@@ -1,0 +1,28 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<!-- Template: install.sh replaces __HOME__ and __REPO__ and writes it to ~/Library/LaunchAgents/. -->
+<plist version="1.0">
+<dict>
+	<key>Label</key>
+	<string>com.osintent.oi-live</string>
+	<key>ProgramArguments</key>
+	<array>
+		<string>__REPO__/.venv/bin/oi</string>
+		<string>live</string>
+	</array>
+	<key>RunAtLoad</key>
+	<true/>
+	<key>KeepAlive</key>
+	<true/>
+	<key>ThrottleInterval</key>
+	<integer>10</integer>
+	<key>LimitLoadToSessionType</key>
+	<string>Aqua</string>
+	<key>ProcessType</key>
+	<string>Background</string>
+	<key>StandardOutPath</key>
+	<string>__HOME__/.local/share/os-intent/logs/oi-live.log</string>
+	<key>StandardErrorPath</key>
+	<string>__HOME__/.local/share/os-intent/logs/oi-live.log</string>
+</dict>
+</plist>

@@ -1,0 +1,16 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+	<key>CFBundleIdentifier</key>
+	<string>com.osintent.oi-watcher</string>
+	<key>CFBundleName</key>
+	<string>oi-watcher</string>
+	<key>CFBundleVersion</key>
+	<string>0.1.0</string>
+	<key>CFBundleShortVersionString</key>
+	<string>0.1.0</string>
+	<key>NSAppleEventsUsageDescription</key>
+	<string>oi-watcher reads the URL and title of Safari's front tab to log them to your local ActivityWatch server (127.0.0.1 only).</string>
+</dict>
+</plist>

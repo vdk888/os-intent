@@ -1,0 +1,29 @@
+# Form A: generic next action (fallback form, any app). Design §2 schema.
+# Placeholders {...} are filled locally; this file contains no private text.
+form_id: generic.next_action
+_version: generic.next_action@v1
+status: draft                      # draft | shadow | live | retired
+trigger: {app: "*", "on": [token_boundary]}
+checkpoint: null                   # pinned at the first fine-tune (batch 2)
+state_template: |
+  time: {weekday} {hhmm} ({daypart}) | desk {space}/{spaces}
+  now: {app} · {page:60}
+  recent: {history:5}
+  today: {day_summary:3}
+question:
+  type: choice
+  instructions: "Which action will the user take next?"
+candidates: {source: markov, k: 10, fixed: [nothing]}
+options:                           # key -> model-facing criteria (<= 8 words) + primitive
+  open_app:   {criteria: "switch to {app}",        primitive: app.open,    params: {app: "{app}"},  expand: activate}
+  open_url:   {criteria: "open {page}",            primitive: url.open,    params: {url: "{url}"},  expand: url}
+  open_title: {criteria: "open {page} in {app}",   primitive: app.focus,   params: {app: "{app}", title: "{page}"}, expand: title}
+  move_desk:  {criteria: "{desk_move}",            primitive: space.move,  params: {move: "{move}"}, expand: space}
+  press_key:  {criteria: "press {chord}",          primitive: key.send,    params: {chord: "{chord}"}, expand: key}
+  nothing:    {criteria: "keep working here"}
+gate: {temperature: 1.0, show_min_p: 0.22, none_max_p: 0.55, max_show: 3, cooldown_s: 20}
+display:
+  open_app:  {label: "{app}", icon: app}
+  open_url:  {label: "{page}", icon: safari}
+  move_desk: {label: "{desk_move}", icon: rectangle.split.3x1}
+promotion: {beats_markov_at3_by: 0.03, ece_max: 0.08, min_test_moments: 300}

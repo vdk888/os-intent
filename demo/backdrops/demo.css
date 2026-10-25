@@ -1,0 +1,19 @@
+/* oi demo backdrops: fictional pages to film the HUD over (no real account, no network). */
+:root { color-scheme: dark; --bg:#1c1c1e; --panel:#2c2c2e; --line:#3a3a3c; --text:#f2f2f7; --dim:#8e8e93; --accent:#0a84ff; }
+* { box-sizing: border-box; }
+body { margin:0; height:100vh; display:flex; font:14px -apple-system, "SF Pro Text", sans-serif; background:var(--bg); color:var(--text); }
+.side { width:240px; background:#232325; border-right:1px solid var(--line); padding:18px 12px; }
+.side h3 { color:var(--dim); font-size:11px; text-transform:uppercase; letter-spacing:.08em; margin:14px 8px 6px; }
+.side div { padding:6px 10px; border-radius:6px; }
+.side .on { background:var(--accent); }
+.list { width:360px; border-right:1px solid var(--line); overflow:hidden; }
+.item { padding:12px 16px; border-bottom:1px solid var(--line); }
+.item.on { background:#0a84ff33; }
+.item b { display:block; } .item i { color:var(--dim); font-style:normal; display:block; margin-top:2px; }
+.read { flex:1; padding:32px 44px; line-height:1.55; }
+.read h1 { font-size:22px; margin:0 0 6px; } .meta { color:var(--dim); margin-bottom:22px; }
+.tag { display:inline-block; padding:2px 8px; border-radius:10px; background:#30d15833; color:#30d158; font-size:12px; }
+.btn { display:inline-block; padding:8px 14px; border-radius:6px; background:#238636; color:#fff; font-weight:600; }
+.box { border:1px solid var(--line); border-radius:8px; padding:16px 20px; margin:16px 0; background:var(--panel); }
+table { border-collapse:collapse; width:100%; } td { padding:8px 6px; border-bottom:1px solid var(--line); }
+.foot { position:fixed; bottom:10px; right:16px; color:#48484a; font-size:11px; }

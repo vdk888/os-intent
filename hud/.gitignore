@@ -1,0 +1,3 @@
+.build/
+*.mov
+.build-test/

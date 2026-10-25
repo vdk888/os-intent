@@ -1,0 +1,30 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<!-- Template: install.sh replaces __HOME__ and writes it to ~/Library/LaunchAgents/.
+     RunAtLoad = start at login; KeepAlive false so "Quit" stays quit until the next login.
+     "Launch at login" in the menu toggles `launchctl enable|disable gui/<uid>/com.osintent.oi-menubar`. -->
+<plist version="1.0">
+<dict>
+	<key>Label</key>
+	<string>com.osintent.oi-menubar</string>
+	<!-- Names the app in System Settings → General → Login Items (W7 bundle). -->
+	<key>AssociatedBundleIdentifiers</key>
+	<string>com.osintent.oi-menubar</string>
+	<key>ProgramArguments</key>
+	<array>
+		<string>__HOME__/Applications/OS-intent/oi-menubar.app/Contents/MacOS/oi-menubar</string>
+	</array>
+	<key>RunAtLoad</key>
+	<true/>
+	<key>KeepAlive</key>
+	<false/>
+	<key>ProcessType</key>
+	<string>Interactive</string>
+	<key>LimitLoadToSessionType</key>
+	<string>Aqua</string>
+	<key>StandardOutPath</key>
+	<string>__HOME__/.local/share/os-intent/logs/oi-menubar.log</string>
+	<key>StandardErrorPath</key>
+	<string>__HOME__/.local/share/os-intent/logs/oi-menubar.log</string>
+</dict>
+</plist>

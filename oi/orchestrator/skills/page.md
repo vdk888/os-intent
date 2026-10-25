@@ -1,0 +1,1 @@
+Skill — page actions: on a web page or an app, prefer what acts on that page (its buttons, a summary, the next page of the same site); an irreversible button (merge, delete, send, pay, publish) is only proposed, the user confirms it.

@@ -1,0 +1,28 @@
+# Form C: in Safari, next page (the user browses in Safari, not Chrome; docs/DESIGN.md facts).
+# Design §2 schema; worked example C. No private text here.
+form_id: safari.next_page
+_version: safari.next_page@v2   # W16: + press_button (ui.press)
+status: draft
+trigger: {app: Safari, "on": [app_activated, url_changed]}
+checkpoint: null
+state_template: |
+  time: {weekday} {hhmm} ({daypart}) | desk {space}/{spaces}
+  now: Safari · {host} · "{slug:60}"
+  recent: {history:5}
+  today: {day_summary:3}
+question:
+  type: choice
+  instructions: "In Safari, where will the user go next?"
+candidates: {source: markov, k: 10, fixed: [nothing]}
+options:
+  open_url:   {criteria: "open {page}",      primitive: url.open, params: {url: "{url}"}, expand: url}
+  switch_app: {criteria: "switch to {app}",  primitive: app.open, params: {app: "{app}"}, expand: activate}
+  # W16: a button / link the user often clicks on this page (learned click: tokens); offered only when
+  # the element is on the page now, pressed by role + label at press time (oi/page_actions.py)
+  press_button: {criteria: "click {label}", primitive: ui.press, params: {host: "{host}", role: "{role}", slug: "{slug}"}, expand: click}
+  nothing:    {criteria: "stay on this page"}
+gate: {temperature: 1.0, show_min_p: 0.22, none_max_p: 0.55, max_show: 3, cooldown_s: 20}
+display:
+  open_url:   {label: "{page}", icon: safari}
+  switch_app: {label: "{app}", icon: app}
+promotion: {beats_markov_at3_by: 0.03, ece_max: 0.08, min_test_moments: 300}

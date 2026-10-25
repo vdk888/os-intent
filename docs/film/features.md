@@ -1,0 +1,31 @@
+# OS-intent — features for the film (what you see, the key, the timing)
+
+Default settings. Colours: fn pink · ⌃ blue · ⌥ yellow · ⌘ green (each colour = its key = its place).
+Places around the pointer: fn **left** (9 o'clock) · ⌃ **top** (12) · ⌥ **right** (3) · ⌘ **bottom** (6);
+wish capsule below-right (4:30, ⇧ badge); vocal capsule below-left (7:30, ⌃⌥ badge, mic icon).
+Stills of each (fake data, rendered offscreen by `render/`): `../img/`.
+
+| # | Feature | What the viewer sees | Key | Timing (defaults) | Still |
+|---|---|---|---|---|---|
+| 1 | **Hint dots** | On a context change (new app / page / desk), 1-4 tiny coloured dots appear next to the pointer, one per key with an option. They follow the pointer softly. | none (automatic) | fade in ~0.3 s, stay 4 s (`hud.hint_ttl_ms`), then fade | `01-hint-dots.png` |
+| 2 | **Develop / Summon** | The dots spring out into capsules at their fixed places (or, with no dots, the cross opens at the pointer): icon + short label + key badge ("2 ⌃"). | **⌥⌘** tap (both down then up, ≤ 500 ms) | open 150 ms; a summoned cross stays 6 s (`gate.ttl_ms`) | `02-cross.png`, `00-hero.png` |
+| 3 | **One-key pick** | The capsule at that key's place fires; the HUD closes; the action happens (app switches, page opens, desk slides). | **fn**=1 · **⌃**=2 · **⌥**=3 · **⌘**=4 (bare tap) | instant | live |
+| 4 | **Glide (drill-down)** | Hold ⌥⌘: the cross stays put. Rest on a capsule: an arc fills, 2-4 follow-ups bloom around it. Rest again: one level deeper (max 3). Release on a capsule: it runs; on empty space: cancel. | **⌥⌘ hold**, move, release | dwell 500 ms per level (`hud.dwell_ms`) | `03-glide.png` |
+| 5 | **Context card (levels 2 and 3)** | While you glide, a card says WHAT a direction is about. Level 2 (a glance): one line, "Sam Rivera · Thursday review · 10:31". Rest longer, level 3 (to read): a wider card with a 3-4 line summary, a quoted excerpt, and WHY it matters (the knowledge-base page that names the sender, e.g. "northwind — active client"). | hold ⌥⌘ and rest | level 2 at once, level 3 after a second dwell; the summary is prepared while you hold | `09-context-card.png` |
+| 6 | **Long-press → Claude** | Hold an option's key: a ring fills around the capsule; at full, release → spinner → a result card in place; a reply is saved to Mail's Drafts in place and shown on the card, with *Open in Mail* on demand. Never sent. | hold **fn/⌃/⌥/⌘** | ring 600 ms (`hud.long_press_ms`); Claude ~2-8 s | `04-long-press.png`, `05-result-card.png` |
+| 7 | **Page actions + outward gate** | In Safari on a GitHub PR: "Squash & merge" is an option. Pick it: a small confirm panel asks "Press “Squash & merge”?" — Enter validates, Esc cancels. Destructive buttons (close, delete…) are never offered. | the option's key, then **Enter** | the panel waits up to 20 s, then cancels | `07-page-action.png` + live (panel) |
+| 8 | **Proactive ring** | Without moving the mouse: a mail lands, an agent writes, a file appears on the Desktop, a meeting is about to start. The dots come back wearing a thin ring: "something changed". ⌥⌘ develops them into that event's own actions ("Reply to Sam", "Open the mail", "Ask Orion"). An important event (a client the knowledge base knows) opens the full cross directly. The ring goes away when the state ends (mail read, chat answered, file opened). | none, then **⌥⌘** | mail: ≤ 8 s after it shows in Mail | `08-proactive-ring.png` |
+| 9 | **An agent is waiting (Telegram)** | An AI agent sent you a Telegram message: the Telegram direction's next level lists the chats waiting on you ("Atlas · 2", "Nova · 1"), each one click to open; its card says what they wrote. | hold ⌥⌘, rest on Telegram | while unread / unanswered | `10-agent-waiting.png` |
+| 10 | **Files** | A new file lands on the Desktop or in a watched Drive folder: a ringed hint; ⌥⌘ → "Open devis.pdf" / "Show in Finder". It ends once the file is opened or removed. | none, then **⌥⌘** | ~3 s after it lands | live |
+| 11 | **Wish** | A small panel: "Tell me what you wanted". Type or dictate ("open Telegram", "va sur github"); it resolves live under the text; Enter runs it. Unresolved = noted, to learn from. | **⇧** while the HUD is up · **⌥`** any time | local match ~1 ms while typing | live (AppKit panel) |
+| 12 | **Vocal to an agent** | ⌃⌥ turns the cross into an agent picker (4 agents at the 4 places). Pick one → the recording panel: live on-device transcript, up to 5 minutes with a countdown in the last 15 s. Start typing and the microphone stops: the words stay, you edit them. The gate panel's "Attach a screenshot (C)" toggle adds a capture of the screen. Enter → the outward gate → sent. | **⌃⌥**, then **fn/⌃/⌥/⌘**, speak or type, **Enter** | max 5 min (`vocal.max_s`) | `06-vocal-picker.png` + live (panel) |
+| 13 | **Screenshot → contact** | Take a screenshot (⌘⇧4): the HUD offers "→ Atlas", "→ other", "Annotate", plus content actions read from the image (add the meeting to Calendar, draft a reply, open the link). | ⌘⇧4, then the option's key | offered while the thumbnail is on screen | live |
+| 14 | **Day 1 vs day 30** | The same client mail lands twice. Day 1: the cross only knows app jumps. Day 30: "Reply to Sam", "Open Calendar: Friday", "Forward to Dana Park". | — | — | `oi demo contrast` |
+| 15 | **Laya switch** | Menu bar → OS-intent → **Laya** (checkmark). Off: Markov only, the local model server (~3 GB) is stopped and its memory freed. On: Laya re-ranks in the shadow. | menu bar | — | live (menu) |
+| 16 | **Health** | `oi health` in Terminal: each enabled sensor (ok / failing / "Mail closed" as info), the LaunchAgents, recent log errors, Laya. No silent failure. | Terminal | exit 0 / 1 / 2 | live (Terminal) |
+| 17 | **Privacy** | Menu bar item: Pause logging, denylist, permissions; Settings → each source on/off, "local only" domains, the outward gate. | menu bar | — | live (menu) |
+
+Fake data used everywhere (reuse it in live captures to stay consistent): mail from **Sam Rivera**
+"Thursday review: can we move it?"; other senders Dana Park, Northwind Billing, Pat Lee, Jordan Blake; PR
+**acme/rocket #42 "Faster boot sequence"** by octocat; agents **Atlas** (platform), **Nova** (coordination),
+**Orion** (finance), **Lyra** (sales). Never film a real inbox, a real chat list or real agent names.

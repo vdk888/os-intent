@@ -1,0 +1,33 @@
+# Form B: in Mail, next action (W14; design section 2, worked example B). No private text here.
+# reply_sender / forward_to: mail.reply / mail.forward (oi live: a tap = an empty reply / forward window for
+# the selected message, a long-press = Claude drafts it, oi/claude_actions.py; NEVER sent). `enrich`: the label
+# is upgraded in place after the show ("Reply to Sam"). `pin`: a summon lists them before the Markov
+# options (the Markov model has no token for them, so their p is unknown). archive: in the form for Laya's
+# menu, NOT executed by oi live yet (mail.archive is not in live.ALLOWED_PRIMITIVES).
+form_id: mail.next_action
+_version: mail.next_action@v1
+status: draft
+trigger: {app: Mail, "on": [app_activated, message_selected]}
+checkpoint: null
+state_template: |
+  time: {weekday} {hhmm} ({daypart}) | desk {space}/{spaces}
+  now: Mail · {page:60}
+  recent: {history:5}
+  today: {day_summary:3}
+question:
+  type: choice
+  instructions: "In Mail, which action will the user take next?"
+candidates: {source: markov, k: 10, fixed: [reply_sender, forward_to, archive, nothing]}
+options:
+  reply_sender: {criteria: "reply to the sender",  primitive: mail.reply,   params: {}, enrich: true, pin: true}
+  forward_to:   {criteria: "forward this mail",    primitive: mail.forward, params: {}, enrich: true, pin: true}
+  archive:      {criteria: "archive this mail",    primitive: mail.archive}
+  open_app:     {criteria: "switch to {app}",      primitive: app.open, params: {app: "{app}"}, expand: activate}
+  open_url:     {criteria: "open {page}",          primitive: url.open, params: {url: "{url}"}, expand: url}
+  nothing:      {criteria: "keep reading, no action"}
+gate: {temperature: 1.0, show_min_p: 0.22, none_max_p: 0.55, max_show: 3, cooldown_s: 20}
+display:
+  reply_sender: {label: "Reply to {sender_first}", icon: arrowshape.turn.up.left}
+  forward_to:   {label: "Forward", icon: arrowshape.turn.up.right}
+  open_app:     {label: "{app}", icon: app}
+promotion: {beats_markov_at3_by: 0.03, ece_max: 0.08, min_test_moments: 300}

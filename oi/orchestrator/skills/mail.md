@@ -1,0 +1,1 @@
+Skill — mail triage: read who writes (people / client page in the notes), what they want, and what the user owes them: a reply they draft, a forward to the agent who owns the topic (the fund -> Orion, accounting -> Hera, a client delivery -> Juno, prospection -> Lyra), or nothing. Drafts are never sent: the user reviews and sends.

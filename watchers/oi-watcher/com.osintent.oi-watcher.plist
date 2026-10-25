@@ -1,0 +1,28 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<!-- Template: install.sh replaces __HOME__ and writes it to ~/Library/LaunchAgents/. -->
+<plist version="1.0">
+<dict>
+	<key>Label</key>
+	<string>com.osintent.oi-watcher</string>
+	<!-- Names the app in System Settings → General → Login Items (W7 bundle). -->
+	<key>AssociatedBundleIdentifiers</key>
+	<string>com.osintent.oi-watcher</string>
+	<key>ProgramArguments</key>
+	<array>
+		<string>__HOME__/Applications/OS-intent/oi-watcher.app/Contents/MacOS/oi-watcher</string>
+	</array>
+	<key>RunAtLoad</key>
+	<true/>
+	<key>KeepAlive</key>
+	<true/>
+	<key>ThrottleInterval</key>
+	<integer>10</integer>
+	<key>LimitLoadToSessionType</key>
+	<string>Aqua</string>
+	<key>StandardOutPath</key>
+	<string>__HOME__/.local/share/os-intent/logs/oi-watcher.log</string>
+	<key>StandardErrorPath</key>
+	<string>__HOME__/.local/share/os-intent/logs/oi-watcher.log</string>
+</dict>
+</plist>

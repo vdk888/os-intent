@@ -1,0 +1,20 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+	<key>CFBundleIdentifier</key>
+	<string>com.osintent.oi-hud</string>
+	<key>CFBundleName</key>
+	<string>oi-hud</string>
+	<key>CFBundleVersion</key>
+	<string>0.2.0</string>
+	<key>CFBundleShortVersionString</key>
+	<string>0.2.0</string>
+	<key>LSUIElement</key>
+	<true/>
+	<key>NSSpeechRecognitionUsageDescription</key>
+	<string>oi-hud turns what you say into text on this Mac (on-device recognition): a wish ("what did you want here?"), kept here, or a voice note whose text goes only to the agent you picked.</string>
+	<key>NSMicrophoneUsageDescription</key>
+	<string>oi-hud listens only while you dictate a wish (at most 20 seconds) or record a voice note for an agent (at most 60 seconds); the audio stays on this Mac.</string>
+</dict>
+</plist>

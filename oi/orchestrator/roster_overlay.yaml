@@ -1,0 +1,160 @@
+# The hand-curated half of the orchestrator's roster (the generated half comes from your agent registry:
+# a team-roster.md table, each agent's dept.yaml, a rooms.yaml of business units, the HUD's vocal recipients).
+# `python -m oi.orchestrator.gen_roster` merges both into roster.yaml.
+# Per agent slug (= the oi.vocal recipient slug):
+#   ask_for  what the user asks this agent for (one line, shown to the model)
+#   topics   FR/EN keywords the local topic router matches in a wish ("ask someone for the NAV" -> orion)
+#   bu       business units when the rooms file does not list the agent
+# Never a secret, a token, a path to a credential or a client's private detail here.
+agents:
+  atlas:
+    ask_for: R&D and the agent platform — tools, bugs, the HUD, automations, scheduled jobs, PRs, infra, a new skill or agent
+    topics:
+    - bug
+    - outil
+    - tool
+    - hud
+    - os-intent
+    - automatisation
+    - automation
+    - cron
+    - pr
+    - github
+    - merge
+    - code
+    - infra
+    - skill
+    - script
+    - mac
+    - plugin
+    - dashboard
+  echo:
+    ask_for: side projects — development work on personal projects
+    topics:
+    - side project
+    - projet perso
+    - echo
+  hera:
+    ask_for: accounting — invoices, bookkeeping, VAT, taxes, expense receipts, closing
+    topics:
+    - comptabilité
+    - compta
+    - accounting
+    - facture
+    - factures
+    - invoice
+    - invoices
+    - tva
+    - vat
+    - impôt
+    - impôts
+    - tax
+    - taxes
+    - bilan
+    - note de frais
+    - dépense
+    - expense
+    - banque
+    - relevé
+  iris:
+    ask_for: the website and client-facing messages
+    topics:
+    - site
+    - website
+    - site web
+    - page web
+    - accueil
+    - client-facing
+  juno:
+    ask_for: client deliveries — client deployments and sites, releases, client-facing agents
+    topics:
+    - client
+    - clients
+    - livraison
+    - delivery
+    - release
+    - déploiement
+    - deployment
+    - site client
+    - preview
+  lyra:
+    ask_for: prospection — LinkedIn prospects, leads, outbound messages, the sales pipeline
+    topics:
+    - prospection
+    - prospect
+    - prospects
+    - linkedin
+    - lead
+    - leads
+    - outbound
+    - pipeline
+    - commercial
+    - vente
+    - sales
+    - relance
+    - follow-up
+    - rdv
+    - rendez-vous
+  nova:
+    ask_for: company-level coordination — priorities, decisions, who does what, the team's status
+    topics:
+    - priorité
+    - priorités
+    - priority
+    - stratégie
+    - strategy
+    - décision
+    - decision
+    - coordination
+    - planning
+    - roadmap
+    - équipe
+    - team
+    - partenaire
+    - partner
+    - réunion
+    - meeting
+    - kpi
+    - objectif
+    - objectifs
+  orion:
+    ask_for: finance — NAV, positions, performance, risk, orders (proposals only; a human executes)
+    topics:
+    - nav
+    - fonds
+    - fund
+    - portefeuille
+    - portfolio
+    - positions
+    - performance
+    - broker
+    - courtier
+    - valorisation
+    - rééquilibrage
+    - rebalancing
+    - risque
+    - risk
+    - bourse
+    - marché
+    - market
+  vega:
+    ask_for: content — posts, articles, videos, newsletter, social networks, the brand voice
+    topics:
+    - contenu
+    - content
+    - post
+    - posts
+    - article
+    - articles
+    - vidéo
+    - video
+    - newsletter
+    - réseaux
+    - social
+    - instagram
+    - youtube
+    - tiktok
+    - marketing
+    - marque
+    - brand
+    - publication

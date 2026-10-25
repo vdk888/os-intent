@@ -1,0 +1,35 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<!-- Template: install.sh replaces __HOME__ and __REPO__ and writes it to ~/Library/LaunchAgents/.
+     W13: `oi laya-serve` = ONE laya server (stock English checkpoint, or the promoted oi checkpoint
+     passed by ensure_server) under the memory rule (swap < 4 GB, footprint cap 4 GB, one heavy ML job).
+     LAZY: not started at load and not kept alive; `oi live` (shadow mode) kickstarts it through
+     oi.laya.ensure_server() when it finds the server down, at most every 10 min. A refusal (memory) or a
+     cap kill is NOT retried by launchd. -->
+<plist version="1.0">
+<dict>
+	<key>Label</key>
+	<string>com.osintent.oi-laya</string>
+	<key>ProgramArguments</key>
+	<array>
+		<string>__REPO__/.venv/bin/oi</string>
+		<string>laya-serve</string>
+		<string>--port</string>
+		<string>8781</string>
+	</array>
+	<key>RunAtLoad</key>
+	<false/>
+	<key>KeepAlive</key>
+	<false/>
+	<key>LimitLoadToSessionType</key>
+	<string>Aqua</string>
+	<key>ProcessType</key>
+	<string>Background</string>
+	<key>LowPriorityIO</key>
+	<true/>
+	<key>StandardOutPath</key>
+	<string>__HOME__/.local/share/os-intent/logs/oi-laya.log</string>
+	<key>StandardErrorPath</key>
+	<string>__HOME__/.local/share/os-intent/logs/oi-laya.log</string>
+</dict>
+</plist>

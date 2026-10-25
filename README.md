@@ -2,9 +2,7 @@
 
 **Your Mac learns what you do next and puts it one key away.**
 
-[![▶ Watch the 1:38 film](docs/media/os-intent-demo-poster.png)](docs/media/os-intent-demo.mp4)
-
-[▶ Watch the 1:38 film](docs/media/os-intent-demo.mp4)
+https://github.com/user-attachments/assets/9f8e53cc-002f-48d7-a8ee-b916ccc6bbc5
 
 
 OS-intent watches how *you* work (locally), predicts your next move, and shows it as a tiny cross of options

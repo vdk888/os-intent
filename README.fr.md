@@ -2,9 +2,7 @@
 
 **Votre Mac apprend ce que vous faites ensuite et le met à une touche.**
 
-[![▶ Voir le film (1:38)](docs/media/os-intent-demo-poster.png)](docs/media/os-intent-demo.mp4)
-
-[▶ Voir le film (1:38)](docs/media/os-intent-demo.mp4)
+https://github.com/user-attachments/assets/9f8e53cc-002f-48d7-a8ee-b916ccc6bbc5
 
 
 OS-intent observe votre façon de travailler (en local), prédit votre prochaine action et l'affiche dans une petite

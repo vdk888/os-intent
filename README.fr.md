@@ -2,6 +2,11 @@
 
 **Votre Mac apprend ce que vous faites ensuite et le met à une touche.**
 
+[![▶ Voir le film (1:38)](docs/media/os-intent-demo-poster.png)](docs/media/os-intent-demo.mp4)
+
+[▶ Voir le film (1:38)](docs/media/os-intent-demo.mp4)
+
+
 OS-intent observe votre façon de travailler (en local), prédit votre prochaine action et l'affiche dans une petite
 croix d'options autour du pointeur. Une pression sur une touche modificatrice suffit. Maintenez, et il descend
 d'un niveau : répondre, rédiger, transférer, fusionner, passer la main à un agent, en un seul geste. Quand quelque

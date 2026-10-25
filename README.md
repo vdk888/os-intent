@@ -2,6 +2,11 @@
 
 **Your Mac learns what you do next and puts it one key away.**
 
+[![▶ Watch the 1:38 film](docs/media/os-intent-demo-poster.png)](docs/media/os-intent-demo.mp4)
+
+[▶ Watch the 1:38 film](docs/media/os-intent-demo.mp4)
+
+
 OS-intent watches how *you* work (locally), predicts your next move, and shows it as a tiny cross of options
 around your pointer. One modifier tap does it. Hold, and it drills down: reply, draft, forward, merge, hand off
 to an agent, in one gesture. When something changes while your hands are off the mouse (a client mail, an agent

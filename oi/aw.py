@@ -10,6 +10,11 @@ repeated pulls never duplicate and the open event's duration stays current.
 aw-server also CLIPS events that straddle the requested start/end (same id, shifted
 timestamp, shorter duration; observed on v0.14.1), so an upsert merges by id to the
 widest span seen instead of overwriting: a clipped copy never shrinks a stored row.
+
+`oi live` pulls every 2 s, so it passes a `seen` dict to `pull`: one `GET /buckets/` gives each
+bucket's `last_updated` (aw-server Python) or `metadata.end` (aw-server-rust), and only the buckets
+whose value moved since their last pull are fetched. A heartbeat moves the end of the latest event,
+so an active bucket is still fetched on every poll; a bucket without either field is always fetched.
 """
 from __future__ import annotations
 
@@ -27,20 +32,33 @@ from .vocab import parse_ts
 
 DEFAULT_URL = "http://127.0.0.1:5600"
 PAGE = 5000
+TIMEOUT_S = 3.0          # localhost: a hung aw-server stalls the 2 s live loop for 3 s, not 30 s
+FULL_TIMEOUT_S = 30.0    # a first pull (no cursor) may page through a long history
 
 
 def server_url() -> str:
     return os.environ.get("OI_AW_URL", DEFAULT_URL).rstrip("/")
 
 
-def _get(url: str) -> Any:
-    with urllib.request.urlopen(url, timeout=30) as r:  # localhost only
+def _get(url: str, timeout: float = TIMEOUT_S) -> Any:
+    with urllib.request.urlopen(url, timeout=timeout) as r:  # localhost only
         return json.load(r)
 
 
 def list_buckets(base: str | None = None) -> list[str]:
     base = base or server_url()
     return sorted(_get(f"{base}/api/0/buckets/"))
+
+
+def bucket_meta(base: str | None = None) -> dict[str, Any]:
+    """{bucket: change signature} from one `GET /buckets/`; None when the server gives no hint."""
+    base = base or server_url()
+    out: dict[str, Any] = {}
+    for b, m in _get(f"{base}/api/0/buckets/").items():
+        m = m if isinstance(m, dict) else {}
+        lu, end = m.get("last_updated"), (m.get("metadata") or {}).get("end")
+        out[b] = (lu, end) if (lu or end) else None
+    return out
 
 
 def fetch_events(bucket: str, start: str | None, base: str | None = None, page: int = PAGE) -> list[dict]:
@@ -58,7 +76,8 @@ def fetch_events(bucket: str, start: str | None, base: str | None = None, page: 
             params["start"] = start
         if end:
             params["end"] = end
-        batch = _get(f"{base}/api/0/buckets/{q}/events?{urllib.parse.urlencode(params)}")
+        batch = _get(f"{base}/api/0/buckets/{q}/events?{urllib.parse.urlencode(params)}",
+                     TIMEOUT_S if start else FULL_TIMEOUT_S)
         new = 0
         for ev in batch:
             k = _key(ev)
@@ -162,8 +181,19 @@ def pull_bucket(bucket: str, since: str | None = None, base: str | None = None,
     return out
 
 
-def pull(since: str | None = None, base: str | None = None, keep_events: bool = False) -> list[dict]:
-    return [pull_bucket(b, since, base, keep_events) for b in list_buckets(base)]
+def pull(since: str | None = None, base: str | None = None, keep_events: bool = False,
+         seen: dict | None = None) -> list[dict]:
+    """Pull every bucket. With `seen` ({bucket: signature}, kept by the caller between pulls), skip the
+    buckets whose `bucket_meta` signature has not moved since their last successful pull."""
+    if seen is None:
+        return [pull_bucket(b, since, base, keep_events) for b in list_buckets(base)]
+    out = []
+    for b, sig in sorted(bucket_meta(base).items()):
+        if since is None and sig is not None and seen.get(b) == sig:
+            continue
+        out.append(pull_bucket(b, since, base, keep_events))
+        seen[b] = sig
+    return out
 
 
 def raw_rows(day: str) -> dict[str, list[dict]]:

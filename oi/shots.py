@@ -79,7 +79,6 @@ from .orchestrator import pack as orch_pack
 
 BUCKET_PREFIX = "oi-watcher-shot"
 POLL_S = 0.5
-BUCKETS_REFRESH_S = 30
 SHOW_TTL_MS = 15000          # display setting (shots.ttl_ms): how long the cross stays, not how long the shot is live
 NOTE_TIMEOUT_S = 600         # the note panel: the user may take his time
 OCR_TIMEOUT_S = 15          # warm: ~0.1-0.2 s; the very first Vision call of a binary can take ~30 s (warm_ocr)
@@ -603,7 +602,7 @@ class Shots:
     Collaborators injectable (tests, dry run)."""
 
     def __init__(self, live, *, request: Callable[[dict, tuple, float], dict] | None = None,
-                 buckets: Callable[[], list[str]] = aw.list_buckets,
+                 buckets: Callable[[], dict | list[str]] = aw.bucket_meta,
                  fetch: Callable[[str, str], list[dict]] = aw.fetch_events,
                  ocr: Callable[[str], tuple[str, int]] | None = None,
                  claude: Callable[[str, str], dict] | None = None,
@@ -624,8 +623,7 @@ class Shots:
         self.out = out
         self.since: str | None = None
         self.seen: dict = {}
-        self._buckets: list[str] = []
-        self._buckets_at = float("-inf")
+        self._fetched: dict = {}                   # bucket -> aw.bucket_meta signature at its last fetch
         self.lock = threading.RLock()
         self.shots: dict[str, dict] = {}           # the live screenshots (id -> shot), oldest first
         self.past: dict[str, dict] = {}            # ended ones a press may still name (the image stays on disk)
@@ -646,12 +644,15 @@ class Shots:
         now = self.clock()
         if self.since is None:
             self.prime()
-        if now - self._buckets_at >= BUCKETS_REFRESH_S or not self._buckets:
-            self._buckets_at = now
-            self._buckets = [b for b in self.buckets_fn() if b.startswith(BUCKET_PREFIX)]
+        listing = self.buckets_fn()               # one GET /buckets/ per poll; events only where it moved
+        meta = listing if isinstance(listing, dict) else dict.fromkeys(listing)
         fresh: list[dict] = []
-        for b in self._buckets:
-            for ev in self.fetch(b, self.since):
+        for b, sig in sorted(meta.items()):
+            if not b.startswith(BUCKET_PREFIX) or (sig is not None and self._fetched.get(b) == sig):
+                continue
+            evs = self.fetch(b, self.since)
+            self._fetched[b] = sig
+            for ev in evs:
                 k = (b, aw._key(ev))
                 if k in self.seen:
                     continue

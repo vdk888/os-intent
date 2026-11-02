@@ -921,3 +921,19 @@ def test_a_tier2_claude_note_naming_a_local_only_term_is_withheld(png, data_dir,
     press(so, "→ Atlas", mode="claude")
     note = next(p for p in hud.sent if p.get("cmd") == "shot_note")
     assert note["text"] == "" and "withheld" in note["placeholder"] and hud.sent[0]["ok"] is False
+
+
+def test_new_events_fetches_a_shot_bucket_only_when_it_moved(png):
+    so, _, _ = make()
+    sig = {"oi-watcher-shot_h": ("2026-10-20T16:12:59+00:00", None), "oi-watcher-shot_old": ("2026-01-01T00:00:00+00:00", None),
+           "aw-watcher-window_h": ("2026-10-20T16:13:00+00:00", None)}
+    so.buckets_fn = lambda: dict(sig)
+    fetched = []
+    so.fetch = lambda b, since: fetched.append(b) or ([shot_ev(png, 1)] if b == "oi-watcher-shot_h" else [])
+    assert [e["id"] for e in so.new_events()] == [7]
+    assert sorted(fetched) == ["oi-watcher-shot_h", "oi-watcher-shot_old"]
+    fetched.clear()
+    assert so.new_events() == [] and fetched == []            # nothing moved: no events request
+    sig["oi-watcher-shot_h"] = ("2026-10-20T16:13:01+00:00", None)
+    so.new_events()
+    assert fetched == ["oi-watcher-shot_h"]

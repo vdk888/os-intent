@@ -605,6 +605,7 @@ class Live:
         self.clock = clock
         self.out = out or sys.stdout
         self.do_pull = pull
+        self._aw_seen: dict = {}              # aw.pull: bucket -> last change signature pulled
         self.resolve_app = resolve_app
         self.is_executable = is_executable
         dry_osa = None
@@ -679,7 +680,7 @@ class Live:
         if not self.do_pull:
             return
         try:
-            results = aw.pull(keep_events=True)
+            results = aw.pull(keep_events=True, seen=self._aw_seen)
         except (URLError, OSError) as e:
             now = time.monotonic()
             if now - self._aw_down_logged >= AW_DOWN_LOG_S:

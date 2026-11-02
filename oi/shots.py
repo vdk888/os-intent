@@ -8,9 +8,11 @@ Goal: after a screenshot, offer to send it to the agent you are currently talkin
    oi.normalise turns it into the token `shot:new`.
 2. ("context is state, not timers"): the screenshot is part of the CURRENT CONTEXT exactly
    while it is live: its floating thumbnail or markup window on screen (oi-watcher `shot_state` thumbnail live →
-   gone, from the window list), a screenshot with no window (thumbnail off, or a clipboard one) until the context
-   changes, a clipboard screenshot also until the clipboard changes (whichever comes first; seen
-   2026-10-21, a copied screenshot stayed live 1h40 and came back on every summon). `oi live` runs `Shots`: a thread polls ONLY that bucket
+   gone, from the window list: being taken, no image yet), then the screenshot FILE (macOS writes it as the
+   thumbnail slides away, so the thumbnail's gone never ends it) until the user sends it, the next screenshot replaces
+   it, the file is gone or the context changes (never while a thumbnail / markup window is up), a clipboard
+   screenshot also until the clipboard changes (whichever comes first: a copied screenshot once stayed live
+   1h40 and came back on every summon). `oi live` runs `Shots`: a thread polls ONLY that bucket
    (0.5 s cadence) and keeps the live set. While a screenshot is live, Live's moment context has `live: ["shot"]`,
    its `shot:new` row is the latest action (Markov h1; Laya's state text says "live: shot"), and its options join
    the predictor's ONE pool (hint, ⌥⌘ summon, glide, long-press alike), ranked first by the same gate. It appearing
@@ -27,11 +29,11 @@ Goal: after a screenshot, offer to send it to the agent you are currently talkin
                          what the user was doing / likely ask"), shown EDITABLE in the note panel; Enter sends.
    Nothing is ever sent without the user's tap (and Enter for a note). A send carries the NEWEST live screenshot:
    an option is bound to the screenshot live when it was shown, and one taken after it (while the cross or the
-   note panel is up) is what the user means.
+   note panel is up) is what the user means (an older one going out instead is the bug this prevents).
 4. Delivery (`deliver`): atlas / juno (inject recipients on this Mac): copy the image into the channel's
    `inbox/` and append ONE line to its `inject` file: "[Screenshot from the user, HH:MM, context: …] <note> (image:
-   <inbox path>)"; any other agent: the W12 relay command with the note and "image on the user's Mac at <path>"
-   (moving the image to another host is a follow-up). Never an upload, never a cloud call for the pixels.
+   <inbox path>)"; any other agent: the signed A2A sender with the note and the image's path on ITS host
+   (see 6; "image on the user's Mac at <path>" when `shots.remote_image` is off). Never an upload, never a cloud call for the pixels.
    OI_SHOT_DRY_RUN=1 (or `oi live --dry-run`) prints what would run and sends nothing.
 
 5. Content actions: the
@@ -49,6 +51,18 @@ Goal: after a screenshot, offer to send it to the agent you are currently talkin
    `shots.actions` (default true). Every send these options lead to (→ <Agent>, → other, Annotate, agent.send)
    passes the outward gate (oi/gate.py, class "shot") in deliver, right before delivery: the one confirmation.
 
+6. picker first (a screenshot should offer at once to forward it to someone on the team, with a typed or dictated
+   note; settings `shots.picker_first`, default true): a new screenshot opens the TEAM PICKER at once instead of the cross: every
+   recipient of vocal.recipients, the current contact on the first key, 3 per page + "More" (fn), one tap. The pick
+   opens the note panel ("→ Nova · your note"): type, or Tab / the mic button for oi-hud's on-device dictation
+   (settings `shots.note_dictation`, every note panel; the transcript lands in the field, editable; the line then
+   says "note dictated"); Enter = ONE delivery (image + note; empty = the image alone), Esc / a click outside / no
+   pick = nothing sent. Claude's content actions never replace the picker: they wait in the ⌥⌘ cross. Off = the
+   cross as in 3.
+   Remote image (settings `shots.remote_image`, default true): an A2A recipient gets the image copied first, over its
+   ssh route (`ssh <to>`, the recipient's `to` host; log in as the agent's own user there), bytes on stdin, into <its channel state dir>/inbox/oi-shot-<stamp>.png (0600), and
+   the line names that path; a failed copy sends nothing. Still after the outward gate, still no cloud upload.
+
 hud-log rows {"kind": "shot"}: per press {"event": "press", "src", "to", "via", "outcome", "action", "picked": kind,
 "tier", "ok", "dry_run", "error", "note_len", "ocr_ms", "claude": {model, latency_ms, ok}, "content": {type, slot},
 "live", ["newer": true when the send carried a screenshot taken after the one offered]}; per screenshot leaving the context {"event": "gone", "reason", "slots": [kinds offered], "suggest": {model,
@@ -63,6 +77,7 @@ import re
 import secrets
 import shutil
 import socket
+import stat
 import subprocess
 import sys
 import threading
@@ -73,7 +88,7 @@ from pathlib import Path
 from typing import Callable
 from urllib.error import URLError
 
-from . import aw, claude_actions, contact, drill, gate, hud_keys, live, normalise, settings, vocab, vocal
+from . import aw, claude_actions, contact, drill, gate, health, hud_keys, live, normalise, settings, vocab, vocal
 from .orchestrator import dispatch
 from .orchestrator import pack as orch_pack
 
@@ -91,13 +106,16 @@ ACTIONS_WINDOW_S = 600
 PICKER_PAGE = 3
 IMAGE_EXT = (".png", ".jpg", ".jpeg", ".heic", ".tiff", ".tif")
 TELEGRAM_APP = "/Applications/Telegram.app"
-SHOT_DEFAULTS = {"enabled": True, "clipboard": True, "fallback_contact": "atlas", "ttl_ms": SHOW_TTL_MS, "actions": True}
+SHOT_DEFAULTS = {"enabled": True, "clipboard": True, "fallback_contact": "atlas", "ttl_ms": SHOW_TTL_MS, "actions": True,
+                 "picker_first": True, "note_dictation": True, "remote_image": True}   # the last three: section 6
+REMOTE_COPY_TIMEOUT_S = 60   # the image over ssh (a few MB on a private network)
 SUGGEST_SAFETY_S = 90        # a safety bound on the Claude call only: its answer is used whenever it comes while live
 P_LIVE = {"send": 1.0, "content": 0.95, "pick": 0.5, "annotate": 0.4}   # rank among the live options (all first)
 OUTWARD_CONTENT = ("agent.send",)   # the content action that sends (gate.outward "shot" in deliver); mail.draft
                                     # only opens a draft the user sends himself in Mail (oi/gate.py: not outward)
 FREE_TEXT = {"mail.draft": ("subject", "body"), "calendar.event": ("title", "location"), "agent.send": ("message",)}
 NEEDED = {"calendar.event": "title", "agent.send": "message"}   # flagged = the action is dropped, not scrubbed
+PROBE_S = 60                 # oi live re-probes the screenshot folder (a TCC grant / revoke shows in oi health)
 PAST_KEEP = 8                # ended screenshots a late press may still name (their image stays on disk)
 ACTION_TYPES = ("mail.draft", "calendar.event", "url.open", "file.open", "folder.open", "agent.send", "copy")
 ACTION_ICONS = {"mail.draft": "sf:square.and.pencil", "calendar.event": "sf:calendar.badge.plus", "url.open": "sf:safari",
@@ -120,12 +138,16 @@ def log(msg: str) -> None:
 
 def shot_settings(raw: dict | None) -> dict:
     """settings.json `shots` (every key optional, wrongly typed = default):
-    {"enabled": true, "clipboard": true, "fallback_contact": "atlas" | null, "ttl_ms": 15000, "actions": true}.
-    `clipboard` is read by oi-watcher (clipboard images); null fallback_contact = no default contact."""
+    {"enabled": true, "clipboard": true, "fallback_contact": "atlas" | null, "ttl_ms": 15000, "actions": true,
+     "picker_first": true, "note_dictation": true, "remote_image": true}.
+    `clipboard` is read by oi-watcher (clipboard images); null fallback_contact = no default contact. 
+    `picker_first` = a new screenshot opens the team picker then the note panel (false: the cross as before),
+    `note_dictation` = the note panels offer dictation (Tab / mic), `remote_image` = an agent on another host gets
+    the image copied into its channel inbox over ssh (false: only the Mac path, as before)."""
     out = dict(SHOT_DEFAULTS)
     s = (raw or {}).get("shots")
     if isinstance(s, dict):
-        for k in ("enabled", "clipboard", "actions"):
+        for k in ("enabled", "clipboard", "actions", "picker_first", "note_dictation", "remote_image"):
             if isinstance(s.get(k), bool):
                 out[k] = s[k]
         if "fallback_contact" in s and (s["fallback_contact"] is None or isinstance(s["fallback_contact"], str)):
@@ -164,6 +186,13 @@ def picker_options(table: dict[str, dict], page: int, exclude: str | None = None
     return opts, keys
 
 
+def roster(table: dict[str, dict], first: str | None) -> dict[str, dict]:
+    """every recipient, `first` (the current contact) at the top, the rest in the table's order."""
+    if first not in table:
+        return dict(table)
+    return {first: table[first], **{k: v for k, v in table.items() if k != first}}
+
+
 # ---- text ------------------------------------------------------------------------------------------------
 
 def context_of(ctx: dict) -> dict:
@@ -174,11 +203,13 @@ def context_of(ctx: dict) -> dict:
             "desk": ctx.get("space") if isinstance(ctx.get("space"), int) and not isinstance(ctx.get("space"), bool) else None}
 
 
-def head_line(ctx: dict, when: datetime) -> str:
-    """"[Screenshot from the user, 18:13, context: Safari · github.com · desk 2]" (Paris time)."""
+def head_line(ctx: dict, when: datetime, dictated: bool = False) -> str:
+    """"[Screenshot from the user, 18:13, context: Safari · github.com · desk 2]" (Paris time); ", note dictated"
+    when on-device dictation wrote the note (the recipient never takes a transcript for typed words)."""
     hhmm = when.astimezone(vocal.PARIS).strftime("%H:%M")
     parts = [p for p in (ctx.get("app"), ctx.get("host"), f"desk {ctx['desk']}" if ctx.get("desk") is not None else None) if p]
-    return f"[Screenshot from the user, {hhmm}" + (f", context: {' · '.join(parts)}" if parts else "") + "]"
+    return (f"[Screenshot from the user, {hhmm}" + (f", context: {' · '.join(parts)}" if parts else "")
+            + (", note dictated" if dictated else "") + "]")
 
 
 def one_line(note: str | None) -> str:
@@ -189,9 +220,9 @@ def one_line(note: str | None) -> str:
     return " / ".join(x for x in lines if x)[:vocal.MAX_CHARS]
 
 
-def message(ctx: dict, when: datetime, note: str | None, image_ref: str) -> str:
+def message(ctx: dict, when: datetime, note: str | None, image_ref: str, dictated: bool = False) -> str:
     body = one_line(note)
-    return " ".join(f"{head_line(ctx, when)}{' ' + body if body else ''} {image_ref}".split())
+    return " ".join(f"{head_line(ctx, when, dictated and bool(body))}{' ' + body if body else ''} {image_ref}".split())
 
 
 def recent_actions(rows: list[dict], now: float, keep: int = ACTIONS_KEEP, window_s: float = ACTIONS_WINDOW_S) -> list[str]:
@@ -477,6 +508,53 @@ def inbox_target(spec: dict, image: str, when: datetime) -> Path:
     return Path(spec["path"]).parent / "inbox" / f"oi-shot-{stamp}-{secrets.token_hex(2)}{ext}"
 
 
+def file_state(path: str) -> str:
+    """"present", "gone" (no such file) or "unreadable" (any other stat error: TCC's EPERM on a denied
+    folder is NOT a missing file; os.path.isfile says False for both)."""
+    try:
+        st = os.stat(path)
+    except (FileNotFoundError, NotADirectoryError):
+        return "gone"
+    except OSError:
+        return "unreadable"
+    return "present" if stat.S_ISREG(st.st_mode) else "gone"
+
+
+def remote_inbox_target(spec: dict, image: str, when: datetime) -> str:
+    """<the agent's channel dir on its host>/inbox/oi-shot-<UTC stamp>-<4 hex><ext> (the A2A state dir; a state dir
+    that already is an `inbox` is used as is)."""
+    ext = Path(image).suffix.lower() if Path(image).suffix.lower() in IMAGE_EXT else ".png"
+    stamp = when.astimezone(timezone.utc).strftime("%Y%m%dT%H%M%SZ")
+    inbox = spec["state_dir"].rstrip("/")
+    if not inbox.endswith("/inbox"):
+        inbox += "/inbox"
+    return f"{inbox}/oi-shot-{stamp}-{secrets.token_hex(2)}{ext}"
+
+
+def remote_copy_command(spec: dict, dst: str) -> list[str]:
+    """The image onto the agent's host over the A2A recipient's ssh route (`to`), the bytes on STDIN (never in
+    argv): `ssh <to> '…'` creates the inbox if needed (umask 077), writes a NEW file (set -C: never over an existing
+    one) and makes it 0600. Point `to` at an ssh route that logs in as the agent's own user (never root), so the
+    file is the agent's. Nothing else runs there."""
+    import shlex
+    d, f = shlex.quote(dst.rsplit("/", 1)[0]), shlex.quote(dst)
+    script = f"umask 077; set -C; mkdir -p {d} && cat > {f} && chmod 600 {f}"
+    return ["ssh", "-o", "BatchMode=yes", "-o", "ConnectTimeout=10", "--", spec["to"], script]
+
+
+def _run_copy(argv: list[str], data: bytes) -> tuple[int, str]:
+    """The ssh copy (env scrubbed like the A2A sender), its own timeout (an image, not a line)."""
+    env = {k: v for k, v in os.environ.items() if k not in vocal.SCRUB_ENV}
+    try:
+        p = subprocess.run(argv, input=data, capture_output=True, timeout=REMOTE_COPY_TIMEOUT_S, env=env)
+    except FileNotFoundError:
+        return 127, "ssh not found"
+    except subprocess.TimeoutExpired:
+        return 124, f"timeout {REMOTE_COPY_TIMEOUT_S}s"
+    err = p.stderr.decode("utf-8", "replace").strip().splitlines()
+    return p.returncode, (err[-1][:120] if err else "")
+
+
 def _copy_private(src: str, dst: Path) -> None:
     dst.parent.mkdir(mode=0o700, parents=True, exist_ok=True)
     shutil.copyfile(src, dst)
@@ -487,9 +565,13 @@ def deliver(slug: str, image: str, note: str | None, *, ctx: dict, when: datetim
             table: dict[str, dict] | None = None, runner: Callable = vocal._run,
             inject: Callable[[str, str], None] = vocal._append_inject,
             copy: Callable[[str, Path], None] = _copy_private, out=None,
-            ask: Callable[[dict, float], dict] | None = None) -> dict:
+            ask: Callable[[dict, float], dict] | None = None, dictated: bool = False,
+            remote_image: bool | None = None,
+            remote_copy: Callable[[list[str], bytes], tuple[int, str]] | None = None) -> dict:
     """Send the screenshot to ONE agent. {"ok", "to", ["name"], ["error"], ["dry_run"]}. The outward
-    gate first: nothing is copied or sent (dry run included) unless the user validates."""
+    gate first: nothing is copied or sent (dry run included) unless the user validates.
+    an A2A recipient gets the image copied into its channel inbox on its host (`remote_copy`, ssh) before
+    the line, which names that path; a failed copy sends nothing. `remote_image` None = settings `shots.remote_image`."""
     table = table if table is not None else vocal.recipients(vocal._raw_settings())
     spec = table.get(slug)
     result: dict = {"ok": False, "to": slug}
@@ -497,16 +579,20 @@ def deliver(slug: str, image: str, note: str | None, *, ctx: dict, when: datetim
         result["error"] = f"unknown recipient {slug}"
         return result
     result["name"] = spec["name"]
-    if not os.path.isfile(image):
+    fs = file_state(image)
+    if fs == "gone":
         result["error"] = "image missing"
         return result
-    g = gate.outward("shot", slug, spec["name"], message(ctx, when, note, ""), dry_run=dry_run, ask=ask)
+    if fs == "unreadable":                     # present, but this process may not stat it (TCC)
+        result.update(error="read: Operation not permitted", denied=True)
+        return result
+    g = gate.outward("shot", slug, spec["name"], message(ctx, when, note, "", dictated), dry_run=dry_run, ask=ask)
     if not g["ok"]:
         result["error"] = g["error"]
         return result
     if spec["kind"] == "inject":
         dst = inbox_target(spec, image, when)
-        line = message(ctx, when, note, f"(image: {dst})")
+        line = message(ctx, when, note, f"(image: {dst})", dictated)
         if dry_run:
             print(json.dumps({"kind": "inject", "copy": [image, str(dst)], "append_to": spec["path"],
                               "line": line}, ensure_ascii=False), file=out or sys.stdout, flush=True)
@@ -515,20 +601,46 @@ def deliver(slug: str, image: str, note: str | None, *, ctx: dict, when: datetim
         if not Path(spec["path"]).is_file():
             result["error"] = "no live session (inject file missing)"   # nothing copied
             return result
-        try:
+        try:                                   # the failing step is named (copy: / inject:)
             copy(image, dst)
+        except OSError as e:
+            result["error"] = f"copy: {e.strerror or e}"
+            result["denied"] = isinstance(e, PermissionError)   # TCC: launchd python denied the screenshot folder
+            return result
+        try:
             inject(spec["path"], line)
             result["ok"] = True
         except (OSError, vocal.VocalError) as e:
             result["error"] = str(e) if isinstance(e, vocal.VocalError) else f"inject: {e.strerror or e}"
         return result
-    line = message(ctx, when, note, f"(image on the user's Mac at {image})")
+    if remote_image is None:
+        remote_image = shot_settings(vocal._raw_settings())["remote_image"]
+    plan: dict = {}
+    if remote_image:                           # the pixels go to the agent's host, over its ssh route
+        rdst = remote_inbox_target(spec, image, when)
+        cargv = remote_copy_command(spec, rdst)
+        line = message(ctx, when, note, f"(image: {rdst})", dictated)
+        plan["copy"] = {"argv": cargv, "stdin": f"<{image}>"}
+    else:
+        line = message(ctx, when, note, f"(image on the user's Mac at {image})", dictated)
     argv = vocal.command(spec)
     if dry_run:
-        print(json.dumps({"kind": "a2a", "argv": argv, "env_unset": list(vocal.SCRUB_ENV), "stdin": line},
+        print(json.dumps({"kind": "a2a", **plan, "argv": argv, "env_unset": list(vocal.SCRUB_ENV), "stdin": line},
                          ensure_ascii=False), file=out or sys.stdout, flush=True)
         result.update(ok=True, dry_run=True)
         return result
+    if remote_image:
+        try:
+            data = Path(image).read_bytes()
+        except OSError as e:
+            result["error"] = f"copy: {e.strerror or e}"
+            result["denied"] = isinstance(e, PermissionError)
+            return result
+        code, err = (remote_copy or _run_copy)(cargv, data)
+        del data
+        if code != 0:                          # nothing half-sent: no line naming an image that is not there
+            result["error"] = f"copy: exit {code}" + (f": {err}" if err else "")
+            return result
     code, err = runner(argv, (line + "\n").encode("utf-8"))
     result["ok"] = code == 0
     if code != 0:
@@ -594,10 +706,11 @@ def shot_options(shot: dict, *, telegram_icon: bool = True) -> list[dict]:
 
 class Shots:
     """Run by `oi live`: the screenshot as LIVE context state. A thread polls the shot bucket (0.5 s cadence) and
-    keeps `live`: the screenshots on screen now. A screenshot is live while its thumbnail / markup window is up
-    (watcher `shot_state` thumbnail live → gone), and a screenshot with no window (thumbnail off, or a clipboard
-    one) until the context changes (a new app / page / desk token); a clipboard one ends too when the clipboard
-    changes. A send carries the newest live screenshot (`latest`).
+    keeps `live`: a thumbnail / markup window up (watcher `shot_state`: a screenshot being taken) and the screenshots
+    taken. A file screenshot lives with its file, not its thumbnail: until it is sent (`answered`), the next
+    one lands (`replaced`), the file is gone or the context changes (a new app / page / desk token, not while a
+    window is up); a clipboard one ends too when the clipboard changes. A failed send is said on the HUD
+    (`notice`). A send carries the newest live screenshot (`latest`).
     While one is live, Live's context has `live: ["shot"]`, its `shot:new` token is the latest action of the
     moment, and `options()` joins the predictor's pool; Claude's content actions are added the moment they come.
     Collaborators injectable (tests, dry run)."""
@@ -628,7 +741,8 @@ class Shots:
         self.lock = threading.RLock()
         self.shots: dict[str, dict] = {}           # the live screenshots (id -> shot), oldest first
         self.past: dict[str, dict] = {}            # ended ones a press may still name (the image stays on disk)
-        self.window = False                        # a screenshot thumbnail / markup window is on screen
+        self._probe_at = float("-inf")             # the screenshot-folder probe is due (start, PROBE_S, a new shot)
+        self.window = False                        # a screenshot thumbnail / markup window is on screen (being taken)
         self.threads: list[threading.Thread] = []
 
     @property
@@ -685,6 +799,7 @@ class Shots:
                     self.poll()
                 except Exception:
                     log("poll failed: " + traceback.format_exc().splitlines()[-1])
+                self.probe_due()                   # `oi health` follows a TCC grant / revoke
                 time.sleep(POLL_S)
         t = threading.Thread(target=work, daemon=True, name="oi-shots")
         t.start()
@@ -692,26 +807,22 @@ class Shots:
 
     # -- the live state --------------------------------------------------------------------------------------
     def apply(self, ev: dict) -> dict | None:
-        """One bucket event. shot_state thumbnail live: the window is up (a window-less live shot now lives with
-        it); gone: every window-bound shot ends; clipboard gone: the clipboard shot ends. shot: a new live
-        screenshot (returned)."""
+        """One bucket event. shot_state thumbnail live / gone: a thumbnail / markup window is up / went (the
+        screenshot being taken: in the context, no image yet); clipboard gone: the clipboard shot ends. shot: a new
+        live screenshot (returned). a FILE screenshot is never bound to the thumbnail: macOS writes the file
+        as its thumbnail slides away (a watcher log: file 11:58:02.506, thumbnail gone 11:58:02.927, the
+        offer was taken down 531 ms after it appeared). The file is the state."""
         data = ev.get("data") or {}
         kind, src = data.get("kind"), data.get("src")
         if kind == "shot_state":
             ended = []
             with self.lock:
-                if src == "thumbnail" and data.get("state") == "live":
-                    self.window = True
-                    for s in self.shots.values():
-                        if not s["clip"]:
-                            s["window"] = True
-                elif src == "thumbnail" and data.get("state") == "gone":
-                    self.window = False
-                    ended = [s for s in self.shots.values() if s["window"]]
+                if src == "thumbnail":
+                    self.window = data.get("state") == "live"
                 elif src == "clipboard" and data.get("state") == "gone":
                     ended = [s for s in self.shots.values() if s["clip"]]
             for s in ended:
-                self.end(s, "window_gone" if src == "thumbnail" else "clipboard_changed")
+                self.end(s, "clipboard_changed")
             return None
         if kind != "shot":
             return None
@@ -719,8 +830,10 @@ class Shots:
 
     def appear(self, ev: dict, data: dict) -> dict | None:
         image = data.get("path")
-        if not isinstance(image, str) or not os.path.isfile(image):
+        fs = file_state(image) if isinstance(image, str) else "gone"
+        if fs == "gone":
             return None
+        self._probe_at = float("-inf")             # each new screenshot re-probes the folder (next loop)
         st = settings.load()
         raw = self.raw_settings()
         cfg = shot_settings(raw)
@@ -739,14 +852,17 @@ class Shots:
                 "token": tok, "ctx": context_of(mctx), "when": datetime.fromtimestamp(now, timezone.utc), "now": now,
                 "table": table, "who": who, "claude": claude_on, "ttl_ms": cfg["ttl_ms"],
                 "telegram": bool(who and who["via"] == "telegram"), "clip": data.get("src") == "clipboard",
-                "content": None, "suggest": None, "slots": set(), "ended": False,
+                "content": None, "suggest": None, "slots": set(), "ended": False, "unreadable": False,
                 "after": newest_context(list(getattr(self.live, "rows", []) or []))}
         with self.lock:
-            shot["window"] = self.window and not shot["clip"]
+            older = list(self.shots.values())
             self.shots[shot["id"]] = shot
-        log(f"screenshot ({shot['src']}) live" + (" (window)" if shot["window"] else "")
-            + f": contact {who['slug'] if who else '-'} ({who['via'] if who else '-'})")
+        log(f"screenshot ({shot['src']}) live: contact {who['slug'] if who else '-'} ({who['via'] if who else '-'})")
+        for s in older:                               # a new screenshot replaces the one before (its offer moves on)
+            self.end(s, "replaced")
         self.notify("appear", shot)                   # shown at once; Claude's content actions join when they come
+        if fs == "unreadable":
+            self.unreadable(shot)
         if claude_on and st["hud_enabled"] and (cfg["actions"] if self.actions_on is None else self.actions_on):
             t = threading.Thread(target=self._suggest, args=(shot,), daemon=True, name="oi-shot-actions")
             self.threads = [x for x in self.threads if x.is_alive()] + [t]
@@ -770,17 +886,34 @@ class Shots:
         self.notify("gone", shot)
 
     def on_context(self, rows: list[dict]) -> None:
-        """Live's loop, after each pull: a screenshot with no window (thumbnail off, or a clipboard one) is the
-        current context until the context changes (a newer app / page / desk token). (2026-10-21,
-        "end on app/page change"): a clipboard one ends here too, not only when the clipboard changes; never while
-        a thumbnail / markup window is up."""
+        """Live's loop, after each pull: a screenshot is the current context until the context changes (a newer
+        app / page / desk token), never while a thumbnail / markup window is up (a screenshot is being taken).
+        A clipboard one ends here too, not only when the
+        clipboard changes. a file screenshot whose file is gone (deleted, moved: ENOENT) ends here too; one
+        present but unreadable (TCC EPERM) stays and the failure is said (`unreadable`)."""
         newest = newest_context(rows)
         with self.lock:
-            ended = [s for s in self.shots.values() if not s["window"] and not (s["clip"] and self.window)
-                     and newest is not None and (s["after"] is None or newest > s["after"])
-                     and newest[0] >= s["token"]["ts"]]
-        for s in ended:
-            self.end(s, "context_changed")
+            files = {s["id"]: file_state(s["image"]) for s in self.shots.values() if not s["clip"]}
+            ended = [(s, "file_gone") for s in self.shots.values() if files.get(s["id"]) == "gone"]
+            denied = [s for s in self.shots.values() if files.get(s["id"]) == "unreadable" and not s["unreadable"]]
+            ended += [(s, "context_changed") for s in self.shots.values() if not self.window
+                      and newest is not None and (s["after"] is None or newest > s["after"])
+                      and newest[0] >= s["token"]["ts"] and all(s is not e for e, _ in ended)]
+        for s, why in ended:
+            self.end(s, why)
+        for s in denied:
+            self.unreadable(s)
+
+    def unreadable(self, shot: dict) -> None:
+        """the screenshot file is there but oi live may not read it (TCC): said once on the HUD, the folder
+        re-probed (oi health); the offer stays (a press says it again, a grant makes it work)."""
+        with self.lock:
+            if shot["unreadable"]:
+                return
+            shot["unreadable"] = True
+        log("screenshot file unreadable (denied)")
+        self.request({"cmd": "notice", "text": UNREADABLE_NOTICE}, ("ok", "error", "dropped"), 2)
+        self.probe_read()
 
     def notify(self, what: str, shot: dict) -> None:
         cb = getattr(self.live, "on_live_state", None)
@@ -923,11 +1056,7 @@ class Shots:
         shot, act = self.get(sh.get("id")), sh.get("act")
         if not shot or not act:
             return None
-        who = shot.get("who") or {}
-        row = {"ts": vocab.iso_utc(datetime.fromtimestamp(self.clock(), timezone.utc)), "kind": "shot", "event": "press",
-               "src": shot["src"], "to": who.get("slug"), "via": who.get("via"), "outcome": f"pressed:{reply.get('key')}",
-               "action": act[0], "picked": slot_kind(act), "tier": None, "ok": False, "dry_run": self.dry_run,
-               "error": None, "live": not shot["ended"]}
+        row = self.press_row(shot, act[0], slot_kind(act), f"pressed:{reply.get('key')}")
         try:
             self._press(act, reply, shot, row)
         except Exception:
@@ -935,6 +1064,56 @@ class Shots:
             log("shot press failed: " + traceback.format_exc().splitlines()[-1])
         vocal.log_row(row)
         return opt.get("token") if row["ok"] else None
+
+    def press_row(self, shot: dict, action: str, picked: str, outcome: str) -> dict:
+        who = shot.get("who") or {}
+        return {"ts": vocab.iso_utc(datetime.fromtimestamp(self.clock(), timezone.utc)), "kind": "shot", "event": "press",
+                "src": shot["src"], "to": who.get("slug"), "via": who.get("via"), "outcome": outcome,
+                "action": action, "picked": picked, "tier": None, "ok": False, "dry_run": self.dry_run,
+                "error": None, "live": not shot["ended"]}
+
+    # -- picker first: a screenshot offers to forward it to a teammate, with a typed or dictated note ----------------
+    def picker_first(self) -> bool:
+        return bool(shot_settings(self.raw_settings())["picker_first"])
+
+    def forward(self, shot: dict, show: dict | None = None) -> str | None:
+        """Run by Live when a screenshot appears (settings `shots.picker_first`): the team picker at once (every
+        recipient, the current contact first, one tap; "More" pages), then the note panel (type, or Tab / the mic
+        to dictate on-device), Enter = ONE delivery of the image + the note (empty note = the image alone), through
+        the outward gate in deliver(). Esc / no pick / the panel dismissed = nothing sent. `show` = Live's marker of
+        the show bound to the screenshot, done once the picker is answered. One press row."""
+        if getattr(self.live, "dry_run", False):       # `oi live --dry-run`: the picker printed, never shown
+            who = (shot.get("who") or {}).get("slug")
+            opts, _ = picker_options(roster(shot["table"], who), 0)
+            print(json.dumps({"shot_forward": opts}, ensure_ascii=False), file=self.out or sys.stdout, flush=True)
+            if show is not None:
+                show["done"] = True
+            return None
+        row = self.press_row(shot, "forward", "pick", "forward")
+        try:
+            to = self.pick(shot, first=True)
+            if show is not None:
+                show["done"] = True
+            if not to:
+                row["outcome"] += ":dismissed"
+            else:
+                row["to"], row["via"] = to, ("contact" if to == (shot.get("who") or {}).get("slug") else "picked")
+                name = shot["table"][to]["name"]
+                info: dict = {}
+                text = self.note(f"→ {name} · your note", "",
+                                 "Type, or Tab to dictate · Enter sends (empty = the screenshot alone)", info=info)
+                if text is None:
+                    row["outcome"] += ":note_cancelled"
+                else:
+                    self.send(to, text, shot, row, tier=1, dictated=bool(info.get("dictated")))
+        except Exception:
+            row["error"] = "exception"
+            log("shot forward failed: " + traceback.format_exc().splitlines()[-1])
+        finally:
+            if show is not None:
+                show["done"] = True
+        vocal.log_row(row)
+        return f"shot.send:{row['to']}" if row["ok"] else None
 
     def _press(self, act: tuple, reply: dict, shot: dict, row: dict) -> None:
         if act[0] == "content":
@@ -980,12 +1159,15 @@ class Shots:
         row["ok"], row["error"] = code == 0, (None if code == 0 else f"exit {code}")
         log(f"content action {item['type']}: " + ("done" if code == 0 else f"FAILED (exit {code})"))
 
-    def pick(self, shot: dict) -> str | None:
-        exclude = (shot.get("who") or {}).get("slug")
+    def pick(self, shot: dict, first: bool = False) -> str | None:
+        """The agent picker. `first`: the whole roster, the current contact on the first key; else ("→ other")
+        everyone but the contact."""
+        who = (shot.get("who") or {}).get("slug")
+        table, exclude = (roster(shot["table"], who), None) if first else (shot["table"], who)
         fill = (settings.load().get("hud") or {}).get("fill_order")
         page = 0
         for _ in range(12):
-            opts, keys = picker_options(shot["table"], page, exclude=exclude, fill_order=fill)
+            opts, keys = picker_options(table, page, exclude=exclude, fill_order=fill)
             reply = self.request({"cmd": "shot_show", "options": opts, "ttl_ms": shot["ttl_ms"]},
                                  SHOW_EVENTS, shot["ttl_ms"] / 1000 + 30)
             if reply.get("event") != "pressed":
@@ -996,12 +1178,17 @@ class Shots:
             page += 1
         return None
 
-    def note(self, title: str, text: str, placeholder: str) -> str | None:
-        """The editable note panel; the text the user sent with Enter, or None (Esc, click outside, no HUD)."""
-        reply = self.request({"cmd": "shot_note", "title": title, "text": text, "placeholder": placeholder},
-                             NOTE_EVENTS, NOTE_TIMEOUT_S)
+    def note(self, title: str, text: str, placeholder: str, info: dict | None = None) -> str | None:
+        """The editable note panel; the text the user sent with Enter, or None (Esc, click outside, no HUD). the
+        panel offers on-device dictation (settings `shots.note_dictation`); `info["dictated"]` = it wrote some."""
+        cmd = {"cmd": "shot_note", "title": title, "text": text, "placeholder": placeholder}
+        if shot_settings(self.raw_settings())["note_dictation"]:
+            cmd["dictate"] = True
+        reply = self.request(cmd, NOTE_EVENTS, NOTE_TIMEOUT_S)
         if reply.get("event") != "note" or not isinstance(reply.get("text"), str):
             return None
+        if info is not None:
+            info["dictated"] = reply.get("dictated") is True
         return reply["text"]
 
     def tier2(self, to: str, key: int, shot: dict, row: dict) -> None:
@@ -1038,18 +1225,55 @@ class Shots:
             return
         self.send(to, edited, shot, row, tier=2)
 
-    def send(self, to: str, note: str | None, shot: dict, row: dict, *, tier: int) -> dict:
+    def send(self, to: str, note: str | None, shot: dict, row: dict, *, tier: int, dictated: bool = False) -> dict:
         row["tier"], row["to"] = tier, to
         cur = self.latest(shot)                                # the newest live screenshot goes
         if cur is not shot:
             log("send: a newer screenshot is live, it goes instead of the one offered")
             shot, row["src"], row["newer"] = cur, cur["src"], True
         row["note_len"] = len(one_line(note))
+        kw = {"dictated": True} if dictated else {}
+        if dictated:
+            row["dictated"] = True
         r = self.deliver_fn(to, shot["image"], note, ctx=shot["ctx"], when=shot["when"], dry_run=self.dry_run,
-                            table=shot["table"], out=self.out)
+                            table=shot["table"], out=self.out, **kw)
         row["ok"], row["error"] = r.get("ok", False), r.get("error")
         log(f"tier {tier} -> {to}: " + ("dry run, nothing sent" if r.get("dry_run") else ("sent" if r.get("ok") else f"FAILED ({r.get('error')})")))
+        if r.get("ok"):                                # the user answered: the forwarded shot leaves the context
+            with self.lock:
+                done = [s for s in self.shots.values() if s["now"] <= shot["now"]]
+            for s in done:
+                self.end(s, "answered")
+        elif not str(r.get("error") or "").startswith("cancelled"):   # a failure is shown; the user's own cancel: silent
+            self.request({"cmd": "notice", "text": failure_notice(shot["table"].get(to, {}).get("name") or to, r)},
+                         ("ok", "error", "dropped"), 2)
+            if r.get("denied"):
+                self.probe_read()
         return r
+
+    def probe_due(self) -> None:
+        """re-probe every PROBE_S (and right after a new screenshot): a grant clears the FAIL, a revoke shows."""
+        now = self.clock()
+        if now - self._probe_at >= PROBE_S:
+            self._probe_at = now
+            self.probe_read()
+
+    def probe_read(self) -> None:
+        """can this process (oi live, launchd) read the screenshot folder? -> <data>/health/shots.json."""
+        try:
+            health.write_shot_probe(health.probe_shot_read(health.screenshot_folder(), self.clock()))
+        except Exception:
+            log("screenshot folder probe failed: " + traceback.format_exc().splitlines()[-1])
+
+
+UNREADABLE_NOTICE = "Screenshot not readable: macOS denies oi live the screenshot folder (see oi health)"
+
+
+def failure_notice(name: str, r: dict) -> str:
+    """the one line the HUD shows when a forward failed (never a path, never the note)."""
+    if r.get("denied"):
+        return f"Not sent to {name}: macOS denies oi live the screenshot folder (see oi health)"
+    return f"Not sent to {name}: {one_line(r.get('error') or 'failed')}"[:90]
 
 
 def token_row(ev: dict) -> dict:

@@ -172,6 +172,8 @@ final class HUDController {
             else if id == HotKeys.escapeID { self?.dismiss("esc") } else { self?.pressed(Int(id)) }
         }
         wish.localeProvider = { [weak self] in self?.settings.current.wish.locale ?? WishSettings.defaultLocale }
+        shotNote.localeProvider = { [weak self] in self?.settings.current.wish.locale ?? WishSettings.defaultLocale }
+        shotNote.limitProvider = { [weak self] in self?.settings.current.vocalMaxS ?? OISettings.defaultVocalMaxS }
         wish.onSave = { [weak self] text, source, ctx in self?.saveWish(text, source: source, context: ctx) }
         // a confirmed wish for a page action ("merge") = the user's explicit second step: its press ticket
         wish.resolve.onConfirmPress = { [weak self] target in
@@ -360,6 +362,10 @@ final class HUDController {
             conn.send(.ok)
         case .success(.update(let updates)):
             updateLabels(updates, conn: conn)
+        case .success(.notice(let text)):                // a failed screenshot forward, said in one line
+            log("notice (\(text.count) chars)")
+            toast.show(text, color: .systemOrange, life: 5)
+            conn.send(.ok)
         case .success(.result(let key, let ok, let text, let ttlMs, let openDraft)):
             claudeResult(key: key, ok: ok, text: text, ttlMs: ttlMs, openDraft: openDraft, conn: conn)
         case .success(.subring(let path, let options)):

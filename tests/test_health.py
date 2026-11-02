@@ -353,3 +353,44 @@ def test_lazy_laya_agent_not_running_is_not_a_service_problem():
     assert health.check_services(listing) == []
     del listing["com.osintent.oi-laya"]
     assert health.check_services(listing) == ["service oi-laya: not loaded"]
+
+
+# ---- can oi live (launchd) read the screenshot folder? ---------------------------------------------------
+
+def test_shot_probe_reads_the_newest_screenshot(tmp_path):
+    (tmp_path / "Screenshot 1.png").write_bytes(b"\x89PNG")
+    (tmp_path / "notes.txt").write_text("x")
+    r = health.probe_shot_read(str(tmp_path), NOW)
+    assert r["ok"] and r["probed"] == "newest" and r["error"] is None and r["ts"] == ISO(NOW)
+    empty = tmp_path / "empty"
+    empty.mkdir()
+    assert health.probe_shot_read(str(empty), NOW)["probed"] == "folder"     # nothing to open: the listing is the probe
+
+
+def test_shot_probe_eperm_is_a_fail_with_the_tcc_hint(tmp_path, monkeypatch):
+    def denied(path):
+        raise PermissionError(1, "Operation not permitted", path)
+    monkeypatch.setattr(health.os, "scandir", denied)
+    rec = health.probe_shot_read(os.path.expanduser("~/Desktop"), NOW)
+    assert rec["ok"] is False and rec["error"] == "EPERM" and rec["folder"] == "~/Desktop"
+    health.write_shot_probe(rec)
+    write_health({"mail": OK_SRC})
+    r = checks()
+    assert not r["healthy"] and r["shot_read"]["error"] == "EPERM"
+    prob, = r["problems"]
+    assert prob.startswith("shots: FAIL oi live cannot read the screenshot folder ~/Desktop (EPERM)")
+    assert "Privacy & Security" in prob and "Full Disk Access" in prob
+
+
+def test_shot_probe_ok_or_absent_is_healthy(tmp_path):
+    write_health({"mail": OK_SRC})
+    assert checks()["healthy"]                                               # an oi live from before 
+    health.write_shot_probe(health.probe_shot_read(str(tmp_path), NOW))
+    assert checks()["healthy"]
+    assert health.check_shot_read({"ok": False, "error": "ENOENT", "folder": "/x"})[0] == [
+        "shots: FAIL oi live cannot read the screenshot folder /x (ENOENT), screenshots cannot be forwarded"]
+
+
+def test_screenshot_folder_from_defaults_or_desktop():
+    assert health.screenshot_folder(lambda: "~/Pictures/Shots") == os.path.expanduser("~/Pictures/Shots")
+    assert health.screenshot_folder(lambda: None) == os.path.expanduser("~/Desktop")

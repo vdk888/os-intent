@@ -112,9 +112,10 @@ direction then lists the chats waiting on you, one click each.
 
 **⌃⌥** turns the cross into an agent picker. Pick one: the recording panel shows the live on-device transcript, up
 to 5 minutes, with a countdown at the end. Start typing and the microphone stops: what was heard stays, you edit it.
-The confirm panel can **attach a screenshot** of the screen. Take a screenshot with ⌘⇧4 and *→ Atlas*, *→ other*,
-*Annotate* are offered, plus actions read from the image by on-device OCR (add the meeting to Calendar, draft a
-reply, open the link). Agents are reached through a local inject file or a signed relay script you configure.
+The confirm panel can **attach a screenshot** of the screen. Take a screenshot with ⌘⇧4 and the team picker opens at
+once: pick an agent, then type a note or press Tab to dictate it, Enter sends the image and the note (setting
+`shots.picker_first: false` brings back the *→ Atlas*, *→ other*, *Annotate* cross, with actions read from the image
+by on-device OCR: add the meeting to Calendar, draft a reply, open the link). Agents are reached through a local inject file or a signed relay script you configure.
 
 ### Page actions, and nothing leaves without your yes
 

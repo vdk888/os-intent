@@ -100,8 +100,10 @@ vous ont envoyé. La direction Telegram liste alors les conversations en attente
 **⌃⌥** transforme la croix en sélecteur d'agents. Choisissez-en un : le panneau d'enregistrement affiche la
 transcription en direct, sur l'appareil, jusqu'à 5 minutes avec un compte à rebours à la fin. Commencez à taper :
 le micro s'arrête, ce qui a été entendu reste, vous corrigez. Le panneau de validation peut **joindre une capture
-de l'écran**. Une capture ⌘⇧4 propose *→ Atlas*, *→ autre*, *Annoter*, et des actions lues dans l'image par OCR
-local (ajouter la réunion au Calendrier, rédiger une réponse, ouvrir le lien).
+de l'écran**. Une capture ⌘⇧4 ouvre aussitôt le choix de l'agent, puis une note à taper ou à dicter (Tab) ;
+Entrée envoie l'image et la note (le réglage `shots.picker_first: false` remet la croix *→ Atlas*, *→ autre*,
+*Annoter*, avec des actions lues dans l'image par OCR local : ajouter la réunion au Calendrier, rédiger une réponse,
+ouvrir le lien).
 
 ### Actions de page, et rien ne sort sans votre accord
 

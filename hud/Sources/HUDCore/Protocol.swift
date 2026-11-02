@@ -158,7 +158,12 @@ public enum HUDCommand: Equatable, Sendable {
     case confirmOutward(OutwardConfirmRequest)
     case debugOutward(validate: Bool)
     // end W19
+    /// a one-line notice from oi live (a screenshot forward that failed: "Not sent to Atlas: …"), shown as the
+    /// toast the vocal / page failures use. One line, ≤ `maxNoticeChars`; never a path or a note (python's side).
+    case notice(text: String)
 }
+
+public let maxNoticeChars = 160
 
 public enum CommandError: Error, Equatable, CustomStringConvertible {
     case badJSON
@@ -171,6 +176,7 @@ public enum CommandError: Error, Equatable, CustomStringConvertible {
     case unknownAgent(String)
     case badUpdate
     case badPath
+    case badNotice
 
     public var description: String {
         switch self {
@@ -184,6 +190,7 @@ public enum CommandError: Error, Equatable, CustomStringConvertible {
         case .unknownAgent(let a): return "unknown_agent:\(a)"
         case .badUpdate: return "bad_update"
         case .badPath: return "bad_path"
+        case .badNotice: return "bad_notice"
         }
     }
 }
@@ -232,6 +239,11 @@ public func decodeCommand(_ line: Data) throws -> HUDCommand {
         guard (100...60_000).contains(ttl) else { throw CommandError.badTTL(ttl) }
         return .result(key: k, ok: raw.ok ?? true, text: raw.text, ttlMs: ttl,
                        openDraft: raw.open_draft.flatMap { $0 > 0 ? $0 : nil })
+    case "notice":
+        let t = (raw.text ?? "").components(separatedBy: .newlines).joined(separator: " ")
+            .trimmingCharacters(in: .whitespaces)
+        guard !t.isEmpty, t.count <= maxNoticeChars else { throw CommandError.badNotice }
+        return .notice(text: t)
     case "debug_press":
         guard let k = raw.key, (1...maxOptions).contains(k) else { throw CommandError.badKey(raw.key ?? 0) }
         return .debugPress(key: k, mode: raw.mode)
@@ -359,8 +371,9 @@ public enum HUDEvent: Equatable, Sendable {
     case state(HUDStateInfo)
     /// a wish resolve request, sent to the registered resolver connection only (never broadcast).
     case resolve(ResolveRequest)
-    /// the note panel sent with Enter (the reply to `shot_note`).
-    case note(text: String)
+    /// The note panel sent with Enter (the reply to `shot_note`); `dictated` = dictation wrote
+    /// some of it.
+    case note(text: String, dictated: Bool = false)
     /// W18 follow-up: `{"event":"cancel","id":n}` to the resolver — Esc while "Working…" / confirming.
     case resolveCancel(id: Int)
     /// Outward gate: the answer to `confirm_outward` (exactly one per request).
@@ -389,7 +402,7 @@ public enum HUDEvent: Equatable, Sendable {
         case .wish(let n): obj = ["event": "wish", "text_len": n]
         case .summon(let ts): obj = ["event": "summon", "ts": ts]
         case .resolve(let r): obj = r.json
-        case .note(let t): obj = ["event": "note", "text": t]
+        case .note(let t, let d): obj = d ? ["event": "note", "text": t, "dictated": true] : ["event": "note", "text": t]
         case .resolveCancel(let id): obj = ["event": "cancel", "id": id]   // W18 follow-up
         case .outward(let id, let d):                                      // outward gate
             var o: [String: Any] = ["event": "outward", "id": id, "decision": d.validated ? "validated" : "cancelled",

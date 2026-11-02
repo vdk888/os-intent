@@ -787,4 +787,37 @@ private func tmpDataDir() -> URL {
         #expect(ShotNoteKey.classify(isReturn: false, isEscape: true, shift: false, option: false) == .cancel)
         #expect(ShotNoteKey.classify(isReturn: false, isEscape: false, shift: false, option: false) == .other)
     }
+
+    // the note panel after the recipient picker: type OR dictate (Tab / mic), one reply
+    @Test func noteWithDictationDecodesAndReplies() throws {
+        let line = #"{"cmd":"shot_note","title":"→ Nova · your note","dictate":true}"#
+        #expect(try decodeCommand(Data(line.utf8)) == .shotNote(ShotNoteRequest(title: "→ Nova · your note", dictate: true)))
+        guard case .shotNote(let r) = try decodeCommand(Data(#"{"cmd":"shot_note","title":"x"}"#.utf8)) else { return }
+        #expect(!r.dictate)                                                // off unless asked (Annotate as before)
+        let ev = try JSONSerialization.jsonObject(with: Data(HUDEvent.note(text: "regarde", dictated: true).jsonLine().utf8)) as? [String: Any]
+        #expect(ev?["event"] as? String == "note" && ev?["text"] as? String == "regarde" && ev?["dictated"] as? Bool == true)
+    }
+
+    @Test func tabDictatesOnlyWhenOffered() {
+        #expect(ShotNoteKey.classify(isReturn: false, isEscape: false, shift: false, option: false, isTab: true, dictate: true) == .dictate)
+        #expect(ShotNoteKey.classify(isReturn: false, isEscape: false, shift: false, option: false, isTab: true, dictate: false) == .other)
+        #expect(ShotNoteKey.classify(isReturn: true, isEscape: false, shift: false, option: false, isTab: false, dictate: true) == .send)
+    }
+
+    @Test func dictationComposesAfterWhatIsTyped() {
+        var d = ShotNoteDictation()
+        #expect(d.compose("ignored") == nil && !d.used)                    // not listening: a late callback is dropped
+        d.start(from: "")
+        #expect(d.compose("regarde") == "regarde")
+        #expect(d.compose("regarde le bug") == "regarde le bug" && d.used) // each partial replaces the previous one
+        d.stop()
+        #expect(d.compose("late") == nil)
+        var t = ShotNoteDictation()
+        t.start(from: "Nova,")                                             // typed first, then dictated
+        #expect(t.compose("") == "Nova," && !t.used)
+        #expect(t.compose("le NAV") == "Nova, le NAV")
+        var n = ShotNoteDictation()
+        n.start(from: "ligne 1\n")
+        #expect(n.compose("ligne 2") == "ligne 1\nligne 2")
+    }
 }

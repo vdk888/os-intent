@@ -64,8 +64,14 @@ python3.12 -m venv .venv && .venv/bin/pip install -e .[dev]
 screenshot delivery by hand; `oi live` offers it on the HUD after each screenshot (docs/DESIGN.md "Screenshot → current
 contact"). The tier-2 note needs `ocr/` built: `cd ocr && swift build -c release`.
 Recipients: atlas / juno (this Mac) get the image copied into their channel inbox; A2A recipients on other hosts
-(Nova, Orion, Lyra, Iris, Vega, Hera, Echo) get the note + "image on the user's Mac at <path>", a path
-they CANNOT open: by design until the image-transfer follow-up. Clipboard screenshots: see
+(Nova, Orion, Lyra, Iris, Vega, Hera, Echo) get it copied over their ssh route (`ssh <to>`, bytes on stdin) into
+their channel's `inbox/`, then the note line naming that path (settings `"shots": {"remote_image": false}` = the
+note + "image on the user's Mac at <path>" only).
+Picker first: a new screenshot (⌘⇧3, ⌘⇧4, file or clipboard) opens the team picker at once (the current contact
+on the first key, "More" on fn), then the note panel: type, or **Tab** (or the mic) to dictate on-device; **Enter**
+sends image + note once (empty = image alone) after the outward gate, **Esc** cancels. `"shots": {"picker_first":
+false}` brings back the "→ <Agent> / → other / Annotate" cross; `"note_dictation": false` hides the mic. A forward
+that fails (copy or send) is shown on the HUD as a one-line notice. Clipboard screenshots: see
 watchers/oi-watcher/README.md (possible macOS pasteboard privacy alert; `"shots": {"clipboard": false}` turns them off).
 
 - `oi onboard [--answers F] [--sources-file F [--send-source-names]] [--no-claude] [--no-followups] [--out DIR] [--dry-run] [--offline]`
@@ -80,8 +86,9 @@ watchers/oi-watcher/README.md (possible macOS pasteboard privacy alert; `"shots"
   runs the sensors that settings.json `proactive.sources` turns on (all off by default) and shows a ring hint for the
   relevant events. See docs/DESIGN.md "Proactive hints" and "Behaviour contract".
 - `oi health [--json]` — production health: each enabled sensor's last poll (failures vs info such as "Mail closed"),
-  the LaunchAgents (`launchctl list com.osintent.oi-*`), ERROR / Traceback lines in the recent logs, Laya, and whether
-  the AppleScripts compile. Exit 0 ok / 1 problem / 2 cannot check.
+  the LaunchAgents (`launchctl list com.osintent.oi-*`), ERROR / Traceback lines in the recent logs, Laya, whether
+  the AppleScripts compile, and whether `oi live` may read the screenshot folder (a macOS privacy denial is a FAIL
+  with the grant hint). Exit 0 ok / 1 problem / 2 cannot check.
 
 ## Recording a demo
 `oi demo <scene>` / `oi demo contrast` / `oi demo all` (`oi/demo.py`) plays scripted HUD scenes for a screen recorder,

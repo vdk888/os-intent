@@ -1,6 +1,6 @@
 import Foundation
 
-/// W16 page actions: oi-hud's own Accessibility grant, from `<data_dir>/status/oi-hud.json`
+/// page actions: oi-hud's own Accessibility grant, from `<data_dir>/status/oi-hud.json`
 /// (`{"ts": ISO-8601, "ax": bool, "pid": n}`, rewritten by oi-hud every 30 s). Page actions (read the
 /// Safari page's buttons, AXPress the chosen one) need Accessibility for oi-hud.app; without it the HUD
 /// simply offers none, and the menu shows this hint.
@@ -26,6 +26,6 @@ public enum HUDAXStatus {
         let tail = st == .granted ? "" : " (needed to offer page buttons)"
         return MenuEntry(id: "perm.hudax", title: "\(st.symbol) Page actions: Accessibility for oi-hud — \(st.detail)\(tail) · open pane…",
                          kind: .action(.openAccessibility), indent: 1,
-                         tooltip: "System Settings → Privacy & Security → Accessibility → enable oi-hud. W16: the HUD reads the Safari page's buttons (labels only) and presses the one you tap.")
+                         tooltip: "System Settings → Privacy & Security → Accessibility → enable oi-hud. The HUD reads the Safari page's buttons (labels only) and presses the one you tap.")
     }
 }

@@ -2,7 +2,7 @@ import Foundation
 import Testing
 @testable import MenubarCore
 
-// W16: the menu hint for oi-hud's Accessibility (page actions).
+// the menu hint for oi-hud's Accessibility (page actions).
 
 @Suite struct HUDAXStatusTests {
     let now = ISO8601DateFormatter().date(from: "2026-10-20T16:00:00Z")!

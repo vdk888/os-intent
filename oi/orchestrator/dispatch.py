@@ -1,12 +1,11 @@
-"""W25: "pass me to Atlas" — the armed dispatch target.
+""""pass me to Atlas" — the armed dispatch target.
 
-The user: "il dispatche ultra rapide, il peut me passer en direct à toi avec une touche, quand je vais envoyer un vocal
-il va partir à toi".
+Goal: dispatch is instant: one key hands the user over to an agent, and the next voice note goes to that agent.
 
 A glide follow-up `dispatch:<agent>` or a wish "passe-moi Atlas" ARMS that agent for DISPATCH_TTL_S: The user's next
-typed note (a wish that resolves to nothing else) is proposed to that agent (confirmed before it leaves, the W12
+typed note (a wish that resolves to nothing else) is proposed to that agent (confirmed before it leaves, the
 vocal path), and the next screenshot's "→ <Agent>" offer names them (oi.shots current contact). A dispatch WITH a
-message sends it through the same W12 path after the user's confirm. Nothing is ever sent from here.
+message sends it through the same path after the user's confirm. Nothing is ever sent from here.
 
 State: <data dir>/dispatch.json {"to": slug, "ts": epoch s} (0600). The vocal key's own picker (HUD side) reading
 it is the later "UX du vocal" step.

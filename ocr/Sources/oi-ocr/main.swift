@@ -1,7 +1,7 @@
 import Foundation
 import OCRCore
 
-// oi-ocr (W17). Prints the recognised text on stdout and nothing else (never a log of the text).
+// oi-ocr. Prints the recognised text on stdout and nothing else (never a log of the text).
 let usage = """
 usage: oi-ocr [--fast] <image>          recognised text on stdout (exit 2: unreadable image, 3: Vision error)
        oi-ocr --render "<text>" <out.png>   draw a test PNG (tests)

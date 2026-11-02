@@ -1,18 +1,17 @@
-"""W23: drill-down glide — each sub-ring level acts INSIDE / ON its parent.
+"""drill-down glide — each sub-ring level acts INSIDE / ON its parent.
 
-The user: "après Finder, ça ne peut être que des trucs qui découlent de l'action
-Finder … qui te font sauter plusieurs pas en un … derrière Telegram, envoyer dans la conversation de… Eric … derrière
-le jaune, des actions jaunes … musique → telle playlist".
+Goal: what follows an option can only be things that come from that option and skip several steps at once:
+under Finder, Finder actions; under Telegram, send in a given conversation; under Music, a given playlist.
 
 A parent node has a SCOPE (its target: Finder, Telegram, Music, a playlist, a folder, a site, the selected mail, a
 fleet agent, a desk move, another app). Under it:
   1. per-scope LOCAL PROVIDERS give the real vocabulary (read-only, on-device, cached `PROVIDER_TTL_S`):
        Finder    -> recent files / folders (Spotlight kMDItemLastUsedDate), the current project folder (a recent folder
-                    whose name is in a recent window-title token), Downloads, Desktop   -> folder.open / file.open
+                    whose name is in a recent window-title token), Downloads, Desktop -> folder.open / file.open
        folder    -> its newest entries (names only, never contents)                  -> folder.open / file.open
-       Telegram  -> recent chat titles (AX of Telegram's chat list, the FIRST text of each row only = the title,
+       Telegram -> recent chat titles (AX of Telegram's chat list, the FIRST text of each row only = the title,
                     never the preview); fallback: Telegram window-title tokens          -> telegram.chat
-       Music     -> playlists (AppleScript, only when Music already runs); playlist -> its tracks   -> music.play
+       Music     -> playlists (AppleScript, only when Music already runs); playlist -> its tracks -> music.play
        a site    -> today's pages of that host (url tokens)                          -> url.open
        Mail      -> the plain reply / forward of the selected mail                    -> mail.reply / mail.forward
   2. a HISTORY provider ranks them: "after <parent token>, the user did <item> within HISTORY_WINDOW_S" (first-order
@@ -24,7 +23,7 @@ fleet agent, a desk move, another app). Under it:
      except the explicit "back" (to the app that was in front at the show).
 
 Confirm rule: every send (a vocal to an agent, "Ask Atlas") runs on release and waits for oi.gate's
-confirm panel, the ONE confirmation (the W23 "Send ✓" child is gone). Opens (folders, files,
+confirm panel, the ONE confirmation (the "Send ✓" child is gone). Opens (folders, files,
 chats, playlists, pages) never confirm. An executable / installer (`launchable`) is never opened: only its parent
 folder is offered (revealed in Finder).
 Privacy: titles / names only (no message text, no file content); the training pairs keep ids (hashed when they would
@@ -174,7 +173,7 @@ def _node(label, icon, action, primitive, params, token=None) -> dict:
 
 def safe_path(p: str | None, home: str | None = None) -> bool:
     """A local path a follow-up may open: absolute, existing, under the home folder, no hidden part, not ~/Library
-    (except W24: ~/Library/CloudStorage/<provider>/…, the synced Drive folders), not an app bundle."""
+    (except ~/Library/CloudStorage/<provider>/…, the synced Drive folders), not an app bundle."""
     if not isinstance(p, str) or not p.startswith("/"):
         return False
     home = (home or os.path.expanduser("~")).rstrip("/")
@@ -182,14 +181,16 @@ def safe_path(p: str | None, home: str | None = None) -> bool:
     if not real.startswith(home + "/"):
         return False
     rel = real[len(home) + 1:].split("/")
-    drive = len(rel) >= 3 and rel[0] == "Library" and rel[1] == "CloudStorage"   # W24: a synced Drive folder's files
+    drive = len(rel) >= 3 and rel[0] == "Library" and rel[1] == "CloudStorage"   # a synced Drive folder's files
     if any(part.startswith(".") for part in rel) or (rel[0] in _HIDDEN_HOME and not drive) or real.endswith(".app"):
         return False
     return os.path.exists(real)
 
 
-LAUNCH_EXTS = (".command", ".sh", ".zsh", ".tool", ".app", ".pkg", ".dmg", ".terminal", ".scpt", ".applescript",
-               ".workflow")
+LAUNCH_EXTS = (".command", ".sh", ".zsh", ".bash", ".csh", ".tool", ".app", ".pkg", ".mpkg", ".dmg", ".terminal", ".term",
+               ".scpt", ".scptd", ".applescript", ".workflow", ".action", ".jar", ".webloc", ".inetloc", ".fileloc", ".url",
+               ".prefpane", ".mobileconfig", ".saver", ".kext", ".plugin", ".bundle", ".osax", ".qlgenerator", ".appex",
+               ".service", ".systemextension")   # lowercase: compared on the lowercased path
 
 
 def launchable(p: str | None) -> bool:

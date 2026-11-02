@@ -1,4 +1,4 @@
-"""W17: screenshot -> send to the current contact. Synthetic data only: fake HUD socket (a request
+"""screenshot -> send to the current contact. Synthetic data only: fake HUD socket (a request
 function), fake OCR, fake claude, dry-run / temp-dir delivery. Nothing is ever sent to a real agent."""
 import io
 import json
@@ -104,7 +104,7 @@ def test_picker_pages_exclude_and_wrap():
     assert shots.picker_options(TABLE, 3, exclude="atlas")[1] == shots.picker_options(TABLE, 0, exclude="atlas")[1]
     small = {k: TABLE[k] for k in ("atlas", "nova")}
     opts, keys = shots.picker_options(small, 0)
-    assert keys == {2: "atlas", 3: "nova"} and opts[0]["icon"] == "initial:A"   # W21: no "More": fn empty
+    assert keys == {2: "atlas", 3: "nova"} and opts[0]["icon"] == "initial:A"   # no "More": fn empty
 
 
 # ---- tier 1 payload ---------------------------------------------------------------------------------------
@@ -445,7 +445,7 @@ def test_other_opens_the_picker_with_paging(png, data_dir):
     press(so, "→ other")
     page2 = shots.picker_options(TABLE, 1, exclude="atlas")[1]
     assert [p["cmd"] for p in hud.sent] == ["shot_show"] * 2
-    assert delivered == [{"to": page2[3], "note": None, "dry_run": False}]   # W21: ⌥ = 3, the 2nd agent
+    assert delivered == [{"to": page2[3], "note": None, "dry_run": False}]   # ⌥ = 3, the 2nd agent
     assert rows_of(event="press")[-1]["via"] == "picked"
 
 
@@ -637,7 +637,7 @@ def test_clean_actions_only_keeps_what_is_on_the_screen(tmp_path, monkeypatch):
         {"type": "agent.send", "to": "atlas", "message": "hi"},                                # already the send slot
         {"type": "agent.send", "to": "nobody", "message": "hi"},                              # unknown agent
         {"type": "calendar.event", "title": "Demo", "start": "next thursday"},                # bad date
-        {"type": "mail.draft", "to": "ghost@nowhere.io", "subject": "Re"},                    # address not on screen
+        {"type": "mail.draft", "to": "ghost@nowhere.example", "subject": "Re"},                    # address not on screen
         {"type": "shell.run", "cmd": "rm -rf ~"},                                              # unknown type
         {"type": "file.open", "label": "Open deck", "path": "~/Documents/deck-q3.pdf"},
         {"type": "mail.draft", "label": "Reply to Paul, a very long label", "to": "paul.martin@example.com",

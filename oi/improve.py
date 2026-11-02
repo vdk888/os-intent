@@ -1,4 +1,4 @@
-"""`oi improve-report` (W13): the weekly improvement input for an offline improvement pass (a stronger model reviewing forms and labels).
+"""`oi improve-report`: the weekly improvement input for an offline improvement pass (a stronger model reviewing forms and labels).
 
 A stronger model (e.g. Opus) is for the training / weekly-improvement phase (form evolution, label review, fine-tune
 runs), never at runtime. This report is what that pass reads: per form, over the given days (default the
@@ -52,9 +52,9 @@ def report(days: list[str], reader=replay.read_day, hud_reader=normalise.read_hu
     for d in days:
         for r in hud_reader(d):
             if r.get("kind") == "vocal":
-                continue    # W12: `oi vocal-send` rows are not moments
+                continue    # `oi vocal-send` rows are not moments
             f = forms[r.get("form") or "?"]
-            f["numbering"][str(normalise.hud_numbering(r))] += 1   # W21b: "1" = rank-numbered (pre-W21) rows
+            f["numbering"][str(normalise.hud_numbering(r))] += 1   # "1" = rank-numbered (older) rows
             out = str(r.get("outcome", ""))
             f["summoned"] += bool(r.get("summoned"))
             if r.get("shown") is True:
@@ -115,7 +115,7 @@ def to_markdown(r: dict) -> str:
                   f"- Laya shadow rows {f['laya_rows']}, errors {f['laya_errors']}, latency p50/p95 "
                   f"{f['laya_latency_p50']}/{f['laya_latency_p95']} ms, top-1 agrees with Markov "
                   f"{f['laya_agree_top1']}",
-                  f"- hud-log rows by numbering (1 = rank, before W21; 2 = key): {f['numbering']}", ""]
+                  f"- hud-log rows by numbering (1 = rank, older rows; 2 = key): {f['numbering']}", ""]
     lines += ["## Mission prompts", "- Forms with many not-in-menu misses: add the missing primitive kind or raise k.",
               "- Wishes that repeat: candidate new options / forms (catalogue primitives only).",
               "- Dismissals by reason: tighten the gate τ for that form or reword the criteria (evolve).",

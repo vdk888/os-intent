@@ -1,4 +1,4 @@
-"""W18: wish -> action. A typed or dictated wish ("telegram", "ouvre télégram", "bureau 3", "réponds à
+"""wish -> action. A typed or dictated wish ("telegram", "ouvre télégram", "bureau 3", "réponds à
 Sam", "envoie à Nova que je suis en retard") is resolved to ONE action of the catalogue and executed.
 
 Catalogue (rebuilt at most every CATALOGUE_TTL_S): apps installed in candidates.APP_DIRS (+ built-in FR/EN aliases,
@@ -7,16 +7,16 @@ settings.vocal_recipients (oi.vocal.recipients), the verbs mail.reply / mail.for
 summary. Nothing outside it is ever executed (an answer naming anything else is rejected).
 
 Tiers, cheapest first (`resolve`):
-  1. local  — learned aliases, verbs, exact / alias / unique-prefix / fuzzy name match (FR + EN, accents ignored),
+  1. local — learned aliases, verbs, exact / alias / unique-prefix / fuzzy name match (FR + EN, accents ignored),
               < 20 ms. Confident (>= CONFIDENT) = done.
-  2. laya   — only when a Laya server is ALREADY up (health probe, never started from here): a `choice` over the
+  2. laya — only when a Laya server is ALREADY up (health probe, never started from here): a `choice` over the
               local shortlist (<= 12 catalogue actions + none). Accepted at p >= LAYA_MIN_P.
   3. claude — headless sonnet on your Claude subscription (oi.claude_actions.run_claude: no API key, ever), the
               answer JSON-validated against the catalogue ids. Claude switched off / unavailable: the local
               candidate when >= LOCAL_FALLBACK, else nothing.
 While typing only tier 1 runs (`preview`, the "→ Telegram" in the wish field); Enter runs all three (`final`).
 
-W25 roster tier (oi.orchestrator), before the three: "passe-moi Atlas" / "pass me to Orion" arms a dispatch (nothing sent: the user's next note goes to that agent); "demande à quelqu'un le NAV du fonds" (a topic, no person) ->
+ roster tier (oi.orchestrator), before the three: "passe-moi Atlas" / "pass me to Orion" arms a dispatch (nothing sent: the user's next note goes to that agent); "demande à quelqu'un le NAV du fonds" (a topic, no person) ->
 the roster agent of that topic (Orion), a gated send. After them: a wish nothing resolves while a dispatch is
 armed -> a gated send to that agent. The Claude tier's catalogue names each agent's topics (the roster).
 
@@ -35,9 +35,9 @@ request appends one row to wish-actions/<UTC day>.jsonl: tier, state, token, lat
 the text: the wish row in wishes/ holds it).
 
 Socket protocol (oi-hud is the server; `oi live` registers with {"cmd":"resolver"} on its persistent connection):
-  HUD -> resolver:  {"event":"resolve","id":7,"text":"telegram","final":false,"confirmed":false,
+  HUD -> resolver: {"event":"resolve","id":7,"text":"telegram","final":false,"confirmed":false,
                      "context":{"app":"Mail","space":2}}
-  resolver -> HUD:  {"cmd":"resolution","id":7,"state":"preview|confirm|done|noted|failed","label":"→ Telegram",
+  resolver -> HUD: {"cmd":"resolution","id":7,"state":"preview|confirm|done|noted|failed","label":"→ Telegram",
                      "token":"activate:Telegram","tier":"local","target":"Telegram"}
 """
 from __future__ import annotations
@@ -74,8 +74,8 @@ MESSAGE_MAX = 4000
 INSTRUCTIONS_MAX = 500
 CLAUDE_MODEL = "sonnet"   # (2026-10-20): runtime calls on Sonnet (c8ad0b0)
 SAFE_PRIMITIVES = ("app.open", "url.open", "space.move", "mail.reply", "mail.forward", "summary",
-                   "dispatch.arm")      # W25: arming a dispatch sends nothing
-# W25: "passe-moi Atlas", "pass me to Orion", "mets-moi avec Nova", "dispatch to lyra" (folded text)
+                   "dispatch.arm")      # arming a dispatch sends nothing
+# "passe-moi Atlas", "pass me to Orion", "mets-moi avec Nova", "dispatch to lyra" (folded text)
 DISPATCH_RE = re.compile(r"^(?:passe[sz]?[- ]moi|pass me(?: over)? to|mets[- ]moi(?: en contact)? avec|"
                          r"connect me (?:to|with)|dispatch(?: to)?|transfere[- ]moi)\s+(?:a\s+|to\s+)?(.+)$")
 # a topic without a person: "demande à quelqu'un …", "ask someone …", "qui peut …"
@@ -83,7 +83,7 @@ SOMEONE_RE = re.compile(r"\b(?:quelqu ?un|qqn|someone|somebody|anyone|qui (?:peu
                         r"la bonne personne|the right (?:person|agent))\b")
 ROSTER_CONF = 0.85
 CONFIRM_PRIMITIVES = ("a2a.send",)
-GATED_PRIMITIVES = ("vocal.send", "ui.press")   # the outward gate's panel is their one confirmation (no W18 ⇧ step)
+GATED_PRIMITIVES = ("vocal.send", "ui.press")   # the outward gate's panel is their one confirmation (no ⇧ step)
 
 
 def log(msg: str) -> None:
@@ -96,7 +96,7 @@ def iso(t: float) -> str:
 
 
 def needs_confirm(item: dict) -> bool:
-    """The W18 confirm rule: the gated primitives (vocal sends, page presses) never (the outward gate asks once);
+    """The confirm rule: the gated primitives (vocal sends, page presses) never (the outward gate asks once);
     the safe primitives (open an app / a page, change desk, a mail DRAFT, a summary) never; A2A sends and anything
     else always, fail-safe: an action that is neither gated nor known to be safe is confirmed first."""
     prim = item.get("primitive")
@@ -177,7 +177,7 @@ def build_catalogue(ctx: dict, *, apps: list[str], app_uses: dict[str, int], hos
         cat[f"desk:{d}"] = {"id": f"desk:{d}", "kind": "desk", "primitive": "space.move", "params": {},
                             "token": f"space:={d}", "label": f"Desk {d}", "target": f"desk {d}", "names": [],
                             "uses": 0, "criteria": f"go to desk {d}"}
-    owns = {a["slug"]: a.get("ask_for") for a in orchestrator.roster()}     # W25: who owns what (roster)
+    owns = {a["slug"]: a.get("ask_for") for a in orchestrator.roster()}     # who owns what (roster)
     for slug, spec in sorted(recipients.items()):
         name = spec.get("name") or slug.title()
         cat[f"agent:{slug}"] = {"id": f"agent:{slug}", "kind": "agent", "primitive": "vocal.send",
@@ -206,7 +206,7 @@ def _res(item: dict, conf: float, tier: str, **params) -> dict:
     r = {"id": item["id"], "primitive": item["primitive"], "params": p, "token": item["token"],
          "label": item["label"], "target": item["target"], "kind": item["kind"], "confidence": round(conf, 3),
          "tier": tier}
-    if item.get("press"):              # W16: a page action (ui.press): its press ticket comes from the gate panel
+    if item.get("press"):              # a page action (ui.press): its press ticket comes from the gate panel
         r["press"] = item["press"]
     r["confirm"] = needs_confirm(r)
     return r
@@ -231,7 +231,7 @@ def _best(items: list[dict], key=lambda it: it.get("uses", 0)) -> dict:
 
 
 def match_target(target: str, cat: dict[str, dict], learned: aliases.AliasStore | None,
-                 kinds: tuple[str, ...] = ("app", "host", "page")) -> tuple[dict, float] | None:   # W16: + page
+                 kinds: tuple[str, ...] = ("app", "host", "page")) -> tuple[dict, float] | None:   # + page
     """(item, confidence) for a target phrase over the items of `kinds`."""
     if not target:
         return None
@@ -358,7 +358,7 @@ def claude_prompt(text: str, ctx: dict, cat: dict[str, dict]) -> str:
         "context": ", ".join(p for p in parts if p) or "(unknown)", "catalogue": "\n".join(lines),
         "wish": " ".join((text or "").split())[:500]},
         context={"app": ctx.get("app"), "host": ctx.get("host"), "space": ctx.get("space"),
-                 "query": " ".join((text or "").split())[:200]})        # W25: the orchestrator's pack
+                 "query": " ".join((text or "").split())[:200]})        # the orchestrator's pack
 
 
 def validate_answer(ans, cat: dict[str, dict]) -> dict | None:
@@ -384,7 +384,7 @@ def validate_answer(ans, cat: dict[str, dict]) -> dict | None:
     return _res(item, 0.9, "claude")
 
 
-# ---- W25: the roster tier ------------------------------------------------------------------------------
+# ---- the roster tier ------------------------------------------------------------------------------
 
 def resolve_roster(text: str, cat: dict[str, dict], agents: list[dict] | None = None) -> dict | None:
     """"passe-moi X" -> a dispatch.arm resolution; a topic asked of "someone" -> a send to the roster agent of that
@@ -436,7 +436,7 @@ class WishEngine:
                  clock: Callable[[], float] = time.monotonic, wall: Callable[[], float] = time.time,
                  page_items: Callable[[dict], list[dict]] | None = None):
         self.executor = executor
-        self.page_items = page_items      # W16: the Safari page's buttons as `page` items (ui.press)
+        self.page_items = page_items      # the Safari page's buttons as `page` items (ui.press)
         self.dry_run = dry_run
         self.out = out or sys.stdout
         self.live_context = live_context
@@ -457,7 +457,7 @@ class WishEngine:
         self._base: tuple[float, list[str], dict, dict, dict] | None = None   # (at, apps, app uses, host uses, recipients)
         self._laya_ok: tuple[float, bool] | None = None
         self.pending: dict[int, tuple[str, dict, float]] = {}
-        self._cancelled: dict = {}             # W18 follow-up: request ids the panel cancelled (Esc)
+        self._cancelled: dict = {}             # follow-up: request ids the panel cancelled (Esc)
         self.pool = ThreadPoolExecutor(max_workers=1, thread_name_prefix="oi-wish")
 
     # -- catalogue -------------------------------------------------------------------------------------
@@ -474,7 +474,7 @@ class WishEngine:
         cfg = self.claude_settings()
         cat = build_catalogue(ctx, apps=base[1], app_uses=base[2], host_uses=base[3], recipients=base[4],
                               claude_on=bool(cfg.get("enabled")))
-        if self.page_items and ctx.get("app") == "Safari":       # W16: "merge" / "approuve" -> the page's button
+        if self.page_items and ctx.get("app") == "Safari":       # "merge" / "approuve" -> the page's button
             try:
                 cat.update({it["id"]: it for it in self.page_items(ctx)})
             except Exception:
@@ -494,7 +494,7 @@ class WishEngine:
     def preview(self, text: str, ctx: dict) -> dict | None:
         t0 = self.clock()
         cat = self.catalogue(ctx)
-        r = resolve_roster(text, cat) or resolve_local(text, cat, self.learned)      # W25: roster first
+        r = resolve_roster(text, cat) or resolve_local(text, cat, self.learned)      # roster first
         if r:
             r["latency_ms"] = {"local": round((self.clock() - t0) * 1000, 1)}
         return r if r and r["confidence"] >= PREVIEW_MIN else None
@@ -529,7 +529,7 @@ class WishEngine:
         return validate_answer(ans, cat)
 
     def resolve(self, text: str, ctx: dict) -> dict | None:
-        """W25: the roster tier, then W18's tiers, then the armed dispatch (a confirmed send)."""
+        """the roster tier, then's tiers, then the armed dispatch (a confirmed send)."""
         t0 = self.clock()
         cat = self.catalogue(ctx)
         r = resolve_roster(text, cat)
@@ -595,7 +595,7 @@ class WishEngine:
     def execute(self, r: dict, ctx: dict) -> tuple[bool, str]:
         """Runs a resolution. (ok, label to show)."""
         prim, params = r["primitive"], r["params"]
-        if prim in ("app.open", "url.open", "space.move", "ui.press"):   # W16: ui.press = oi-hud AXPress
+        if prim in ("app.open", "url.open", "space.move", "ui.press"):   # ui.press = oi-hud AXPress
             opt = {"primitive": prim, "params": params, "token": r["token"]}
             if self.dry_run:
                 self._plan("execute", primitive=prim, params=params, token=r["token"])
@@ -607,7 +607,7 @@ class WishEngine:
             return self._mail(prim, params.get("instructions") or "")
         if prim == "summary":
             return self._summary(ctx)
-        if prim == "dispatch.arm":                     # W25: "pass me to X": nothing is sent
+        if prim == "dispatch.arm":                     # "pass me to X": nothing is sent
             if self.dry_run:
                 self._plan("dispatch", to=params["to"])
             else:
@@ -635,7 +635,7 @@ class WishEngine:
         mail = acts.mail_reader(previous=True)
         if not mail:
             return False, "No mail selected"
-        if claude_actions.mail_local_only(mail, cfg):   # W25: sender, cc AND reply-to (the W15 rule)
+        if claude_actions.mail_local_only(mail, cfg):   # sender, cc AND reply-to (the rule)
             return plain()
         prompt = claude_actions.mail_prompt(prim, mail, acts.wiki(claude_actions.wiki_query(mail)),
                                             acts.calendar(mail) if prim == "mail.reply" else "(none)")
@@ -690,7 +690,7 @@ class WishEngine:
         target = aliases.strip_fillers(rest) if verb else aliases.strip_fillers(t)
         if r["kind"] in ("app", "host") and target and target != t:
             phrases.append(target)
-        # W18 follow-up: a local match is learned at once; a Claude / Laya guess only once the same wish text
+        # follow-up: a local match is learned at once; a Claude / Laya guess only once the same wish text
         # resolved to the same action twice (never from a single guess)
         local = r["tier"] in ("local", "learned")
         return self.learned.learn(phrases, r["id"], r["label"], agree=1 if local else 2)
@@ -733,7 +733,7 @@ class WishEngine:
                 return {"state": "failed", "label": "Expired: say it again"}, None
             r = p[1]
         else:
-            if self.cancelled(rid):                # W18 follow-up: cancelled before it was even resolved
+            if self.cancelled(rid):                # follow-up: cancelled before it was even resolved
                 return {"state": "failed", "label": "cancelled"}, None
             r = self.resolve(text, ctx)
             if not r:
@@ -742,8 +742,8 @@ class WishEngine:
                 with self.lock:
                     self.pending[rid] = (text, r, now)
                 return {"state": "confirm", "label": confirm_line(r), "tier": r["tier"],
-                        **({"press": r["press"]} if r.get("press") else {})}, r    # W16: the HUD's press ticket
-        if self.cancelled(rid):                    # W18 follow-up: Esc while "Working…" -> never executed
+                        **({"press": r["press"]} if r.get("press") else {})}, r    # the HUD's press ticket
+        if self.cancelled(rid):                    # follow-up: Esc while "Working…" -> never executed
             with self.lock:
                 self.pending.pop(rid, None)
             return {"state": "failed", "label": "cancelled", "tier": r["tier"]}, r
@@ -765,7 +765,7 @@ class WishEngine:
         with os.fdopen(fd, "a", encoding="utf-8") as f:
             f.write(json.dumps(row, ensure_ascii=False) + "\n")
 
-    # -- W18 follow-up: Esc cancels -------------------------------------------------------------------
+    # -- follow-up: Esc cancels -------------------------------------------------------------------
     def cancel(self, rid) -> None:
         """The panel closed with this request still open: drop its pending confirm and never execute it."""
         with self.lock:
@@ -782,7 +782,7 @@ class WishEngine:
     def on_event(self, ev: dict, reply: Callable[[dict], None]) -> None:
         """A `resolve` broadcast from oi-hud. Previews answer inline (local tier, fast); finals run on the
         worker thread (Laya / Claude may take seconds) so the listener keeps reading."""
-        if ev.get("event") == "cancel":            # W18 follow-up: the panel closed (Esc) while resolving
+        if ev.get("event") == "cancel":            # follow-up: the panel closed (Esc) while resolving
             self.cancel(ev.get("id"))
             return
         if ev.get("event") != "resolve":
@@ -825,7 +825,7 @@ def cmd_wish_resolve(a: argparse.Namespace) -> int:
 
 
 def register(sub) -> None:
-    p = sub.add_parser("wish-resolve", help="W18: resolve a wish to a catalogue action (local -> Laya -> sonnet)")
+    p = sub.add_parser("wish-resolve", help="resolve a wish to a catalogue action (local -> Laya -> sonnet)")
     p.add_argument("text")
     p.add_argument("--app", help="front app (Mail enables reply / forward)")
     p.add_argument("--desk", type=int, help="current desk")

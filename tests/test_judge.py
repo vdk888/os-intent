@@ -70,7 +70,8 @@ def test_page_kinds_from_frontmatter():
 
 def test_query_uses_non_private_fields_only():
     assert judge.query(mail()) == "Paul Delacroix delacroix conseil Question sur le devis"
-    assert judge.query(mail(address="paul.delacroix@gmail.com")) == "Paul Delacroix paul delacroix Question sur le devis"
+    # a free-mail provider domain is what this checks (the mailbox is fictional)
+    assert judge.query(mail(address="fictional.user@gmail.com")) == "Paul Delacroix fictional user Question sur le devis"
     priv = mail(private=True)
     assert priv["subject"] is None and "devis" not in judge.query(priv)            # store.make dropped it
     agent = store.make("agent", "orion", ts=NOW, key="k", who="Orion", subject="NAV", ref={"slug": "orion"})

@@ -1,4 +1,4 @@
-"""W6: wish rows from oi-hud -> `wish:` tokens -> attached to the preceding moment."""
+"""wish rows from oi-hud -> `wish:` tokens -> attached to the preceding moment."""
 import json
 import os
 

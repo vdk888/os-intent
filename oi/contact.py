@@ -1,11 +1,11 @@
-"""W17: who is the user talking with right now? The current conversation partner, for "send this screenshot
+"""who is the user talking with right now? The current conversation partner, for "send this screenshot
 to who I'm talking with".
 
 Sources, newest wins, only within the last `WINDOW_S` (15 min) of today's tokens:
   - the Telegram front chat: a `title:Telegram…/<slug>` token whose slug starts with the slug of a
     settings.json `contact_map` title ("Atlas - R&D" -> atlas, "Nova - CEO…" -> nova, …). The title is read only
     to map it; it is never logged (only the resolved agent slug leaves this module);
-  - the last voice note sent from the HUD: a `vocal:<slug>` token (W12).
+  - the last voice note sent from the HUD: a `vocal:<slug>` token.
 A slug that is not a known recipient (oi.vocal.recipients) is ignored. None = nobody resolved.
 
 settings.json `contact_map`: {"<chat title>": "<agent slug>" | null}, merged over DEFAULT_CONTACT_MAP (null
@@ -19,13 +19,11 @@ from datetime import datetime, timedelta, timezone
 from .vocab import parse_ts, slug
 
 WINDOW_S = 15 * 60
+# EXAMPLE chat titles of the example agents (oi.vocal.DEFAULT_RECIPIENTS); yours go in settings.json `contact_map`.
 DEFAULT_CONTACT_MAP: dict[str, str] = {
-    "Atlas - R&D": "atlas",
-    "Nova - CEO": "nova",
-    "Orion - Fund": "orion",
-    "Lyra - Sales": "lyra",
-    "Vega - Marketing": "vega",
-    "Juno - Ext R&D": "juno",
+    "Atlas - Tools": "atlas",
+    "Nova - Planning": "nova",
+    "Orion - Finance": "orion",
 }
 _AGENT = re.compile(r"^[a-z][a-z0-9-]{0,30}$")
 

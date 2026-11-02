@@ -3,8 +3,7 @@ import Testing
 @testable import HUDCore
 import OISettings
 
-// The user 2026-10-21 15:35Z (vocal): "il faut augmenter les 60 secondes max parce que ça me coupe au milieu" and
-// "ce serait bien que ça propose d'envoyer un screenshot". The recording limit (settings `vocal.max_s`, default
+// Longer voice notes (60 s cut them mid-sentence) and a screenshot offered with a voice note. The recording limit (settings `vocal.max_s`, default
 // 300 s), its countdown, and the screenshot toggle of the outward gate (offered for a vocal only, OFF by default,
 // carried by a validate only).
 

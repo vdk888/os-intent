@@ -3,7 +3,7 @@ import Testing
 @testable import MenubarCore
 import OISettings
 
-/// W26: the Settings… window model: every exposed key read and written under the name its reader
+/// the Settings… window model: every exposed key read and written under the name its reader
 /// uses, ranges, round-trip with unknown keys kept, reset per section.
 @Suite struct SettingsFormTests {
     typealias F = SettingsForm
@@ -30,7 +30,7 @@ import OISettings
         #expect(f.hintCooldownS == 8 && f.fullTTLms == 6000)
         #expect(f.pointerHide && f.pointerGraceMs == 2000 && f.pointerFastPxS == 1200)
         #expect(f.colors == HUDColors.defaults && f.fillOrder == [.ctrl, .option, .cmd, .fn])
-        #expect(f.claudeEnabled && f.claudeEnrich && f.localOnlyDomains.isEmpty)
+        #expect(!f.claudeEnabled && !f.claudeEnrich && f.localOnlyDomains.isEmpty)   // Claude is opt-in
         #expect(f.shotsEnabled && f.shotsClipboard && f.fallbackContact == "atlas")
         #expect(!f.paused && f.denylistApps == OISettings.defaultDenylist)
         #expect(f.isValid)
@@ -54,7 +54,7 @@ import OISettings
         f.autoMode = "off"; f.hintDotSize = 20; f.hintTTLms = 7000; f.hintCooldownS = 30; f.fullTTLms = 12000
         f.pointerHide = false; f.pointerGraceMs = 500; f.pointerFastPxS = 2500
         f.colors[.fn] = HUDColor(light: "#000001", dark: "#FFFFFE"); f.fillOrder = [.cmd, .fn, .ctrl, .option]
-        f.claudeEnabled = false; f.claudeEnrich = false; f.localOnlyDomains = ["Client.example", " .bank.example "]
+        f.claudeEnabled = true; f.claudeEnrich = true; f.localOnlyDomains = ["Client.example", " .bank.example "]
         f.shotsEnabled = false; f.shotsClipboard = false; f.fallbackContact = "nova"
         f.paused = true; f.denylistApps = ["Signal", " signal ", ""]
         var s = OISettings(); f.apply(to: &s)
@@ -66,7 +66,7 @@ import OISettings
         #expect(gate["hint_cooldown_s"] as? Double == 30 && gate["ttl_ms"] as? Double == 12000)
         #expect(gate["hide_on_pointer_travel"] as? Bool == false)
         #expect(gate["pointer_grace_ms"] as? Double == 500 && gate["pointer_fast_px_s"] as? Double == 2500)
-        #expect(claude["enabled"] as? Bool == false && claude["enrich"] as? Bool == false)
+        #expect(claude["enabled"] as? Bool == true && claude["enrich"] as? Bool == true)   // the opt-in is written
         #expect(claude["local_only_domains"] as? [String] == ["client.example", "bank.example"])
         #expect(shots["enabled"] as? Bool == false && shots["clipboard"] as? Bool == false && shots["fallback_contact"] as? String == "nova")
         #expect(o["paused"] as? Bool == true && o["denylist_apps"] as? [String] == ["Signal"])
@@ -168,10 +168,10 @@ import OISettings
                        tz: TimeZone(identifier: "Europe/Paris")!)
         #expect(l.predictor == "blend" && l.checkpoint == "/x/ck" && l.trained == "2026-10-20 20:05")
         #expect(F.laya(OISettings(), live: nil).predictor == "markov")
-        s.vocalRecipients = .object(["lyra": .null, "nova": .object(["name": .string("Nova B")]), "zed": .object([:])])
+        s.vocalRecipients = .object(["orion": .null, "nova": .object(["name": .string("Nova B")]), "zed": .object([:])])
         let r = F.recipients(s)
-        #expect(!r.contains { $0.slug == "lyra" } && r.first { $0.slug == "nova" }?.name == "Nova B" && r.last?.slug == "zed")
-        #expect(F.recipients(OISettings()).count == 9)
+        #expect(!r.contains { $0.slug == "orion" } && r.first { $0.slug == "nova" }?.name == "Nova B" && r.last?.slug == "zed")
+        #expect(F.recipients(OISettings()).count == 3)
         let k = F.keyMap(.defaults)
         #expect(k.count == HotkeySet.actions.count && k[0].label == "Option 1 (fn)" && k[0].value.hasSuffix("tap"))
     }
@@ -182,7 +182,7 @@ import OISettings
         #expect(i != nil && j != nil && i! < j! && e[i!].kind == .action(.openSettings) && e[i!].title == "Settings…")
     }
 
-    // W26 review: the window writes only what the user changed, merged into the CURRENT file.
+    // review: the window writes only what the user changed, merged into the CURRENT file.
     @Test func menuPauseWhileWindowOpenSurvivesWindowEdit() throws {
         let dir = FileManager.default.temporaryDirectory.appendingPathComponent("oi-w26-\(UUID().uuidString)")
         defer { try? FileManager.default.removeItem(at: dir) }

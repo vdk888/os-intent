@@ -3,7 +3,7 @@ import ApplicationServices
 import OISettings
 import OIWatcherCore
 
-/// W16: learned page clicks. A global left-mouse-up monitor (no permission needed for mouse
+/// learned page clicks. A global left-mouse-up monitor (no permission needed for mouse
 /// events); only while Safari is frontmost, Safari is not denylisted and oi-watcher has Accessibility:
 /// the AX element under the pointer, up to its page (AXWebArea), gives `{host, role, label slug}` →
 /// bucket `oi-watcher-click_<host>` → `click:<host>/<role>:<label-slug>` tokens. Never logged: the

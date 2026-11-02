@@ -178,7 +178,7 @@ import OISettings
     }
 }
 
-@Suite struct OnboardingTests {   // W22
+@Suite struct OnboardingTests {
     @Test func menuRowAndOffer() throws {
         var s = Status()
         var row = MenuModel.entries(s).first { $0.id == "onboarding" }

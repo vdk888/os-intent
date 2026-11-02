@@ -1,4 +1,4 @@
-"""W22b: what the onboarding agent may read, and the two content readers (Mail, Notion).
+"""what the onboarding agent may read, and the two content readers (Mail, Notion).
 
 Settings (settings.json `onboarding`, every key optional, wrongly typed = default):
   {"model": "sonnet", "mail_limit": 100, "mail_body_max": 1500, "notion_pages": 40, "notion_days": 90,
@@ -7,7 +7,7 @@ Settings (settings.json `onboarding`, every key optional, wrongly typed = defaul
 folder, a parent of it, ~/.claude itself or a secrets folder is refused.
 
 Local-only (settings.claude.local_only_domains, the one exclusion): a mail whose sender, cc or reply-to is in such
-a domain, or whose subject / excerpt names one (W25 pack.leaks), is removed BEFORE the tool prints anything; same
+a domain, or whose subject / excerpt names one (pack.leaks), is removed BEFORE the tool prints anything; same
 for a Notion page whose title or text names one.
 """
 from __future__ import annotations

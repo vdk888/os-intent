@@ -3,8 +3,8 @@
 
 public enum BucketKind: String, CaseIterable, Sendable {
     case space, key, safari
-    case click        // W16: a click on a Safari page button / link (label slug only)
-    case shot            // W17: new screenshots (file or clipboard image)
+    case click        // a click on a Safari page button / link (label slug only)
+    case shot            // new screenshots (file or clipboard image)
     case file            // oi live's « files » connector: new / gone files of proactive.files.folders
 
     /// Bucket `type` field (aw-watcher-web uses "web.tab.current"; keep that for Safari).
@@ -14,7 +14,7 @@ public enum BucketKind: String, CaseIterable, Sendable {
         case .key: return "os.keyboard.chord"
         case .safari: return "web.tab.current"
         case .click: return "ui.click"
-        case .shot: return "os.screenshot"   // W17
+        case .shot: return "os.screenshot"
         case .file: return "os.file.state"
         }
     }

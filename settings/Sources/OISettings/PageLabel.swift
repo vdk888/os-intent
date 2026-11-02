@@ -1,6 +1,6 @@
 import Foundation
 
-/// W16 page actions: the label rules shared by oi-hud (page read + press) and oi-watcher (click
+/// page actions: the label rules shared by oi-hud (page read + press) and oi-watcher (click
 /// tokens), so a learned `click:<host>/<role>:<slug>` and the button re-found at press time agree.
 /// Mirrors the python side (`oi.vocab.slug`, `oi.page_actions.IRREVERSIBLE`).
 public enum PageLabel {

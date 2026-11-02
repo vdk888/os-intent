@@ -1,4 +1,4 @@
-"""W14: Claude in the app. Synthetic mails only; the `claude` binary is a fake on PATH."""
+"""Claude in the app. Synthetic mails only; the `claude` binary is a fake on PATH."""
 from __future__ import annotations
 
 import json
@@ -31,6 +31,19 @@ def test_claude_settings_defaults_and_overrides(data_dir):
     s = ca.claude_settings()
     assert s["enabled"] is False and s["enrich"] is True            # wrongly typed -> default
     assert s["local_only_domains"] == ["client.example", "other.example"]
+
+
+def test_claude_is_opt_in_by_default(data_dir):
+    """Shipped default: nothing goes to Claude until the user opts in (Settings -> Claude, or settings.json). The
+    other tests run opted in (conftest), so the shipped literal is read from the source."""
+    import ast
+    tree = ast.parse(Path(ca.__file__).read_text(encoding="utf-8"))
+    shipped = next(ast.literal_eval(n.value) for n in tree.body if isinstance(n, ast.Assign)
+                   and any(getattr(t, "id", None) == "CLAUDE_DEFAULTS" for t in n.targets))
+    assert shipped["enabled"] is False and shipped["enrich"] is False
+    data_dir.mkdir(parents=True, exist_ok=True)
+    (data_dir / "settings.json").write_text(json.dumps({"claude": {"enabled": True, "enrich": True}}))
+    assert ca.claude_settings()["enabled"] is True and ca.claude_settings()["enrich"] is True
 
 
 def test_local_only_gate_matches_domain_and_subdomains():
@@ -105,7 +118,7 @@ def test_parse_mail_base_subject_first_name():
     m = ca.parse_mail(out)
     assert m["subject"] == "RE: Fwd: devis" and m["body"] == "body more" and m["message_id"] == "<id>"
     assert m["cc"] == ["nova@team.example", "x@client.example"] and m["reply_to"] == "Desk <desk@acme.example>"
-    assert ca.parse_mail(ca.SEP.join(["OK", "G", "g@a.example", "s", "d", "<id>", "body"])) is None   # pre-W15 layout
+    assert ca.parse_mail(ca.SEP.join(["OK", "G", "g@a.example", "s", "d", "<id>", "body"])) is None   # older layout
     assert ca.parse_mail("ERR\x1fno_selection") is None
     assert ca.base_subject("RE: Fwd: TR:devis") == "devis"
     assert ca.first_name("Martin, Sam") == "Sam" and ca.first_name("", "jean.dupont@x.example") == "Jean"

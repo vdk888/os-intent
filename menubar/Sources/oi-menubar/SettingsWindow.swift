@@ -3,7 +3,7 @@ import SwiftUI
 import MenubarCore
 import OISettings
 
-// W26: the Settings… window. SwiftUI, a sidebar of sections; each change is validated live and, when the
+// the Settings… window. SwiftUI, a sidebar of sections; each change is validated live and, when the
 // whole form is valid, written ~0.3 s later through OISettings (SettingsStore.update: atomic, unknown keys kept).
 // The daemons pick it up by themselves: oi-hud on its next show (mtime cache), oi live on its next tick (~2 s),
 // oi-watcher within 5 s. Liquid Glass on macOS 26 (section cards), with the HUD's fallback (material) on older
@@ -26,7 +26,7 @@ final class SettingsModel: ObservableObject {
     @Published var domainsText: String
     @Published var denylistText: String
     private(set) var settings: OISettings
-    /// The form as last loaded / saved: only fields that differ from it are written (W26 review: a menu Pause
+    /// The form as last loaded / saved: only fields that differ from it are written (review: a menu Pause
     /// toggled while the window is open must survive the next edit here).
     private var baseline: SettingsForm
     private(set) var live: LiveStatus?
@@ -221,6 +221,7 @@ struct SectionCard: View {
         case .claude:
             Toggle("Claude variant (long-press an option)", isOn: f.claudeEnabled)
             Toggle("Enrich options with Claude", isOn: f.claudeEnrich)
+            Note("Off by default. When on, the context of the option you act on (mail text, page text, screenshot OCR) is sent to your own Claude Code (`claude -p`).")
             LabeledContent("Model") { Text(SettingsForm.claudeModel).foregroundStyle(.secondary) }
             Text("Client domains kept away from Claude (one per line)").font(.callout)
             TextEditor(text: Binding(get: { model.domainsText }, set: { model.setDomains($0) }))
@@ -239,7 +240,7 @@ struct SectionCard: View {
                     Text(model.form.fallbackContact).tag(model.form.fallbackContact)
                 }
             }.frame(maxWidth: 320)
-        case .proactive:   // W24
+        case .proactive:
             Note("Hints when something changes without you acting (ring around the dots). Each source is read-only and off until you turn it on.")
             ForEach(SettingsForm.proactiveSources, id: \.self) { k in
                 Toggle(Self.sourceLabel(k), isOn: Binding(get: { model.form.proactiveSources[k] ?? false },

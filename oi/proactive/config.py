@@ -1,4 +1,4 @@
-"""W24: settings.json `proactive` (python-owned; oi-menubar's Settings window edits the main keys, OISettings keeps
+"""settings.json `proactive` (python-owned; oi-menubar's Settings window edits the main keys, OISettings keeps
 the rest as it is). Every key optional; a wrongly typed key falls back to its default; every source is OFF until
 the user turns it on. No relevance window: an event is hintable exactly while its state is live (docs/DESIGN.md design rule).
 
@@ -6,11 +6,11 @@ the user turns it on. No relevance window: an event is hintable exactly while it
      "sources": {"mail": false, "agents": false, "files": false, "cockpit": false, "metrics": false, "markets": false},
      "min_p": 0.5,                  # history probability of a follow-up action needed for a hint (0-1)
      "min_interval_min": 10,        # display: at most one proactive hint per N minutes (priorities skip it)
-     "quiet_hours": {"start": "22:00", "end": "08:00"},   # Paris time; null = none
+     "quiet_hours": {"start": "22:00", "end": "08:00"}, # Paris time; null = none
      "respect_focus": true,         # no hint while a macOS Focus is on (when readable)
      "priorities": ["mail:client", "cockpit:outage"],     # source:class (or source:*): skip min_p and the rate limit
      "priorities_break_quiet": false,
-     "mail": {"poll_s": 6, "agent_senders": [], "team_domains": []},   # who is a client: the wiki (judge.py), never a settings list
+     "mail": {"poll_s": 6, "agent_senders": [], "team_domains": []}, # who is a client: the wiki (judge.py), never a settings list
      "agents": {"poll_s": 8,
                 "chat_ids": [],                # your Telegram user id(s): the chat your agents' bots write to
                 "outbound": {},                # e.g. {"atlas": {"transcripts": "~/.claude/projects/<atlas workspace>",
@@ -18,13 +18,13 @@ the user turns it on. No relevance window: an event is hintable exactly while it
                                                # own records (sensors.OutboundLog); null removes one
                 "bots": {}},                   # {slug: bot username}: "Ouvrir Telegram" opens tg://resolve?domain=<bot>
      "files": {"poll_s": 5, "folders": ["~/Desktop"]},
-     "cockpit": {"poll_s": 60, "url": null, "alerts_file": null, "pr_owners": []},   # your ops dashboard (optional)
+     "cockpit": {"poll_s": 60, "url": null, "alerts_file": null, "pr_owners": []}, # your ops dashboard (optional)
      "metrics": {"poll_s": 300, "file": null},
      "markets": {"poll_s": 300, "file": null, "move_pct": 3.0},
      "decisions": {"poll_s": 120},             # the dashboard's decision queue: GET <cockpit.url>/a-decider.json with
                                                # a scoped read token from the Keychain (TOKEN_KEYCHAIN; never in settings)
      "calendar": {"poll_s": 60, "horizon_min": 120},          # meetings starting within it, or ongoing (EventKit)
-     "prs": {"poll_s": 300, "repos": []}}}   # open PRs of these repos + every PR whose review is requested of you
+     "prs": {"poll_s": 300, "repos": []}}} # open PRs of these repos + every PR whose review is requested of you
 """
 from __future__ import annotations
 

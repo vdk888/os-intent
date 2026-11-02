@@ -9,6 +9,32 @@ from urllib.parse import parse_qs, unquote, urlsplit
 
 import pytest
 
+from oi import vocal as _vocal
+
+# The shipped example recipients (three) are kept here for the tests that check them; every other test runs against
+# a larger fictional team, so pickers page, fall back and route across hosts.
+SHIPPED_RECIPIENTS = {k: dict(v) for k, v in _vocal.DEFAULT_RECIPIENTS.items()}
+TEST_TEAM = {
+    "atlas": {"name": "Atlas", "kind": "inject", "path": _vocal.os.path.expanduser("~/.claude/channels/atlas/inject")},
+    "juno": {"name": "Juno", "kind": "inject", "path": _vocal.os.path.expanduser("~/.claude/channels/juno/inject")},
+    "nova": _vocal._remote("nova", "Nova", "agent-host"),
+    "orion": _vocal._remote("orion", "Orion", "agent-host"),
+    "lyra": _vocal._remote("lyra", "Lyra", "agent-host"),
+    "iris": _vocal._remote("iris", "Iris", "agent-host"),
+    "vega": _vocal._remote("vega", "Vega", "studio-host"),
+    "hera": _vocal._remote("hera", "Hera", "laptop-host"),
+    "echo": _vocal._remote("echo", "Echo", "laptop-host"),
+}
+_vocal.DEFAULT_RECIPIENTS.clear()
+_vocal.DEFAULT_RECIPIENTS.update(TEST_TEAM)
+
+from oi import contact as _contact  # noqa: E402
+
+SHIPPED_CONTACT_MAP = dict(_contact.DEFAULT_CONTACT_MAP)
+_contact.DEFAULT_CONTACT_MAP.clear()
+_contact.DEFAULT_CONTACT_MAP.update({"Atlas - R&D": "atlas", "Nova - CEO": "nova", "Orion - Fund": "orion",
+                                     "Lyra - Sales": "lyra", "Vega - Marketing": "vega", "Juno - Ext R&D": "juno"})
+
 T0 = datetime(2026, 1, 5, 9, 0, 0, tzinfo=timezone.utc)
 WIN = "aw-watcher-window_host-a"
 AFK = "aw-watcher-afk_host-a"
@@ -23,12 +49,21 @@ def ev(i: int, sec: float, dur: float, **data) -> dict:
 
 
 @pytest.fixture(autouse=True)
+def claude_opted_in(monkeypatch):
+    """Claude is opt-in for users (settings `claude.enabled` / `claude.enrich` default false); the feature tests run
+    as an opted-in user. test_claude_actions.py::test_claude_is_opt_in_by_default checks the shipped default."""
+    from oi import claude_actions
+    monkeypatch.setitem(claude_actions.CLAUDE_DEFAULTS, "enabled", True)
+    monkeypatch.setitem(claude_actions.CLAUDE_DEFAULTS, "enrich", True)
+
+
+@pytest.fixture(autouse=True)
 def no_real_providers(monkeypatch):
-    """W23: the glide's real readers (Spotlight, Telegram AX, Music AppleScript) never run in tests."""
+    """the glide's real readers (Spotlight, Telegram AX, Music AppleScript) never run in tests."""
     from oi import drill
 
     def blocked(*a, **kw):
-        raise AssertionError("a real W23 provider ran in a test")
+        raise AssertionError("a real provider ran in a test")
     for name in ("_mdfind", "_telegram_titles", "_osa_lines"):
         monkeypatch.setattr(drill, name, blocked)
 
@@ -123,7 +158,7 @@ def fake_aw(monkeypatch):
     f.server.shutdown()
 
 
-# ---- W3 (markov / forms / serialiser) fixtures: seeded synthetic streams, no real data ----
+# ---- (markov / forms / serialiser) fixtures: seeded synthetic streams, no real data ----
 import sys  # noqa: E402
 from pathlib import Path  # noqa: E402
 from zoneinfo import ZoneInfo  # noqa: E402
@@ -158,7 +193,7 @@ def model(rows, moments):
 
 @pytest.fixture(autouse=True)
 def no_real_wiki(monkeypatch):
-    """W25: tests never touch the real wiki index or Ollama (the warm RAG answers "not available")."""
+    """tests never touch the real wiki index or Ollama (the warm RAG answers "not available")."""
     from oi import rag
     from oi.orchestrator import pack
     monkeypatch.setattr(rag, "default", lambda repo_dir=None: None)

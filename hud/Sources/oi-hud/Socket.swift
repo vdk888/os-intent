@@ -72,7 +72,7 @@ final class Connection {
 
     init(fd: Int32) { self.fd = fd }
 
-    /// W18: the wish resolver connection is dropped once its peer closed.
+    /// the wish resolver connection is dropped once its peer closed.
     var isClosed: Bool { lock.lock(); defer { lock.unlock() }; return closed }
 
     func send(_ event: HUDEvent) {
@@ -81,7 +81,7 @@ final class Connection {
         _ = writeAll(fd, event.jsonLine())
     }
 
-    /// W16: a pre-encoded line (`page` / `ax_press` replies).
+    /// a pre-encoded line (`page` / `ax_press` replies).
     func sendLine(_ line: String) {
         lock.lock(); defer { lock.unlock() }
         guard !closed else { return }
@@ -101,7 +101,7 @@ final class Connection {
 final class SocketServer {
     let path: String
     let onCommand: (Result<HUDCommand, CommandError>, Connection) -> Void
-    /// W16: `page` / `ax_press` lines go here (main thread), never to the HUDCommand decoder.
+    /// `page` / `ax_press` lines go here (main thread), never to the HUDCommand decoder.
     var onPageCommand: ((Result<PageCommand, PressOutcome>, Connection) -> Void)?
     private var listenFD: Int32 = -1
     private let connLock = NSLock()
@@ -147,7 +147,7 @@ final class SocketServer {
     private func serve(_ conn: Connection) {
         Thread.detachNewThread { [weak self, onCommand] in
             readLines(conn.fd) { line in
-                if let pc = decodePageCommand(line), let h = self?.onPageCommand {   // W16
+                if let pc = decodePageCommand(line), let h = self?.onPageCommand {
                     DispatchQueue.main.async { h(pc, conn) }
                     return
                 }

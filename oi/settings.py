@@ -3,12 +3,12 @@
 Schema (every key optional; see docs/DESIGN.md "Settings"):
   {"paused": false, "hud_enabled": true, "denylist_apps": ["Passwords", ...],
    "repo_dir": "/Users/you/os-intent", "updated_at": "2026-10-20T10:00:00Z",
-   "gate": {"show_min_p": 0.15, ..., "outward": true}, "live": {"poll_s": 2, ...},   # W8: `oi live`
+   "gate": {"show_min_p": 0.15, ..., "outward": true}, "live": {"poll_s": 2, ...}, # `oi live`
    (`gate.outward`: the outward gate, read by oi.gate.enabled: true | false | {"vocal"|"shot"|"page": bool})
-   "vocal_recipients": {"nova": {...}, ...},   # W12: read by oi.vocal.recipients()
-   "vocal": {"max_s": 300, "shot_offer": true, "shot_safe_hosts": [...]},   # max_s: oi-hud's recording limit;
+   "vocal_recipients": {"nova": {...}, ...}, # read by oi.vocal.recipients
+   "vocal": {"max_s": 300, "shot_offer": true, "shot_safe_hosts": [...]}, # max_s: oi-hud's recording limit;
                                                # shot_offer, shot_safe_hosts: oi.vocal_settings
-   "laya": {"enabled": true}}   # the menu-bar Laya switch (oi.laya_switch); false = Markov only, server stopped
+   "laya": {"enabled": true}} # the menu-bar Laya switch (oi.laya_switch); false = Markov only, server stopped
 A missing, unreadable or corrupt file gives the defaults; a wrongly typed key falls back to its default.
 """
 from __future__ import annotations
@@ -26,15 +26,15 @@ DEFAULTS: dict = {
     "updated_at": None,
 }
 
-# W8: the live driver's gate and timings. Flat numbers only (oi-menubar round-trips them).
-# W9: `ttl_ms` = how long the HUD stays per show (oi-hud reads the pointer keys itself:
+# the live driver's gate and timings. Flat numbers only (oi-menubar round-trips them).
+# `ttl_ms` = how long the HUD stays per show (oi-hud reads the pointer keys itself:
 # hide_on_pointer_travel / pointer_grace_ms / pointer_fast_px_s / pointer_fast_ms).
 GATE_DEFAULTS: dict = {"show_min_p": 0.15, "none_max_p": 0.6, "max_show": 3, "cooldown_s": 20, "min_history": 1,
-                       "ttl_ms": 6000,   # W19: ttl_ms 15000 -> 6000 (the user: disappear faster)
-                       "hint_cooldown_s": 8}   # W20: hints have their own (shorter) cooldown; full shows keep cooldown_s
+                       "ttl_ms": 6000,   # ttl_ms 15000 -> 6000 (the user: disappear faster)
+                       "hint_cooldown_s": 8}   # hints have their own (shorter) cooldown; full shows keep cooldown_s
 LIVE_DEFAULTS: dict = {"poll_s": 2, "rebuild_s": 600, "retrain_s": 600}
 _INT_KEYS = {"max_show", "min_history", "ttl_ms"}
-# W13: the Laya layer. `laya_shadow` = also ask Laya for every evaluated moment and log it (never
+# the Laya layer. `laya_shadow` = also ask Laya for every evaluated moment and log it (never
 # shown); `predictor` = what the HUD shows: "markov" (default) | "laya" | "blend", set ONLY by
 # `oi laya-promote` once the design §5 pass bar is met; `laya_url` = the laya server; `laya_checkpoint` = the
 # promoted oi checkpoint dir (None = stock English laya, zero-shot); `laya_model` = the laya-serve checkpoint
@@ -56,14 +56,14 @@ LIVE_LAYA_DEFAULTS: dict = {"laya_shadow": False, "predictor": "markov", "laya_r
 LEGACY_LAYA_TIMEOUTS_MS = (300, 1050)
 
 
-# W19: `hud.auto_mode` = how the gated (automatic) shows are sent: "hint" (default: coloured dots, ⌥⌘
-# develops them), "full" (the cross, as before W19) or "off" (nothing; ⌥⌘ still summons); `hud.hint_ttl_ms` = how
-# long the dots stay (4000 since W20, was 2500; clamped 500-10000). The other `hud` keys (W20: `hint_dot_size`)
+# `hud.auto_mode` = how the gated (automatic) shows are sent: "hint" (default: coloured dots, ⌥⌘
+# develops them), "full" (the cross, as before) or "off" (nothing; ⌥⌘ still summons); `hud.hint_ttl_ms` = how
+# long the dots stay (4000, was 2500; clamped 500-10000). The other `hud` keys (`hint_dot_size`)
 # belong to oi-hud and are not read here.
 AUTO_MODES = ("hint", "full", "off")
-# W21: `hud.fill_order` = which key gets the most likely option, then the next… (see oi/hud_keys.py).
-HUD_DEFAULTS: dict = {"auto_mode": "hint", "hint_ttl_ms": 4000,   # W20: hint_ttl_ms 2500 -> 4000
-                      "fill_order": list(hud_keys.DEFAULT_FILL_ORDER)}   # W21
+# `hud.fill_order` = which key gets the most likely option, then the next… (see oi/hud_keys.py).
+HUD_DEFAULTS: dict = {"auto_mode": "hint", "hint_ttl_ms": 4000,   # hint_ttl_ms 2500 -> 4000
+                      "fill_order": list(hud_keys.DEFAULT_FILL_ORDER)}
 HINT_TTL_RANGE_MS = (500, 10000)
 
 
@@ -72,14 +72,14 @@ def _hud(raw) -> dict:
     out["fill_order"] = list(hud_keys.DEFAULT_FILL_ORDER)   # never the shared default list
     if not isinstance(raw, dict):
         return out
-    out["fill_order"] = hud_keys.fill_order(raw.get("fill_order"))   # W21
+    out["fill_order"] = hud_keys.fill_order(raw.get("fill_order"))
     if raw.get("auto_mode") in AUTO_MODES:
         out["auto_mode"] = raw["auto_mode"]
     v = raw.get("hint_ttl_ms")
     if isinstance(v, (int, float)) and not isinstance(v, bool) and v == v:
         out["hint_ttl_ms"] = int(min(max(v, HINT_TTL_RANGE_MS[0]), HINT_TTL_RANGE_MS[1]))
     return out
-# end W19
+# end
 
 # 2026-10-21: `laya.enabled` = the master switch, set by the menu bar
 # (`oi laya-switch on|off`). Off = Markov only: `load()` then hands out an EFFECTIVE `live` view with the Laya
@@ -95,7 +95,7 @@ def settings_path() -> Path:
 def load(path: Path | None = None) -> dict:
     out = {k: (list(v) if isinstance(v, list) else v) for k, v in DEFAULTS.items()}
     out["gate"], out["live"] = dict(GATE_DEFAULTS), dict(LIVE_DEFAULTS) | dict(LIVE_LAYA_DEFAULTS)
-    out["hud"] = dict(HUD_DEFAULTS)   # W19
+    out["hud"] = dict(HUD_DEFAULTS)
     out["laya"] = dict(LAYA_SWITCH_DEFAULTS)
     try:
         raw = json.loads((path or settings_path()).read_text(encoding="utf-8"))
@@ -114,7 +114,7 @@ def load(path: Path | None = None) -> dict:
             out[key] = raw[key]
     out["gate"] = _numbers(raw.get("gate"), GATE_DEFAULTS)
     out["live"] = _numbers(raw.get("live"), LIVE_DEFAULTS) | _laya(raw.get("live"))
-    out["hud"] = _hud(raw.get("hud"))   # W19
+    out["hud"] = _hud(raw.get("hud"))
     lw = raw.get("laya")
     if isinstance(lw, dict) and isinstance(lw.get("enabled"), bool):
         out["laya"]["enabled"] = lw["enabled"]
@@ -124,7 +124,7 @@ def load(path: Path | None = None) -> dict:
 
 
 def _laya(raw) -> dict:
-    """The W13 keys of `live`, each falling back to its default when absent or wrongly typed."""
+    """The keys of `live`, each falling back to its default when absent or wrongly typed."""
     out = dict(LIVE_LAYA_DEFAULTS)
     if not isinstance(raw, dict):
         return out
@@ -147,7 +147,7 @@ def _laya(raw) -> dict:
 
 def update_live(changes: dict, path: Path | None = None) -> dict:
     """Read-modify-write of settings.json `live` (other keys kept as they are), atomic (temp + rename),
-    mode 0600. Used only by `oi laya-promote` (W13). Returns the raw `live` dict written."""
+    mode 0600. Used only by `oi laya-promote`. Returns the raw `live` dict written."""
     return _update_section("live", changes, path)
 
 

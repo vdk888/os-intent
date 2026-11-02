@@ -45,7 +45,7 @@ func makeModel(_ options: [HUDOption], withWishAndVocal: Bool = true) -> HUDMode
     return m
 }
 
-/// The W15 sub-ring around option `key`, placed by the HUD's own SubRingLayout.
+/// The sub-ring around option `key`, placed by the HUD's own SubRingLayout.
 func openSubRing(_ m: HUDModel, key: Int, _ children: [HUDOption]) {
     let top = Metrics.slots(m.options, m.positions, badges: m.badges)
     guard let parent = top.first(where: { $0.key == key }) else { return }

@@ -1,4 +1,4 @@
-"""W25: the orchestrator — roster, topic routing, warm RAG, context pack (privacy, budget, cache, deadline),
+"""the orchestrator — roster, topic routing, warm RAG, context pack (privacy, budget, cache, deadline),
 the wrap of every runtime prompt, dispatch. Fake Claude, fake embeddings, a temp wiki db: nothing real is read or
 sent."""
 from __future__ import annotations
@@ -20,11 +20,11 @@ from oi.orchestrator import dispatch, gen_roster, pack
 
 REPO = Path(__file__).resolve().parents[1]          # the os-intent checkout holding tools/wiki/wiki_search.py
 AGENTS = [
-    {"slug": "orion", "name": "Orion", "bu": ["Portfolio BU"], "ask_for": "the fund: NAV, positions",
+    {"slug": "orion", "name": "Orion", "bu": ["Finance"], "ask_for": "the fund: NAV, positions",
      "mandate": "Grow the portfolio.", "topics": ["nav", "fonds", "fund", "portefeuille"]},
-    {"slug": "lyra", "name": "Lyra", "bu": ["Client BU"], "ask_for": "prospection, LinkedIn",
+    {"slug": "lyra", "name": "Lyra", "bu": ["Sales"], "ask_for": "prospection, LinkedIn",
      "topics": ["prospection", "linkedin", "prospects"]},
-    {"slug": "atlas", "name": "Atlas", "bu": ["Methods BU"], "ask_for": "tools, bugs, the HUD",
+    {"slug": "atlas", "name": "Atlas", "bu": ["Ops"], "ask_for": "tools, bugs, the HUD",
      "topics": ["bug", "hud", "outil"]},
     {"slug": "hera", "name": "Hera", "bu": [], "ask_for": "accounting",
      "topics": ["facture", "comptabilité", "note de frais"]},
@@ -112,7 +112,7 @@ def test_warm_wiki_reloads_when_the_db_changes(wiki_db, monkeypatch):
 
 def test_rag_snippets_none_when_unavailable():
     assert rag.snippets("anything") is None                      # conftest: no real wiki in tests
-    assert ca.wiki_snippets("x", repo_dir="/nonexistent") == []  # W14 fallback path still answers []
+    assert ca.wiki_snippets("x", repo_dir="/nonexistent") == []  # fallback path still answers []
 
 
 # ---- roster ----------------------------------------------------------------------------------------------------
@@ -120,32 +120,33 @@ def test_rag_snippets_none_when_unavailable():
 def test_gen_roster_merges_the_registry_and_never_copies_paths(tmp_path):
     team = tmp_path / "team.md"
     team.write_text("# Team\n## Agents (full)\n| First Name | Code | Role | Machine | Reach |\n|---|---|---|---|---|\n"
-                    "| **Orion** | Orion (fund) | Portfolio manager | VPS | root-SSH |\n"
+                    "| **Orion** | Orion (finance) | Finance lead | server | ssh |\n"
                     "| **Atlas** | Lab | Prototypes, tools | M4 | local |\n## Other\n| x | y | z | w |\n")
     rooms = tmp_path / "rooms.yaml"
-    rooms.write_text(yaml.safe_dump({"rooms": [{"bu": "fund", "members": ["orion", "atlas"]},
-                                               {"bu": "ai_methods", "members": ["atlas"]}]}))
+    rooms.write_text(yaml.safe_dump({"rooms": [{"bu": "finance", "members": ["orion", "atlas"]},
+                                               {"bu": "ops", "members": ["atlas"]}]}))
     ws = tmp_path / "ws"
     (ws / "team-ops-orion").mkdir(parents=True)
     (ws / "team-ops-orion/dept.yaml").write_text(yaml.safe_dump({"department": {
-        "slug": "orion", "display_name": "Orion", "mandate": "Grow the value. " * 30, "secrets": {"token": "NOPE"}}}))
+        "slug": "orion", "display_name": "Orion", "mandate": "Keep the books. " * 30, "secrets": {"token": "NOPE"}}}))
     overlay = tmp_path / "overlay.yaml"
-    overlay.write_text(yaml.safe_dump({"agents": {"orion": {"ask_for": "the fund", "topics": ["NAV", "fonds"]}}}))
+    overlay.write_text(yaml.safe_dump({"agents": {"orion": {"ask_for": "finance", "topics": ["Budget", "facture"]}}}))
     recips = {"orion": vocal._remote("orion", "Orion", "agent-host"), "atlas": vocal.DEFAULT_RECIPIENTS["atlas"]}
     r = gen_roster.build(recipients=recips, overlay_path=overlay, roster_path=team, rooms_path=rooms,
                          globs=[(ws, "*/dept.yaml")])
     atlas, orion = r["agents"]
-    assert orion["slug"] == "orion" and orion["role"] == "Portfolio manager" and orion["bu"] == ["Portfolio BU"]
-    assert orion["topics"] == ["nav", "fonds"] and len(orion["mandate"]) <= gen_roster.MANDATE_MAX + 2
+    assert orion["slug"] == "orion" and orion["role"] == "Finance lead" and orion["bu"] == ["finance"]
+    assert orion["topics"] == ["budget", "facture"] and len(orion["mandate"]) <= gen_roster.MANDATE_MAX + 2
     assert orion["reach"] == {"via": "vocal", "kind": "a2a", "where": "agent-host"}
-    assert atlas["reach"]["kind"] == "inject" and set(atlas["bu"]) == {"Portfolio BU", "Methods BU"}
+    assert atlas["reach"]["kind"] == "inject" and set(atlas["bu"]) == {"finance", "ops"}
     text = gen_roster.dump(r)
     assert "NOPE" not in text and "/home/" not in text and "/Users/" not in text and "state_dir" not in text
 
 
 def test_committed_roster_covers_every_vocal_recipient_and_holds_no_secret():
     agents = orchestrator.roster()
-    assert {a["slug"] for a in agents} == set(vocal.DEFAULT_RECIPIENTS)
+    from conftest import SHIPPED_RECIPIENTS
+    assert {a["slug"] for a in agents} == set(SHIPPED_RECIPIENTS)
     raw = orchestrator.ROSTER.read_text(encoding="utf-8")
     assert "/Users/" not in raw and "/home/" not in raw and not any(w in raw.lower() for w in ("token:", "secret", "password"))
     assert all(a.get("ask_for") and a.get("topics") for a in agents)
@@ -164,7 +165,7 @@ def test_route_picks_the_topic_owner(wish, want):
 def test_route_none_on_no_topic_or_a_tie():
     assert orchestrator.route("bonjour", AGENTS) == (None, 0.0)
     assert orchestrator.route("nav linkedin", AGENTS)[0] is None            # one topic each: a tie, no guess
-    assert orchestrator.route("demande à quelqu'un le NAV du fonds")[0] == "orion"   # the committed roster too
+    assert orchestrator.route("demande à quelqu'un le budget du trimestre")[0] == "orion"   # the committed roster too
 
 
 # ---- the pack ---------------------------------------------------------------------------------------------------
@@ -207,8 +208,8 @@ def test_pack_privacy_gate_host_mail_and_wiki_leaks(wiki_db):
     assert "details withheld" in t
     assert "secretco" not in t.lower() and "Secret Client" not in t           # a wiki note naming a gated domain
     assert all("intra.example.com" not in q and "devis" not in q for q in seen_q)   # nor in the RAG query
-    cc = dict(MAIL, sender_address="x@gmail.com", cc=["boss@acme-conseil.example"])
-    assert "details withheld" in p.build({"app": "Mail", "mail": cc}, cfg)["text"]  # the W15 cc rule
+    cc = dict(MAIL, sender_address="x@example.com", cc=["boss@acme-conseil.example"])
+    assert "details withheld" in p.build({"app": "Mail", "mail": cc}, cfg)["text"]  # the cc rule
 
 
 def test_pack_cache_per_context_key_and_the_rag_deadline(wiki_db):
@@ -317,11 +318,11 @@ def wish_engine(sent, claude_on=False):
 def test_wish_topic_routes_to_orion_and_sends_through_the_gate_only(data_dir):
     sent = []
     eng = wish_engine(sent)
-    pv = eng.handle({"id": 1, "text": "demande à quelqu'un le NAV du fonds", "final": False, "context": {"app": "Mail"}})
+    pv = eng.handle({"id": 1, "text": "demande à quelqu'un le budget du trimestre", "final": False, "context": {"app": "Mail"}})
     assert pv["label"].startswith("→ Send to Orion")
-    r = eng.handle({"id": 2, "text": "demande à quelqu'un le NAV du fonds", "final": True, "context": {"app": "Mail"}})
-    # no W18 confirm: oi.vocal.send asks the outward gate's panel (the one confirmation)
-    assert r["state"] == "done" and r["tier"] == "roster" and sent == [("orion", "demande à quelqu'un le NAV du fonds")]
+    r = eng.handle({"id": 2, "text": "demande à quelqu'un le budget du trimestre", "final": True, "context": {"app": "Mail"}})
+    # no confirm: oi.vocal.send asks the outward gate's panel (the one confirmation)
+    assert r["state"] == "done" and r["tier"] == "roster" and sent == [("orion", "demande à quelqu'un le budget du trimestre")]
 
 
 def test_pass_me_to_atlas_arms_then_the_next_note_goes_to_atlas(data_dir):

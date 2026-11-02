@@ -1,4 +1,4 @@
-"""W24: the state sensors. Local, READ-ONLY, each opt-in (settings `proactive.sources`).
+"""the state sensors. Local, READ-ONLY, each opt-in (settings `proactive.sources`).
 
 Context is STATE, not timers (docs/DESIGN.md design rule): every sensor reads a STATE and reports its edges. `poll(now, cfg)
 -> [event]` returns an appear row when a state starts (an unread mail, an unread agent chat, a new unopened file, an
@@ -26,7 +26,7 @@ injectable (tests use fakes; no real Mail, Telegram, network or folder is touche
                  too slow to answer is skipped and stays unknown, never fails the whole poll.
   AgentSensor    Telegram's Dock badge (the Dock's AX status label of its tile, DOCK_BADGE_JS; lsappinfo no longer
                  reports it on macOS 27) = the total unread count, 0 = every chat read. WHO wrote: the unread count of
-                 each chat row (Accessibility, the same chat list the W23 reader walks: the row's title and its numeric
+                 each chat row (Accessibility, the same chat list the reader walks: the row's title and its numeric
                  badge only, never a message text) when the client exposes its chat list; Telegram for macOS 13
                  (ru.keepcoder.Telegram) exposes NO window children at all (AXChildren = kAXErrorFailure, 2026-10-21),
                  so then the Mac agents' OWN local record of what they sent the user (OutboundLog: the telegram reply
@@ -35,32 +35,32 @@ injectable (tests use fakes; no real Mail, Telegram, network or folder is touche
                  oi/contact.py) with unread / unanswered messages = `evt:agent:<slug>` (ref: chat, n, since), live
                  until the badge is gone or the user writes to that agent. Telegram running but the state unreadable
                  (no badge, or neither the chat list nor any outbound record) = a failed poll (`last_error`, health).
-  FolderSensor   new top-level entries of chosen folders (`proactive.files.folders`: Desktop, a Drive folder…), SENSED
+  FolderSensor new top-level entries of chosen folders (`proactive.files.folders`: Desktop, a Drive folder…), SENSED
                  BY oi-watcher (TCC denies ~/Desktop to this launchd Python; the signed watcher app has it): this
                  sensor reads its bucket `oi-watcher-file_<host>` (live / gone edges, path + class + mtime + size,
                  never content) and its read state per folder (status/oi-watcher-files.json). Hidden / partial
-                 downloads / screenshots (W17 owns those) are skipped. `evt:file:<drive|desktop|downloads|documents|
+                 downloads / screenshots (owns those) are skipped. `evt:file:<drive|desktop|downloads|documents|
                  folder slug>`, live until the file is opened (Spotlight's kMDItemLastUsedDate changes) or removed.
                  Watcher not running = INFO (`watcher_not_running`); a folder it cannot read = folder_unreadable /
                  folder_missing; aw-server unreadable = aw_unreadable.
-  CockpitSensor  your own ops dashboard (optional, `proactive.cockpit.url`). outage = its unauthenticated liveness
+  CockpitSensor your own ops dashboard (optional, `proactive.cockpit.url`). outage = its unauthenticated liveness
                  probe (<url>/health-noauth) fails twice in a row (`evt:cockpit:outage`, live until the probe answers
                  again); alerts = the ids of a JSON feed file (`proactive.cockpit.alerts_file`, [{id, title, kind?,
                  path?, open?}]), live while listed and not `"open": false`. The feed is a local file so that no
                  dashboard credential is needed here (fixtures in tests).
-  MetricsSensor  a local KPI feed file. Reads `proactive.metrics.file` ({"metrics": [{id, label, value, threshold, url?, owner?}]}): a KPI
+  MetricsSensor a local KPI feed file. Reads `proactive.metrics.file` ({"metrics": [{id, label, value, threshold, url?, owner?}]}): a KPI
                  below its threshold = `evt:metric:<id>`, live until it is back above (or no longer reported).
-  MarketsSensor  a local market brief / price feed file. Reads
+  MarketsSensor a local market brief / price feed file. Reads
                  `proactive.markets.file` ({"brief": {date, url?, read?}, "moves": [{symbol, pct}]}): the current
                  brief while not read = `evt:market:brief`; a symbol beyond ±move_pct = `evt:market:move`, fired on
                  entering that state, live while it lasts, fired again only after it ended. Never a trading action.
-  DecisionsSensor  the dashboard's decision queue (approval gates, cards waiting for a human, PRs waiting for a merge
+  DecisionsSensor the dashboard's decision queue (approval gates, cards waiting for a human, PRs waiting for a merge
                  decision) from GET <cockpit.url>/a-decider.json, a scoped read-only token from the Keychain
                  (config.TOKEN_KEYCHAIN):
                  `evt:cockpit:decide-gate|board|pr`, live while listed; a part the cockpit could not read is unknown.
-  CalendarSensor   meetings starting within `calendar.horizon_min` or under way (EventKit via JXA, read-only, never
+  CalendarSensor meetings starting within `calendar.horizon_min` or under way (EventKit via JXA, read-only, never
                  asks for access): `evt:calendar:meeting`, live until it ends; only a join link leaves the notes (no query: passcodes).
-  PullRequestSensor  open PRs whose review is requested of the user + the open PRs of `prs.repos` (local `gh`,
+  PullRequestSensor open PRs whose review is requested of the user + the open PRs of `prs.repos` (local `gh`,
                  read-only): `evt:github:<repo>`, live while open; level 3 = summary line + independent verdict.
 """
 from __future__ import annotations
@@ -345,7 +345,7 @@ def parse_mail_state(out: str) -> dict[str, str] | None:
 
 
 def private_mail(name: str, address: str, subject: str, ccfg: dict) -> bool:
-    """W14 local-only domain or the W25 leaks gate on the name / subject."""
+    """ local-only domain or the leaks gate on the name / subject."""
     if ca.local_only(ca.domain_of(address), ccfg):
         return True
     return pack.leaks(f"{name} {subject}", ccfg)
@@ -535,7 +535,7 @@ class MailSensor:
         return self.states.step(now, on, off)
 
 
-# Telegram's chat list, read-only: [[title, unread]] per row. The title = the row's first text (as the W23 reader);
+# Telegram's chat list, read-only: [[title, unread]] per row. The title = the row's first text (as the reader);
 # unread = the row's badge: its last short numeric text after the title ("3", "99+", "1.2K") or a count in the
 # row's description ("3 unread"). Nothing else of a row leaves the script (never a preview / message text).
 TELEGRAM_UNREAD_JS = r"""
@@ -1143,12 +1143,41 @@ def keychain_secret(service: str, account: str, run: Callable = subprocess.run) 
     return v or None
 
 
+_LOOPBACK = frozenset({"127.0.0.1", "localhost", "::1"})
+
+
+def bearer_url_ok(url: str) -> bool:
+    """A URL a bearer token may go to: https, or plain http on this Mac's loopback only."""
+    u = urllib.parse.urlsplit(url)
+    return bool(u.hostname) and (u.scheme == "https" or (u.scheme == "http" and u.hostname in _LOOPBACK))
+
+
+class _BearerRedirect(urllib.request.HTTPRedirectHandler):
+    """Follows a redirect only to a URL `bearer_url_ok` accepts, and drops the Authorization header when it leaves
+    the original scheme / host / port (urllib would forward it to any host)."""
+
+    def redirect_request(self, req, fp, code, msg, headers, newurl):
+        if not bearer_url_ok(newurl):
+            raise urllib.error.HTTPError(newurl, code, "redirect to a non-https URL refused", headers, fp)
+        new = super().redirect_request(req, fp, code, msg, headers, newurl)
+        if new is not None:
+            o, n = urllib.parse.urlsplit(req.full_url), urllib.parse.urlsplit(new.full_url)
+            if (o.scheme, o.hostname, o.port) != (n.scheme, n.hostname, n.port):
+                new.remove_header("Authorization")
+        return new
+
+
 def http_json(url: str, token: str, timeout: float = 10.0) -> tuple[int | None, object]:
-    """GET <url> with the bearer in a header (never in the URL): (HTTP status | None on a network error, JSON | None)."""
+    """GET <url> with the bearer in a header (never in the URL): (HTTP status | None on a network error or a URL
+    that is not https, JSON | None). Redirects keep the bearer only on the same origin (`_BearerRedirect`)."""
+    if not bearer_url_ok(url):
+        return None, None
     req = urllib.request.Request(url, method="GET", headers={"Authorization": f"Bearer {token}",
                                                              "Accept": "application/json"})
+    opener = urllib.request.build_opener(urllib.request.HTTPSHandler(context=ssl.create_default_context()),
+                                         _BearerRedirect())
     try:
-        with urllib.request.urlopen(req, timeout=timeout, context=ssl.create_default_context()) as r:
+        with opener.open(req, timeout=timeout) as r:
             return r.status, json.loads(r.read(4 << 20).decode("utf-8"))
     except urllib.error.HTTPError as e:
         return e.code, None

@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """
-Wiki Semantic Search — local hybrid search over the shared wiki.
+Wiki Semantic Search — local hybrid search over a folder of markdown pages (your wiki).
 
 Uses Ollama nomic-embed-text for embeddings (local, free) + SQLite FTS5 for keyword search.
 Combines both scores for hybrid retrieval.

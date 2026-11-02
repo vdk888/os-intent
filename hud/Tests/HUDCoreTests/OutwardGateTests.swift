@@ -19,7 +19,7 @@ import OISettings
         guard case .confirmOutward(let p) = en else { Issue.record("not a confirm"); return }
         #expect(p.target == "button:squash-and-merge" && p.hint.hasPrefix("↩ Validate · Esc Cancel"))
         #expect(p.ttlMs == OutwardConfirmRequest.ttlRange.upperBound)  // clamped: never an endless panel
-        // W24 proactive `outward` options (reply / forward / draft): class "reply"
+        // proactive `outward` options (reply / forward / draft): class "reply"
         let rp = try cmd(#"{"cmd":"confirm_outward","id":"r1","cls":"reply","title":"Reply to Lena ?"}"#)
         guard case .confirmOutward(let q) = rp else { Issue.record("not a confirm"); return }
         #expect(q.cls == "reply" && q.target == nil)

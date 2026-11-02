@@ -3,7 +3,7 @@ import Testing
 @testable import HUDCore
 import OISettings
 
-// W14: long-press = the Claude-assisted variant; the HUD's work state; the protocol additions.
+// long-press = the Claude-assisted variant; the HUD's work state; the protocol additions.
 
 private let opt: HeldModifiers = .option
 private let cmd: HeldModifiers = .command

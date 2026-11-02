@@ -18,7 +18,7 @@ final class AppController: NSObject, NSApplicationDelegate, NSMenuDelegate {
     private var layaBusy = false
     private var denylistWindow: DenylistWindowController?
     private var hotkeysWindow: HotkeysWindowController?
-    private var settingsWindow: SettingsWindowController?   // W26
+    private var settingsWindow: SettingsWindowController?
 
     func applicationDidFinishLaunching(_ note: Notification) {
         statusItem = NSStatusBar.system.statusItem(withLength: NSStatusItem.squareLength)
@@ -33,7 +33,7 @@ final class AppController: NSObject, NSApplicationDelegate, NSMenuDelegate {
         }
         refresh()
         log("started; status item shown")
-        offerOnboarding()   // W22: first launch only
+        offerOnboarding()   // first launch only
     }
 
     private func updateIcon() {
@@ -135,7 +135,7 @@ final class AppController: NSObject, NSApplicationDelegate, NSMenuDelegate {
                 }
             }
         case .toggleLogin:
-            // LaunchAgent only (W9): `launchctl enable|disable` keeps the plist; RunAtLoad
+            // LaunchAgent only: `launchctl enable|disable` keeps the plist; RunAtLoad
             // then starts (or no longer starts) the app at the next login.
             let on = status.login != .enabled
             if FileManager.default.fileExists(atPath: Paths.menubarPlist.path) {
@@ -155,7 +155,7 @@ final class AppController: NSObject, NSApplicationDelegate, NSMenuDelegate {
                 log("restart HUD: launchctl kickstart -k -> \(r.code)")
                 await MainActor.run { self.refresh() }
             }
-        case .restartLive:   // W8
+        case .restartLive:
             Task.detached {
                 let r = Shell.launchctl(["kickstart", "-k", "\(Shell.domain)/\(LiveStatus.label)"])
                 log("restart live predictor: launchctl kickstart -k -> \(r.code)")
@@ -178,10 +178,10 @@ final class AppController: NSObject, NSApplicationDelegate, NSMenuDelegate {
             denylistWindow?.present(cache.current.denylistApps)
         case .editHotkeys:
             openHotkeys()
-        case .openSettings:   // W26
+        case .openSettings:
             if settingsWindow == nil { settingsWindow = SettingsWindowController { [weak self] in self?.openHotkeys() } }
             settingsWindow?.present()
-        case .openOnboarding:   // W22
+        case .openOnboarding:
             openOnboarding()
         case .openData:
             NSWorkspace.shared.open(Paths.data)
@@ -198,7 +198,7 @@ final class AppController: NSObject, NSApplicationDelegate, NSMenuDelegate {
         refresh()
     }
 
-    /// W22: `oi onboard` in Terminal, through `<data>/onboard.command` (0700).
+    /// `oi onboard` in Terminal, through `<data>/onboard.command` (0700).
     private func openOnboarding() {
         let url = Paths.data.appendingPathComponent(Onboarding.script)
         let text = Onboarding.commandScript(oiBinary: Paths.oiBinary(cache.current), dataDir: Paths.data.path)
@@ -217,7 +217,7 @@ final class AppController: NSObject, NSApplicationDelegate, NSMenuDelegate {
         log("onboarding: opened in Terminal")
     }
 
-    /// W22: at the first launch with no profile.yaml, offer the onboarding once (the marker keeps it from coming back).
+    /// at the first launch with no profile.yaml, offer the onboarding once (the marker keeps it from coming back).
     private func offerOnboarding() {
         guard Onboarding.shouldOffer(dataDir: Paths.data) else { return }
         let marker = Paths.data.appendingPathComponent(Onboarding.offeredMarker)
@@ -228,7 +228,7 @@ final class AppController: NSObject, NSApplicationDelegate, NSMenuDelegate {
         a.messageText = "Set up OS-intent with Claude?"
         a.informativeText = "Claude (your subscription) reads the sources you choose — Claude memory, wiki, recent "
             + "mails, Notion — asks a few questions, and you check the result, so the HUD proposes useful actions from "
-            + "day one (W22b). You can run it later from the menu: Onboarding…"
+            + "day one. You can run it later from the menu: Onboarding…"
         a.addButton(withTitle: "Start onboarding")
         a.addButton(withTitle: "Later")
         if a.runModal() == .alertFirstButtonReturn { openOnboarding() }

@@ -16,7 +16,7 @@ let package = Package(
             dependencies: ["HUDCore", .product(name: "OISettings", package: "settings")],
             linkerSettings: [
                 // Embedded Info.plist: a bare SwiftPM executable has no bundle, and the Speech
-                // Recognition / Microphone prompts need their usage strings (W6 wish dictation).
+                // Recognition / Microphone prompts need their usage strings (wish dictation).
                 .unsafeFlags([
                     "-Xlinker", "-sectcreate", "-Xlinker", "__TEXT", "-Xlinker", "__info_plist",
                     "-Xlinker", Context.packageDirectory + "/Support/Info.plist",

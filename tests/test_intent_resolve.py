@@ -1,4 +1,4 @@
-"""W18: wish -> action. Tiers (local / Laya / Claude), FR+EN aliases, JSON validation, confirm gating,
+"""wish -> action. Tiers (local / Laya / Claude), FR+EN aliases, JSON validation, confirm gating,
 fallback, learning, the socket hook. Synthetic data only; no app is opened and nothing is sent."""
 from __future__ import annotations
 
@@ -307,7 +307,7 @@ def test_safe_action_executes_and_is_learned():
     f = paths.data_dir() / "aliases.json"
     assert stat.S_IMODE(f.stat().st_mode) == 0o600
     raw = json.loads(f.read_text())
-    assert raw["aliases"] == {} and raw["pending"]["mon messenger crypte"] == {   # W18 follow-up: one guess
+    assert raw["aliases"] == {} and raw["pending"]["mon messenger crypte"] == {   # follow-up: one guess
         "id": "app:Telegram", "n": 1, "last": raw["pending"]["mon messenger crypte"]["last"]}
     assert final(eng, 2, "mon messenger crypté")["tier"] == "claude"             # the 2nd agreement learns it
     table = json.loads(f.read_text())["aliases"]
@@ -330,7 +330,7 @@ def test_learning_grows_target_aliases():
     assert eng.resolve("lance messagerie bleue", {"app": "Finder"})["id"] == "app:Telegram"
 
 
-# ---- W18 follow-ups: safer alias learning, Esc cancels --------------------------------------------------------
+# ---- follow-ups: safer alias learning, Esc cancels --------------------------------------------------------
 
 def test_a_single_claude_or_laya_guess_is_never_an_alias():
     eng = engine(laya_up=True, fake_laya=FakeLaya(pick="Notes"), runner=lambda p, m: pytest.fail("laya answers"))
@@ -386,7 +386,7 @@ def test_cancel_before_the_final_runs_skips_claude():
 
 @pytest.fixture
 def w18_confirm(monkeypatch):
-    """The W18 ⇧ confirm machinery is kept for actions neither gated nor known safe; vocal.send stands in for one."""
+    """The ⇧ confirm machinery is kept for actions neither gated nor known safe; vocal.send stands in for one."""
     monkeypatch.setattr(ir, "GATED_PRIMITIVES", ())
     monkeypatch.setattr(ir, "CONFIRM_PRIMITIVES", ("vocal.send",))
 
@@ -418,7 +418,7 @@ def test_sends_and_instructions_are_never_learned():
     assert final(eng, 1, "réponds oui à Sam", app="Mail")["state"] == "done"
     sent = []
     eng2 = engine(sent=sent)
-    assert final(eng2, 1, "envoie à nova salut")["state"] == "done" and len(sent) == 1   # gated, no W18 confirm
+    assert final(eng2, 1, "envoie à nova salut")["state"] == "done" and len(sent) == 1   # gated, no confirm
     assert not (paths.data_dir() / "aliases.json").exists()
 
 

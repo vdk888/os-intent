@@ -1,4 +1,4 @@
-"""W24: events/<UTC day>.jsonl and the `evt:<source>:<class>` tokens.
+"""events/<UTC day>.jsonl and the `evt:<source>:<class>` tokens.
 
 An event row (local only, 0600, next to raw/ which already holds window titles):
   {"ts": ISO UTC, "id": "<source>:<16 hex>", "source": "mail|agent|file|cockpit|metric|market|calendar|github", "class": "<slug>",

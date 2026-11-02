@@ -2,7 +2,7 @@ import Foundation
 import Testing
 @testable import HUDCore
 
-// W18: wish → action — protocol additions, the wish row's action, the panel's resolve state machine.
+// wish → action — protocol additions, the wish row's action, the panel's resolve state machine.
 
 private let ctx = ResolveContext(app: "Mail", space: 2)
 
@@ -45,7 +45,7 @@ private func line(_ s: String) -> Data { Data(s.utf8) }
     @Test func wishRowCarriesTheActionOnlyWhenResolved() throws {
         let c = WishContext(app: "Mail", space: 1, hudVisible: false, hudOptions: [])
         var row = WishRow(ts: "2026-10-20T16:00:00.000Z", text: "tg", source: .typed, context: c)
-        #expect(!(try row.jsonLine()).contains("action"))           // a noted wish: unchanged row (W6 format)
+        #expect(!(try row.jsonLine()).contains("action"))           // a noted wish: unchanged row (format)
         row.action = WishAction(token: "activate:Telegram", tier: "local", target: "Telegram")
         let l = try row.jsonLine()
         #expect(l.contains(#""action":{"target":"Telegram","tier":"local","token":"activate:Telegram"}"#))
@@ -146,7 +146,7 @@ private func line(_ s: String) -> Data { Data(s.utf8) }
     }
 }
 
-// W18 follow-up: Esc while "Working…" (or while a confirm waits) cancels the request on the resolver.
+// follow-up: Esc while "Working…" (or while a confirm waits) cancels the request on the resolver.
 @Suite struct WishResolveCancelTests {
     @Test func closingWhileResolvingCancelsThatRequest() {
         var m = WishResolveMachine()
@@ -177,7 +177,7 @@ private func line(_ s: String) -> Data { Data(s.utf8) }
     }
 }
 
-// W18 follow-up (after W16): a cancelled page-action confirm drops its press ticket.
+// follow-up (after): a cancelled page-action confirm drops its press ticket.
 @Suite struct WishResolvePressRevokeTests {
     @Test func revokeDropsOnlyThatTicket() {
         var g = PressGuard()

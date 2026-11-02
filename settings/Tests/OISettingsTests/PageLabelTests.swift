@@ -2,7 +2,7 @@ import Foundation
 import Testing
 @testable import OISettings
 
-// W16: the label rules shared by oi-hud and oi-watcher (same output as python vocab.slug).
+// the label rules shared by oi-hud and oi-watcher (same output as python vocab.slug).
 
 @Suite struct PageLabelTests {
     @Test func slugMatchesPython() {

@@ -1,20 +1,20 @@
 import Foundation
 import OISettings
 
-// W19: automatic shows become HINTS. `oi live` sends
+// automatic shows become HINTS. `oi live` sends
 // `{"cmd":"show","mode":"hint","hint_ttl_ms":2500,"ttl_ms":6000,…}` → the HUD draws only tiny coloured dots
 // at the fixed places of the options (no labels, icons, taps or target hints). The summon key (⌥⌘) tapped
 // while the dots are up, or within `hint_ttl` after they faded, DEVELOPS them: the same options become the
-// full cross (with `ttl_ms`), on the same connection. ⌥⌘ held from a hint = the W15 glide on them.
+// full cross (with `ttl_ms`), on the same connection. ⌥⌘ held from a hint = the glide on them.
 
 /// Default `hint_ttl_ms` (settings.json `hud.hint_ttl_ms`): how long the dots stay, then fade.
-/// W20: 2500 -> 4000.
+/// 2500 -> 4000.
 public let defaultHintTTLMs = HUDSettings.defaultHintTTLms
 /// Dot fade-in (the card: 120 ms).
 public let hintFadeIn: TimeInterval = 0.12
 
-/// W24: what a hint's marker says. `ring` = proactive ("something changed": a mail, an agent message, a new
-/// file, a cockpit alert), drawn as a thin ring around the dots; no marker = a W19 prediction hint.
+/// what a hint's marker says. `ring` = proactive ("something changed": a mail, an agent message, a new
+/// file, a cockpit alert), drawn as a thin ring around the dots; no marker = a prediction hint.
 public enum HintMarker: String, Sendable, Equatable {
     case ring
 }
@@ -32,7 +32,7 @@ public struct HintLife: Sendable {
     public private(set) var options: [HUDOption] = []
     public private(set) var fullTTLms = 0
     public private(set) var hintTTL: TimeInterval = Double(defaultHintTTLMs) / 1000
-    /// W24: the hint's marker (nil = a prediction hint).
+    /// the hint's marker (nil = a prediction hint).
     public private(set) var marker: HintMarker?
 
     public init() {}
@@ -40,7 +40,7 @@ public struct HintLife: Sendable {
     public var isDrawn: Bool { if case .dots = phase { return true }; return false }
     public var isIdle: Bool { phase == .idle }
 
-    /// What `{"cmd":"hide"}` ends (W24: oi live withdraws a proactive hint when the event's state ends — the mail was
+    /// What `{"cmd":"hide"}` ends (oi live withdraws a proactive hint when the event's state ends — the mail was
     /// read, the alert closed): the cross when it is up, else this hint (drawn or faded-but-developable), else nothing.
     public enum HideTarget: Equatable, Sendable { case cross, hint, nothing }
     public func hideTarget(crossVisible: Bool) -> HideTarget {
@@ -88,7 +88,7 @@ public struct HintLife: Sendable {
         return (options, fullTTLms)
     }
 
-    /// W14 label enrichment arriving while the dots are up (or faded): the developed cross shows the new labels.
+    /// label enrichment arriving while the dots are up (or faded): the developed cross shows the new labels.
     public mutating func relabel(_ updates: [LabelUpdate]) -> Int {
         guard !isIdle else { return 0 }
         let (o, n) = LabelUpdate.apply(updates, to: options)
@@ -98,7 +98,7 @@ public struct HintLife: Sendable {
 
     public mutating func reset() { phase = .idle; options = []; fullTTLms = 0; marker = nil }
 
-    /// `oi-hud state` → `hint`: "idle" | "dots:1,2,3" | "dots:1,2:ring" (W24) | "faded".
+    /// `oi-hud state` → `hint`: "idle" | "dots:1,2,3" | "dots:1,2:ring" | "faded".
     public var stateName: String {
         switch phase {
         case .idle: return "idle"
@@ -110,7 +110,7 @@ public struct HintLife: Sendable {
 
 /// The dots' geometry: one dot per option, in the DIRECTION of its fixed place, close to the pointer
 /// (the full cross later springs out from there). Offsets are y-down from the anchor.
-/// W20: 10-pt dots (settings
+/// 10-pt dots (settings
 /// `hud.hint_dot_size`), 0.85 opaque, a thin white/black ring for contrast on any background, 22 pt from the
 /// pointer, a gentle 2-cycle pulse on appear (none with Reduce Motion).
 public enum HintDotLayout {
@@ -146,20 +146,20 @@ public enum HintDotLayout {
     public static func pulses(reduceMotion: Bool) -> Int { reduceMotion ? 0 : pulseCycles }
 
     /// Half the square the dots (rings and pulse included) need around the pointer, for the screen clamp.
-    /// W24: a ring marker needs its own radius (plus its stroke).
+    /// a ring marker needs its own radius (plus its stroke).
     public static func halfExtent(dotSize: Double, marker: HintMarker? = nil) -> Double {
         let dots = radius + dotSize * pulseScale / 2 + 3
         return (marker == .ring ? max(dots, ringRadius(dotSize: dotSize) + ringWidth + 2) : dots).rounded(.up)
     }
 
-    /// W24: the proactive ring around the dots — just outside them (pulse included), thin, white with a black hairline.
+    /// the proactive ring around the dots — just outside them (pulse included), thin, white with a black hairline.
     public static let ringWidth: Double = 1.5
     public static let ringAlpha: Double = 0.8
     public static func ringRadius(dotSize: Double) -> Double { radius + dotSize * pulseScale / 2 + 4 }
 }
 
-// W19: an option's badge shows its NUMBER first,
-// then the key symbol: "1 fn", "2 ⌃", "3 ⌥", "4 ⌘" (W21: the number is the key). A chord that already carries the number ("⌥1", the fallback
+// an option's badge shows its NUMBER first,
+// then the key symbol: "1 fn", "2 ⌃", "3 ⌥", "4 ⌘" (the number is the key). A chord that already carries the number ("⌥1", the fallback
 // without Input Monitoring) stays as is; the wish (⇧) and vocal (⌃⌥) badges are not option badges (no number).
 public func optionBadge(key: Int, symbol: String) -> String {
     guard (1...maxOptions).contains(key), !symbol.isEmpty, !symbol.hasSuffix(String(key)) else { return symbol }

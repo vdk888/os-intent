@@ -1,4 +1,4 @@
-"""`oi laya-train` and `oi laya-promote` (W13): head-only fine-tune of Laya on our moments + the gate.
+"""`oi laya-train` and `oi laya-promote`: head-only fine-tune of Laya on our moments + the gate.
 
 Dataset (design §4, "the form is the training format"): every moment of the TRAIN days becomes one laya-ft row
 {id, state (the rendered form state), question (the form's `choice` question over the candidate menu, exactly as

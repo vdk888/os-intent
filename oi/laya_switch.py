@@ -1,5 +1,5 @@
-"""The menu-bar Laya switch (the user 2026-10-21: « I need a toggle for Laya in the menubar »; Laya, ~3 GB, had not
-come back after a reboot and the 16 GB Mac crashed on RAM the same day).
+"""The menu-bar Laya switch (Laya, ~3 GB, may not come back after a reboot, and a 16 GB Mac can run out of RAM with
+it: a menu toggle turns it on or off).
 
 `oi laya-switch on|off|status [--json]`, run by oi-menubar (its « Laya » item) or by hand.
   off     settings.json `laya.enabled` = false, then stop the server: SIGTERM to the supervisor, through

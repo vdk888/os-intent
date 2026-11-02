@@ -1,7 +1,7 @@
 import Foundation
 import OISettings
 
-// W12: the permanent "Send a vocal to…" option. Pure parts only:
+// the permanent "Send a vocal to…" option. Pure parts only:
 // the option itself, the agent picker (pages + slot mapping), the flow state machine, the transcript
 // guard and the on-disk names; the AppKit/Speech side lives in oi-hud (VocalPanel.swift), the delivery
 // in python (`oi vocal-send`, oi/vocal.py).
@@ -113,7 +113,7 @@ public enum VocalPicker {
 }
 
 /// The vocal flow: idle → (vocal key) picking page 0 → (vocal key) next page … → (an agent) recording →
-/// (vocal key | Enter | time limit, `vocal.max_s`) send → idle. W20: a recogniser final result / error is NOT an end (oi-hud's
+/// (vocal key | Enter | time limit, `vocal.max_s`) send → idle. a recogniser final result / error is NOT an end (oi-hud's
 /// Dictation starts a new segment), so `.dictationEnded` only comes from the time limit or dictation unavailable. Esc, a click outside or the HUD going away
 /// cancel (nothing sent).
 public enum VocalState: Equatable, Sendable {
@@ -127,7 +127,7 @@ public enum VocalInput: Equatable, Sendable {
     case pick(VocalAgent)
     case enter
     case cancel            // Esc, click outside, the picker HUD dismissed (ttl, pointer, typing)
-    case dictationEnded    // time limit (W20: never a recogniser final / error)
+    case dictationEnded    // time limit (never a recogniser final / error)
     /// The user 2026-10-21 16:32Z: a text key in the recording panel (VocalKeyRule `.startTyping`). The microphone
     /// stops, the words already transcribed stay, the panel becomes a text field ("Saisie").
     case typed
@@ -191,8 +191,8 @@ public struct VocalFlow: Sendable {
     }
 }
 
-/// What a key pressed in the recording panel does (the user 2026-10-21 16:32Z: « si je commence à taper à la main ça
-/// arrête d'écouter »). The rule, the same in both modes for the panel's own keys:
+/// What a key pressed in the recording panel does (typing stops the listening). The
+/// rule, the same in both modes for the panel's own keys:
 /// - Return / keypad Enter sends, Esc cancels (listening AND typing);
 /// - listening: a key that writes something (a printable character, a dead key such as ^, Delete / forward Delete,
 ///   an arrow) switches to typing and is then given to the field; a ⌘ or ⌃ chord, Tab or a key that writes nothing
@@ -346,7 +346,7 @@ public enum VocalArm: Equatable, Sendable {
     }
 }
 
-/// Capsule width that follows its content (the user 20/10 16:40 Paris, "less text, more symbols"):
+/// Capsule width that follows its content (less text, more symbols):
 /// padding 6 + icon + (spacing 6 + label) + spacing 6 + badge (+ its 10 px padding) + padding 6,
 /// clamped to `capsuleMinWidth`...`capsuleMaxWidth`. `labelWidth` 0 = no label (wish / vocal: icon + key).
 public let capsuleMinWidth: Double = 72
@@ -357,7 +357,7 @@ public func capsuleWidth(iconSize: Double, labelWidth: Double, badgeWidth: Doubl
     return min(max(w.rounded(.up), capsuleMinWidth), capsuleMaxWidth)
 }
 
-/// The options the HUD draws: the predicted ones (≤ 4), the permanent wish option and (W12) the
+/// The options the HUD draws: the predicted ones (≤ 4), the permanent wish option and the
 /// permanent vocal option.
 public func optionsWithWishAndVocal(_ predicted: [HUDOption]) -> [HUDOption] {
     optionsWithWish(predicted.filter { $0.key != vocalOptionKey })

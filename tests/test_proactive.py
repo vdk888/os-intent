@@ -1,4 +1,4 @@
-"""W24: proactive — sensors -> relevance gate -> ring hint. Synthetic data only: fake sensors (fake Mail
+"""proactive — sensors -> relevance gate -> ring hint. Synthetic data only: fake sensors (fake Mail
 AppleScript, fake Telegram titles, temp folders, fake probe / feed files), fake HUD sender, fake Claude runner,
 temp OI_DATA_DIR, no wiki (conftest). Nothing real is read, launched, sent or called."""
 import io
@@ -1122,7 +1122,7 @@ def test_pack_gets_the_event_habit_and_recent_events():
     out = p.build({"app": "Mail", "events": lines, "event_habit": "After a mail event (client), the user usually: Mail 80%"}, cfg)
     assert "## After event\nAfter a mail event (client)" in out["text"]
     assert "Sam: NAV du fonds" in out["text"] and "details withheld" in out["text"]
-    assert "AcmeConseil" not in out["text"]                                       # the W25 leaks gate
+    assert "AcmeConseil" not in out["text"]                                       # the leaks gate
 
 
 def test_event_lines_withhold_private_details():
@@ -1187,7 +1187,7 @@ def test_importance_tier_from_local_context():
     assert imp(_mail_ev(NOW), no_prio, {}) is None                               # the class alone is not a verdict
     judged = dict(_other_mail(NOW), wiki={"important": True, "reason": "wiki", "page": "shared/people/x.md"})
     assert imp(judged, no_prio, {}) == "wiki"                                    # judge.py: the wiki said so
-    assert imp(_other_mail(NOW, who="Marc Durand"), cfg, prof) == "profile"    # W22 counterpart
+    assert imp(_other_mail(NOW, who="Marc Durand"), cfg, prof) == "profile"    # counterpart
     assert imp(_other_mail(NOW, subject="Point levée de fonds"), cfg, prof) == "profile"
     priv = dict(_other_mail(NOW, subject="Point levée de fonds"), private=True)
     assert imp(priv, cfg, prof) is None                                          # a private subject is never read

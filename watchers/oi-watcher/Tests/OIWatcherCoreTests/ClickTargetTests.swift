@@ -2,7 +2,7 @@ import Foundation
 import Testing
 @testable import OIWatcherCore
 
-// W16: which mouse-ups in Safari become click tokens (label only, page only, never a field).
+// which mouse-ups in Safari become click tokens (label only, page only, never a field).
 
 private typealias N = ClickTarget.Node
 

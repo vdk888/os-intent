@@ -77,15 +77,15 @@ enum Probe {
         s.hud = hs == .notLoaded ? nil : hs
         s.hudSocket = FileManager.default.fileExists(atPath: Paths.hudSocket.path)
 
-        s.live = LiveStatus.load(dataDir: Paths.data); s.liveNow = Date()   // W8
+        s.live = LiveStatus.load(dataDir: Paths.data); s.liveNow = Date()
         s.awVersion = awInfo()
         s.tokens = tokens(settings)
         s.laya = layaStatus(settings); s.layaBusy = layaBusy
 
         // The WATCHER's grants, as it reports them (not this app's own: macOS checks per app).
         s.watcherPerms = WatcherPerms.from(WatcherStatus.load())
-        s.hudAX = HUDAXStatus.load(dataDir: Paths.data)   // W16
-        s.onboarded = Onboarding.done(dataDir: Paths.data)   // W22
+        s.hudAX = HUDAXStatus.load(dataDir: Paths.data)
+        s.onboarded = Onboarding.done(dataDir: Paths.data)
 
         let installed = FileManager.default.fileExists(atPath: Paths.menubarPlist.path)
         var disabled: Bool?

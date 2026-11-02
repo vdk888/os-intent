@@ -1,18 +1,18 @@
-"""W22b: `oi onboard` is now an AGENTIC session — Claude reads the person's memory, wiki, mails and Notion; this module keeps the validators it relies on and the W22 deterministic path,
+"""`oi onboard` is now an AGENTIC session — Claude reads the person's memory, wiki, mails and Notion; this module keeps the validators it relies on and the deterministic path,
 `oi onboard --offline`, described below.
 
-W22: `oi onboard --offline` — a short conversation with Claude that gathers the person's context (opt-in sources,
+`oi onboard --offline` — a short conversation with Claude that gathers the person's context (opt-in sources,
 read-only, summarised then discarded) and writes `profile.yaml` + `starter_catalogue.yaml` (oi/starter.py) so the
 HUD can propose useful actions before any history exists.
 
 The user: an onboarding at first launch so the tool is useful from day one and
-shareable — "Lena, architect → SketchUp, 3D render requests to her cloud; us → our agent team". The Q&A also asks what deserves attention vs noise → attention priors in profile.yaml (W24's
+shareable — "Lena, architect → SketchUp, 3D render requests to her cloud; us → our agent team". The Q&A also asks what deserves attention vs noise → attention priors in profile.yaml ('s
 relevance gate starts from them).
 
 Flow (each step skippable; Ctrl-C = nothing written):
   1. the privacy statement, then each SOURCE with its privacy line and an explicit y/N (installed apps: always);
   2. the core QUESTIONS (typed, or dictated with the macOS dictation key), your agent team (the roster) as counterparts
-     when the person says so (the W25 roster: `oi.orchestrator.roster`);
+     when the person says so (the roster: `oi.orchestrator.roster`);
   2b. LIST AND CONFIRM (before any Claude prompt): every name read from the sources (apps, sites, Drive folders,
      Mail accounts / mailboxes, Notion) is listed and the person removes what must not go to Claude; only the
      confirmed names are ever sent (non-interactive: none; `--send-source-names` for a synthetic sources file);
@@ -23,7 +23,7 @@ Flow (each step skippable; Ctrl-C = nothing written):
      whose target or trigger app / host is what the person called noise (profile attention.noise) is dropped;
   5. both files written 0600 in the data dir (`--out DIR` elsewhere, `--dry-run` prints only).
 
-Privacy: every text sent to Claude goes through the W25 gate (`oi.orchestrator.pack.leaks` over
+Privacy: every text sent to Claude goes through the gate (`oi.orchestrator.pack.leaks` over
 settings.claude.local_only_domains): a line naming a local-only domain / client is dropped before the prompt, and
 any answer item that still names one is dropped after. Denylisted apps never appear. Source summaries keep NAMES
 and COUNTS only (app names, site hosts, hours, folder / mailbox names): never a title, a URL path, a file, a mail.
@@ -335,10 +335,10 @@ def read_source(key: str, deny: list[str]) -> dict:
     return {"why": "no connector on this Mac (stub)"}
 
 
-# ---- privacy gate (W25) ------------------------------------------------------------------------------------
+# ---- privacy gate ------------------------------------------------------------------------------------
 
 def gate_sources(src: dict, cfg: dict) -> dict:
-    """Drop every name / host naming a local-only domain or client (W25 pack.leaks)."""
+    """Drop every name / host naming a local-only domain or client (pack.leaks)."""
     from .orchestrator import pack
     terms = pack.deny_terms(cfg)
 
@@ -591,7 +591,21 @@ def _strs(v, n: int = 30, m: int = 80) -> list[str]:
 
 _EMAIL = re.compile(r"^[^@\s]+@[^@\s]+\.[a-z]{2,}$", re.I)
 _SCHEME = re.compile(r"^[a-z][a-z0-9+.-]{1,30}://\S*$", re.I)
-_BAD_SCHEMES = ("file", "javascript", "data", "http", "https", "ssh", "x-apple.systempreferences")
+# A deeplink must open the app it is offered for: its scheme is the app's own name (letters and digits, lowercased:
+# "SketchUp" -> sketchup://) or one listed here for that app. Anything else (another app's handler, file:, smb:, a
+# browser URL...) is dropped: the catalogue comes from a Claude run that read untrusted mail / notes.
+APP_SCHEMES: dict[str, tuple[str, ...]] = {
+    "Visual Studio Code": ("vscode",), "Zoom": ("zoommtg", "zoomus"), "Microsoft Teams": ("msteams",),
+    "Things3": ("things",), "Things 3": ("things",), "Apple Music": ("music",),
+}
+
+
+def deeplink_ok(app: str, deeplink: str) -> bool:
+    """`deeplink` is a custom-scheme URL that belongs to `app` (allowlist, see APP_SCHEMES)."""
+    if not _SCHEME.match(deeplink):
+        return False
+    scheme = deeplink.split(":", 1)[0].lower()
+    return scheme == re.sub(r"[^a-z0-9]", "", app.lower()) or scheme in APP_SCHEMES.get(app, ())
 
 
 def validate_item(it, *, apps: set[str], agents: set[str], cfg: dict, terms: list[str]) -> dict | None:
@@ -610,7 +624,7 @@ def validate_item(it, *, apps: set[str], agents: set[str], cfg: dict, terms: lis
             return None
         params["app"] = app
         dl = _s(p.get("deeplink"), 200)
-        if dl and _SCHEME.match(dl) and dl.split(":", 1)[0].lower() not in _BAD_SCHEMES:
+        if dl and deeplink_ok(app, dl):
             params["deeplink"] = dl
     elif prim == "url.open":
         href = starter.safe_href(_s(p.get("href") or p.get("url"), 300))
@@ -783,7 +797,7 @@ def validate_attention(a, clean: Callable = lambda v: v) -> dict:
 
 
 def attention_prior(profile: dict, source: str, who: str | None = None, default: float = 0.5) -> float:
-    """W24 entry point: the prior attention for a notification from `source` (and sender / class `who`)."""
+    """ entry point: the prior attention for a notification from `source` (and sender / class `who`)."""
     att = (profile or {}).get("attention") or {}
     w = (who or "").lower()
     if w:
@@ -829,7 +843,7 @@ def build(answers: dict, sources: dict, *, team: bool, use_claude: bool, cfg: di
           by: str = "oi onboard (W22)") -> tuple[dict, dict, dict]:
     """(profile, catalogue, meta). `apps_universe`: the app names an app.open may name (default: the source's).
     `confirmed`: the source names the person agreed to send (confirm_names); every other one stays local.
-    `raw`: an answer already produced ({profile, catalogue}: the W22b agent's files) — validated the same way,
+    `raw`: an answer already produced ({profile, catalogue}: the agent's files) — validated the same way,
     no synthesis call."""
     from .orchestrator import pack
     terms = pack.deny_terms(cfg)
@@ -901,7 +915,7 @@ def _source_count(k: str, v: dict) -> dict:
 def write(profile: dict, catalogue: dict, out_dir: Path | None = None) -> tuple[Path, Path]:
     d = out_dir or paths.data_dir()
     pp, cp = d / starter.PROFILE, d / starter.CATALOGUE
-    head = "# Written by `oi onboard` (W22). On this Mac only; no document content. Re-run to rebuild.\n"
+    head = "# Written by `oi onboard`. On this Mac only; no document content. Re-run to rebuild.\n"
     for p, data in ((pp, profile), (cp, catalogue)):
         if out_dir is None:
             starter._write_private(p, head + yaml.safe_dump(data, allow_unicode=True, sort_keys=False, width=120))
@@ -941,7 +955,7 @@ def converse(io: IO, *, preset: dict | None = None, use_claude: bool = True, ask
     roster_ok = has_roster if has_roster is not None else bool(_agents_for(True))
     team = preset.get("team")
     if team is None:
-        team = roster_ok and io.yes("Do you work with your agent team (the roster: Atlas, Nova, Orion, Lyra, …)?")
+        team = roster_ok and io.yes("Do you work with your agent team (the roster: Atlas, Nova, Orion, …)?")
     confirmed: set[tuple[str, str]] = set()
     if use_claude:
         cfg = ca.claude_settings()
@@ -973,7 +987,7 @@ def summary_lines(catalogue: dict) -> list[str]:
 
 
 def cmd_onboard(a: argparse.Namespace) -> int:
-    if not (a.offline or a.no_claude or a.sources_file):      # W22b: the agentic session (oi/onboard_agent)
+    if not (a.offline or a.no_claude or a.sources_file):      # the agentic session (oi/onboard_agent)
         from .onboard_agent import agent
         preset = yaml.safe_load(Path(a.answers).read_text(encoding="utf-8")) or {} if a.answers else {}
         return agent.session(IO(), model=a.model, dry_run=a.dry_run, preset=preset,
@@ -1014,10 +1028,10 @@ def cmd_onboard(a: argparse.Namespace) -> int:
 
 
 def register(sub) -> None:
-    so = sub.add_parser("onboard", help="W22b: Claude reads your memory, wiki, mail, Notion -> profile.yaml + "
-                                       "starter_catalogue.yaml (--offline: the W22 local conversation)")
+    so = sub.add_parser("onboard", help="Claude reads your memory, wiki, mail, Notion -> profile.yaml + "
+                                       "starter_catalogue.yaml (--offline: the local conversation)")
     so.add_argument("--offline", action="store_true",
-                    help="W22 deterministic path: questionnaire + names-only sources (+ one synthesis call unless "
+                    help=" deterministic path: questionnaire + names-only sources (+ one synthesis call unless "
                          "--no-claude); no agent")
     so.add_argument("--model", help="the agent's model (default: settings onboarding.model, else sonnet)")
     so.add_argument("--answers", help="YAML {answers: {job: …}, sources: [memory, wiki, mail, notion, activity, …], "
@@ -1031,7 +1045,7 @@ def register(sub) -> None:
     so.add_argument("--out", help="write the two files here instead of the data dir")
     so.add_argument("--dry-run", action="store_true", help="print the catalogue; write nothing")
     so.set_defaults(func=cmd_onboard)
-    sp = sub.add_parser("starter-preview", help="W22: what the starter catalogue proposes in a context (labels only)")
+    sp = sub.add_parser("starter-preview", help="what the starter catalogue proposes in a context (labels only)")
     sp.add_argument("--app")
     sp.add_argument("--host")
     sp.add_argument("--hour", type=int, help="local hour (default now)")

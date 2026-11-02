@@ -1,6 +1,6 @@
 import Foundation
 
-/// W17: which files are screenshots, where macOS saves them, which clipboard content is an image.
+/// which files are screenshots, where macOS saves them, which clipboard content is an image.
 /// Pure logic (no AppKit, no file system), unit-tested; ScreenshotSource does the watching.
 public enum ShotFiles {
     /// macOS names: "Screenshot 2026-10-20 at 18.13.03.png" (en), "Capture d’écran 2026-10-20 à 18.13.03.png"
@@ -80,7 +80,7 @@ public struct ChangeCounter: Sendable {
 }
 
 extension AWEvent {
-    /// W17: {"kind": "shot", "src": "file" | "clipboard", "path": <image>}.
+    /// {"kind": "shot", "src": "file" | "clipboard", "path": <image>}.
     public static func shot(at t: Date, path: String, src: String) -> AWEvent {
         AWEvent(timestamp: t, data: ["kind": .string("shot"), "src": .string(src), "path": .string(path)])
     }

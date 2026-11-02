@@ -1,4 +1,4 @@
-"""W13 subcommands: laya-serve, replay, laya-train, laya-promote, improve-report; laya-bench, laya-report.
+""" subcommands: laya-serve, replay, laya-train, laya-promote, improve-report; laya-bench, laya-report.
 Privacy: nothing personal is printed; reports (local, 0600) live under <data dir>/reports/."""
 from __future__ import annotations
 

@@ -1,6 +1,6 @@
 import Foundation
 
-// W18 wish → action: the wish panel's text is resolved to an action by the live driver (`oi live`,
+// wish → action: the wish panel's text is resolved to an action by the live driver (`oi live`,
 // oi/intent_resolve.py) while the user types (a preview "→ Telegram", local tier only, debounced 150 ms) and on
 // Enter (all tiers: local → Laya → haiku). Pure parts: the protocol additions, the stored action of a resolved
 // wish, and the panel's resolve state machine. The AppKit side is oi-hud/WishResolveController.swift.
@@ -30,7 +30,7 @@ public struct Resolution: Codable, Equatable, Sendable {
     public var token: String?
     public var tier: String?
     public var target: String?
-    /// W16: a `confirm` for a page action carries its element ("button:squash-and-merge"): the HUD issues
+    /// a `confirm` for a page action carries its element ("button:squash-and-merge"): the HUD issues
     /// the press ticket (PressGuard) when the user confirms, so oi-hud may AXPress it.
     public var press: String?
 
@@ -90,7 +90,7 @@ private struct RawW18: Decodable {
     let confirm: Bool?
 }
 
-/// The W18 commands; nil for any other command name (the caller then reports `unknown_command`).
+/// The commands; nil for any other command name (the caller then reports `unknown_command`).
 public func decodeW18Command(_ cmd: String, _ line: Data) throws -> W18Command? {
     switch cmd {
     case "resolver":
@@ -117,14 +117,14 @@ public enum WishResolveEffect: Equatable, Sendable {
     case hint(String?)
     /// Show `note` for `holdMs`, then save the wish (with `action` when it was executed) and close the panel.
     case finish(action: WishAction?, note: String, holdMs: Int)
-    /// W18 follow-up: the panel closed (Esc, click outside) with request `id` still open: the resolver drops it.
+    /// follow-up: the panel closed (Esc, click outside) with request `id` still open: the resolver drops it.
     case cancel(id: Int)
 }
 
 /// typing --(debounced text)--> preview request; Enter --> resolving(id) --> done | noted | failed (finish) or
 /// confirm --> confirming(id, text) --(⇧ or Enter, same text)--> resolving(id, confirmed) --> finish.
 /// Editing the text while confirming drops the confirm. Without a resolver connection `enter` returns nil:
-/// the panel saves the wish as before (W6).
+/// the panel saves the wish as before.
 public struct WishResolveMachine: Sendable {
     public enum Phase: Equatable, Sendable { case typing, resolving(id: Int, text: String), confirming(id: Int, text: String) }
 
@@ -137,7 +137,7 @@ public struct WishResolveMachine: Sendable {
 
     public mutating func reset() { phase = .typing; text = ""; lastPreviewId = 0 }
 
-    /// W18 follow-up: the panel closes. A request still resolving (or waiting for its confirm) is cancelled,
+    /// follow-up: the panel closes. A request still resolving (or waiting for its confirm) is cancelled,
     /// so the resolver never executes it; then the machine resets.
     public mutating func closed() -> [WishResolveEffect] {
         defer { reset() }

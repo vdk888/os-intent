@@ -1,11 +1,10 @@
-"""W25: the HUD orchestrator — the runtime model's identity and context.
+"""the HUD orchestrator — the runtime model's identity and context.
 
-The user: "il faut absolument qu'il ait un contexte … tu es orchestrateur …
-il faut qu'il ait des skills … un pipeline de RAG … tu es un peu le chief of staff, tu vas dispatcher, tu connais
-tout le monde".
+Goal: the runtime model has a context and an identity: an orchestrator, a kind of chief of staff, with skills
+and a RAG pipeline, that knows the team and dispatches.
 
 Every runtime Claude prompt (glide, label enrichment, summaries, mail drafts, wish resolution, screenshot notes)
-is rendered by oi.claude_actions.render_prompt, which hands it to `wrap()`:
+is rendered by oi.claude_actions.render_prompt, which hands it to `wrap`:
 
     system.md (chief of staff on the user's Mac; proposes, never acts without their key) + the fleet roster
     + the skill fragments of that prompt (skills/*.md)
@@ -14,7 +13,7 @@ is rendered by oi.claude_actions.render_prompt, which hands it to `wrap()`:
     + the task prompt itself (last: its "Answer with JSON only" stays the final instruction).
 
 Everything goes on the `claude -p` stdin (never argv). settings.json `claude.orchestrator` (default true) = false
--> the bare task prompts of W14-W23. Routing helpers: `route(text)` = the roster agent whose topics fit a wish best
+-> the bare task prompts. Routing helpers: `route(text)` = the roster agent whose topics fit a wish best
 ("demande à quelqu'un le NAV du fonds" -> orion).
 """
 from __future__ import annotations
@@ -38,7 +37,7 @@ SKILLS_FOR = {                      # task prompt (oi/prompts/<name>.md) -> skil
     "shot_actions": ("dispatch", "mail", "files"),   # screenshot -> content actions
 }
 NO_WRAP = ("check",                 # the harmless auth probe stays bare
-           "onboard", "onboard_followups")   # W22: maybe not the user; the roster is passed in the prompt itself
+           "onboard", "onboard_followups")   # maybe not the user; the roster is passed in the prompt itself
 _lock = threading.Lock()
 _cache: dict[str, tuple[float, object]] = {}
 

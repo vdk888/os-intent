@@ -1,8 +1,8 @@
 import AppKit
 import HUDCore
-import OISettings   // W16: PageLabel
+import OISettings   // PageLabel
 
-/// W18 wish → action, the AppKit side: owns the resolver connection (`oi live` registers with
+/// wish → action, the AppKit side: owns the resolver connection (`oi live` registers with
 /// `{"cmd":"resolver"}`), debounces the live preview (150 ms), sends `resolve` requests to that connection ONLY
 /// (the wish text never goes to any other client), applies the resolutions to the wish panel (preview, confirm
 /// line, "noted", done) and watches the ⇧ tap that confirms an irreversible action. Main thread only.
@@ -18,10 +18,10 @@ final class WishResolveController {
     private var pendingAction: WishAction?
     private var shiftMonitor: Any?
     private var shiftTap = TapDetector()
-    /// W16: the page element of the action awaiting confirmation; the user's confirm issues its press ticket.
+    /// the page element of the action awaiting confirmation; the user's confirm issues its press ticket.
     private var pendingPress: String?
     var onConfirmPress: ((String) -> Void)?
-    /// W18 follow-up: a cancelled confirm (Esc while "Working…") revokes the press ticket it issued.
+    /// follow-up: a cancelled confirm (Esc while "Working…") revokes the press ticket it issued.
     var onCancelPress: ((String) -> Void)?
     private var issuedPress: (target: String, id: Int)?
 
@@ -36,7 +36,7 @@ final class WishResolveController {
             log("wish resolver registered")
         case .resolution(let r):
             let effects = machine.receive(r)
-            if r.state == .confirm, machine.isConfirming { pendingPress = PageLabel.target(r.press) != nil ? r.press : nil }   // W16
+            if r.state == .confirm, machine.isConfirming { pendingPress = PageLabel.target(r.press) != nil ? r.press : nil }
             apply(effects)
         case .debugWish(let text, let app, let enter, let confirm):
             conn.send(.ok)
@@ -71,7 +71,7 @@ final class WishResolveController {
 
     /// The panel closed (saved, Esc, click outside). The pending action stays until the save takes it.
     func closed() {
-        apply(machine.closed())                    // W18 follow-up: Esc while "Working…" cancels it
+        apply(machine.closed())                    // follow-up: Esc while "Working…" cancels it
         pendingPress = nil
         cancelTimers()
         stopShiftWatch()
@@ -109,8 +109,8 @@ final class WishResolveController {
             switch e {
             case .send(let req):
                 guard let r = resolver, !r.isClosed else { continue }
-                if req.confirmed, let p = pendingPress {                                         // W16: ticket first
-                    pendingPress = nil; onConfirmPress?(p); issuedPress = (p, req.id)            // W18 follow-up
+                if req.confirmed, let p = pendingPress {                                         // ticket first
+                    pendingPress = nil; onConfirmPress?(p); issuedPress = (p, req.id)            // follow-up
                 }
                 r.send(.resolve(req))
                 if req.final {
@@ -131,7 +131,7 @@ final class WishResolveController {
                 panel?.setHint(s)
                 if machine.isConfirming { timeout?.invalidate(); startShiftWatch() } else { stopShiftWatch() }
             case .finish(let action, let note, let holdMs):
-                issuedPress = nil                                  // W18 follow-up: the resolver answered
+                issuedPress = nil                                  // follow-up: the resolver answered
                 timeout?.invalidate()
                 stopShiftWatch()
                 pendingAction = action

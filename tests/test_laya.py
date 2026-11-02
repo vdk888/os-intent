@@ -1,4 +1,4 @@
-"""W13: the Laya layer — client, memory rule, supervisor, shadow mode in `oi live`, replay metrics,
+"""the Laya layer — client, memory rule, supervisor, shadow mode in `oi live`, replay metrics,
 split discipline, dataset/training plumbing, promotion gate, improvement report.
 Synthetic data only; the Laya server is a fake HTTP server or a fake client (no model is ever loaded)."""
 import io
@@ -630,7 +630,7 @@ def test_improve_report_counts(syn_rows, data_dir):
     assert a["pressed"] == 1 and a["dismissed"] == {"esc": 1} and a["laya_rows"] == 2
     assert a["laya_errors"] == {"timeout": 1} and a["laya_latency_p50"] == 80 and a["laya_agree_top1"] == 1
     assert r["forms"]["C"]["dropped"] == {"cooldown": 1}
-    assert a["numbering"] == {"1": 2}                    # W21b: rows without the field are rank-numbered (1)
+    assert a["numbering"] == {"1": 2}                    # rows without the field are rank-numbered (1)
     assert sum(f["wishes"] for f in r["forms"].values()) >= 1
     assert sum(f["moments"] for f in r["forms"].values()) > 100
     path = improve.write(r)

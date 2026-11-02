@@ -11,7 +11,7 @@ FORMS_DIR = Path(__file__).parent
 REQUIRED = ["form_id", "_version", "status", "trigger", "state_template", "question",
             "candidates", "options", "gate", "display", "promotion"]
 STATUSES = {"draft", "shadow", "live", "retired"}
-EXPAND_KINDS = {"activate", "url", "title", "space", "key", "click"}   # W16: click
+EXPAND_KINDS = {"activate", "url", "title", "space", "key", "click"}   # click
 FORBIDDEN_KEYS = {"yes", "no", "true", "false"}  # checkpoints follow the key word (design §0)
 GATE_KEYS = {"temperature", "show_min_p", "none_max_p", "max_show", "cooldown_s"}
 PROMOTION_KEYS = {"beats_markov_at3_by", "ece_max", "min_test_moments"}

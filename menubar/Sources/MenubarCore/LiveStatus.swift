@@ -1,6 +1,6 @@
 import Foundation
 
-/// W8: `<data dir>/status/oi-live.json`, rewritten every loop (~2 s) by `oi live`.
+/// `<data dir>/status/oi-live.json`, rewritten every loop (~2 s) by `oi live`.
 /// Only counts and timestamps (never a title, URL or label).
 public struct LiveStatus: Decodable, Equatable, Sendable {
     public var ts: String

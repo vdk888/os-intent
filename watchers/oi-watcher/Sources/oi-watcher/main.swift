@@ -4,15 +4,15 @@ import OIWatcherCore
 
 let usage = """
 usage: oi-watcher [--once | --dry-run [--shots-only] | --aw-selftest | --help]
-  (no flag)      run: Space changes, ⌘ chords, Safari front tab, Safari page clicks (W16), screenshots (W17), new files of proactive.files.folders → ActivityWatch buckets
+  (no flag)      run: Space changes, ⌘ chords, Safari front tab, Safari page clicks, screenshots, new files of proactive.files.folders → ActivityWatch buckets
   --once         print the three capabilities' status (no prompts) and exit
   --dry-run      run, but print events to stdout instead of posting them
   --aw-selftest  create/post/read/delete a throwaway bucket on aw-server and exit
-  --shots-only   W17: run only the screenshot source (tests: with --dry-run and $OI_SHOT_DIR)
+  --shots-only run only the screenshot source (tests: with --dry-run and $OI_SHOT_DIR)
 """
 
 let args = Set(CommandLine.arguments.dropFirst())
-let known: Set<String> = ["--once", "--dry-run", "--aw-selftest", "--help", "-h", "--shots-only"]   // W17: --shots-only
+let known: Set<String> = ["--once", "--dry-run", "--aw-selftest", "--help", "-h", "--shots-only"]   // --shots-only
 if !args.isSubset(of: known) || args.contains("--help") || args.contains("-h") {
     print(usage)
     exit(args.isSubset(of: known) ? 0 : 2)
@@ -46,7 +46,7 @@ if args.contains("--once") {
     print("key   : Input Monitoring \(k.preflight ? "granted" : "NOT granted"); tap \(k.created ? "created" : "NOT created")\(k.created ? "" : " — enable oi-watcher in Privacy & Security → Input Monitoring")")
     print("ax    : Accessibility \(AXIsProcessTrusted() ? "granted" : "NOT granted") (optional: cheap Safari window-title check)")
     print("safari: Automation → Safari: \(SafariSource.probeAutomation())")
-    print("shots : folder \(ScreenshotSource.currentFolder() == NSHomeDirectory() + "/Desktop" ? "~/Desktop" : "custom")\(ScreenshotSource.thumbnailDelaysFiles() ? " (floating thumbnail ON: files land ~5 s late; clipboard shots are instant)" : ""); clipboard poll 1 s")   // W17
+    print("shots : folder \(ScreenshotSource.currentFolder() == NSHomeDirectory() + "/Desktop" ? "~/Desktop" : "custom")\(ScreenshotSource.thumbnailDelaysFiles() ? " (floating thumbnail ON: files land ~5 s late; clipboard shots are instant)" : ""); clipboard poll 1 s")
     print("files : \(FolderSource.configured().map { "\($0.count) folder(s) (proactive.files.folders)" } ?? "source off (proactive.sources.files)")")
     print("aw    : \(aw.map { $0.0 == 200 ? "aw-server reachable at 127.0.0.1:5600" : "aw-server HTTP \($0.0)" } ?? "aw-server UNREACHABLE at 127.0.0.1:5600")")
     for kind in BucketKind.allCases { print("bucket: \(kind.bucketID(hostname: hostname))") }
@@ -66,10 +66,10 @@ MainActor.assumeIsolated {
     let space = SpaceSource(sink: sink)
     let key = KeySource(sink: sink)
     let safari = SafariSource(sink: sink)
-    let click = ClickSource(sink: sink)     // W16: page button / link clicks in Safari
+    let click = ClickSource(sink: sink)     // page button / link clicks in Safari
     let gate = PauseGate(sink: sink)
     gate.start()            // settings.json `paused`, re-read every 5 s
-    let shots = ScreenshotSource(sink: sink)   // W17: screenshots (folder + clipboard)
+    let shots = ScreenshotSource(sink: sink)   // screenshots (folder + clipboard)
     shots.start()
     if args.contains("--shots-only") {
         withExtendedLifetime((shots, gate)) { app.run() }

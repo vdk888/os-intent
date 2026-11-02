@@ -1,4 +1,4 @@
-"""W16: page actions — detection table, label matching, click tokens, live wiring, press via oi-hud.
+"""page actions — detection table, label matching, click tokens, live wiring, press via oi-hud.
 Synthetic pages only; no real Safari, no real oi-hud (fake page client, fake unix socket)."""
 import io
 import json
@@ -275,7 +275,7 @@ def test_page_client_round_trip():
     shutil.rmtree(d, ignore_errors=True)
 
 
-# ---- W18 wish -> action: page buttons in the wish catalogue ------------------------------------------------
+# ---- wish -> action: page buttons in the wish catalogue ------------------------------------------------
 
 def _wish_engine():
     from test_intent_resolve import engine
@@ -298,7 +298,7 @@ def test_wish_items_from_the_page():
 
 
 def test_wish_merge_resolves_to_the_page_button_and_runs_on_enter():
-    """No W18 ⇧ confirm: Enter runs the press, which asks the outward gate's panel (oi.live._wish_exec)."""
+    """No ⇧ confirm: Enter runs the press, which asks the outward gate's panel (oi.live._wish_exec)."""
     eng = _wish_engine()
     eng.live_context = lambda: {"app": "Safari", "host": GH, "desk": 1}
     for text in ("merge", "fusionne la PR", "squash and merge"):
@@ -310,7 +310,7 @@ def test_wish_merge_resolves_to_the_page_button_and_runs_on_enter():
 
 
 def test_cancelled_merge_wish_never_presses():
-    """W18 follow-up: Esc while the merge wish is resolving drops it on the engine: never executed."""
+    """ follow-up: Esc while the merge wish is resolving drops it on the engine: never executed."""
     eng = _wish_engine()
     eng.live_context = lambda: {"app": "Safari", "host": GH, "desk": 1}
     eng.on_event({"event": "cancel", "id": 8}, lambda m: None)

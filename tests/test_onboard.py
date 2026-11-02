@@ -1,4 +1,4 @@
-"""W22: `oi onboard` (sources, privacy gate, fake Claude, validation, files) and the starter catalogue in
+"""`oi onboard` (sources, privacy gate, fake Claude, validation, files) and the starter catalogue in
 `oi live` (fit, blend + decay, picks / wishes, day-one show). Synthetic data only; Claude is always a fake."""
 import io
 import json
@@ -155,6 +155,8 @@ def test_validate_item_rules():
     assert ok["params"]["deeplink"].startswith("sketchup://")
     assert _v({"label": "x", "primitive": "app.open", "params": {"app": "Photoshop"}}) is None        # not installed
     assert _v({"label": "x", "primitive": "app.open", "params": {"app": "Mail", "deeplink": "file:///etc"}})["params"] == {"app": "Mail"}
+    for bad in ("tg://resolve?domain=x", "vscode://file/etc", "smb://host/share", "sketchup://x", "https://mail.example"):
+        assert _v({"label": "x", "primitive": "app.open", "params": {"app": "Mail", "deeplink": bad}})["params"] == {"app": "Mail"}
     assert _v({"label": "x", "primitive": "shell.run", "params": {}}) is None
     assert _v({"label": "x", "primitive": "agent.ask", "params": {"to": "bob"}}) is None
     assert _v({"label": "Ask Orion", "primitive": "agent.ask", "params": {"to": "orion"}})["params"] == {"to": "orion"}
@@ -213,7 +215,7 @@ def test_build_with_fake_claude_gates_prompt_and_validates():
                                        confirmed=onboard.source_names(_sources()))
     p = fake.prompts[0]
     assert "acme" not in p.lower() and "Villa Rossi" in p and "archdaily.com" in p
-    assert "HUD orchestrator on the user" not in p                        # W22 prompts are not the user-wrapped
+    assert "HUD orchestrator on the user" not in p                        # prompts are not the user-wrapped
     assert meta["claude"] == "ok" and meta["dropped_items"] == 1 and meta["withheld_answer_parts"] == 1
     assert onboard.MIN_ITEMS <= len(cat["items"]) <= onboard.MAX_ITEMS
     assert cat["items"][0]["source"] == "claude"
@@ -548,3 +550,10 @@ def test_merge_drops_local_sites_claude_already_covers():
            {"id": "site-other", "label": "other.example", "primitive": "url.open", "params": {"href": "https://other.example/"},
             "trigger": {}, "prior": 0.2, "source": "activity"}]
     assert [i["id"] for i in onboard.merge_catalogue(c, loc)] == ["farm", "site-other"]
+
+
+def test_deeplink_allowlist_is_bound_to_the_app():
+    assert onboard.deeplink_ok("SketchUp", "sketchup://open?file=x")
+    assert onboard.deeplink_ok("Visual Studio Code", "vscode://file/x") and onboard.deeplink_ok("Zoom", "zoommtg://x")
+    assert not onboard.deeplink_ok("SketchUp", "vscode://file/x")            # another app's handler
+    assert not onboard.deeplink_ok("Mail", "file:///etc") and not onboard.deeplink_ok("Mail", "mail")

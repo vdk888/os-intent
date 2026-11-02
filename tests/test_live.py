@@ -1,4 +1,4 @@
-"""W8: `oi live` — gate, context change, HUD JSON, executor, hud-log -> tokens, status file.
+"""`oi live` — gate, context change, HUD JSON, executor, hud-log -> tokens, status file.
 Synthetic data only; no real `open`/`osascript` (fake runner), no real socket (fake sender)."""
 import io
 import json
@@ -50,7 +50,7 @@ def test_gate_nothing_history_cooldown_pause():
 
 
 def test_w20_hint_cooldown_split():
-    """W20: a hint has its own cooldown (gate.hint_cooldown_s, default 8); a full show keeps cooldown_s (20)."""
+    """a hint has its own cooldown (gate.hint_cooldown_s, default 8); a full show keeps cooldown_s (20)."""
     menu = [opt("a", 0.5)]
     assert settings.GATE_DEFAULTS["hint_cooldown_s"] == 8 and settings.GATE_DEFAULTS["cooldown_s"] == 20
     assert _gate(menu, last_show_at=93.0, hint=True) == ([], "cooldown")     # 7 s < 8 s
@@ -75,14 +75,14 @@ def test_w20_hint_cooldown_setting_roundtrip(data_dir):
 def test_settings_gate_and_live_sections(data_dir):
     s = settings.load()
     assert s["gate"] == settings.GATE_DEFAULTS and s["live"] == {"poll_s": 2, "rebuild_s": 600, "retrain_s": 600,
-                                                                  **settings.LIVE_LAYA_DEFAULTS}   # W13 keys
+                                                                  **settings.LIVE_LAYA_DEFAULTS}   # keys
     data_dir.mkdir(parents=True, exist_ok=True)
     (data_dir / "settings.json").write_text(json.dumps(
         {"gate": {"show_min_p": 0.3, "max_show": 2.0, "cooldown_s": "x", "bogus": 1}, "live": {"poll_s": -1}}))
     s = settings.load()
     assert s["gate"]["show_min_p"] == 0.3 and s["gate"]["max_show"] == 2 and isinstance(s["gate"]["max_show"], int)
     assert s["gate"]["cooldown_s"] == 20 and "bogus" not in s["gate"] and s["live"]["poll_s"] == 2
-    assert s["gate"]["ttl_ms"] == 6000                    # W19 default (W9: 15000)
+    assert s["gate"]["ttl_ms"] == 6000                    # default (15000)
     (data_dir / "settings.json").write_text(json.dumps(
         {"gate": {"ttl_ms": 20000.0, "hide_on_pointer_travel": True}}))   # the HUD's bool key is ignored here
     s = settings.load()
@@ -136,7 +136,7 @@ def test_hud_payload_labels_and_icons():
 
 
 def test_hud_hint_mapping():
-    """W11: app.open -> the app's window, url.open -> Safari's window, space.move -> edge bar."""
+    """app.open -> the app's window, url.open -> Safari's window, space.move -> edge bar."""
     h = live.hud_hint
     assert h(opt("a", 0.3, token="activate:Telegram", app="Telegram"), {}) == {"kind": "window", "app": "Telegram"}
     assert h(opt("u", 0.3, prim="url.open", token="url:notion.so/x", url="notion.so/x"), {}) == {"kind": "window", "app": "Safari"}
@@ -277,19 +277,19 @@ def test_evaluate_show_press_execute_log(rows, model):
     st = settings.load()
     r = lv.evaluate(st, now=1000.0)
     assert r["reason"] == "show" and 1 <= len(r["payload"]["options"]) <= 3
-    assert r["payload"]["ttl_ms"] == 6000           # W19: settings gate.ttl_ms default (W9: 15000)
-    assert r["payload"]["mode"] == "hint" and r["payload"]["hint_ttl_ms"] == 4000   # W19: a hint by default (W20: 4000 ms)
+    assert r["payload"]["ttl_ms"] == 6000           # settings gate.ttl_ms default (15000)
+    assert r["payload"]["mode"] == "hint" and r["payload"]["hint_ttl_ms"] == 4000   # a hint by default (4000 ms)
     lv.wait_replies(5)
     logged = normalise.read_hud_log(live.now_iso(1000.0)[:10])
     assert len(logged) == 1
     row = logged[0]
     assert set(row) == {"ts", "form", "state_digest", "options", "shown", "outcome", "executed", "latency_ms",
-                        "show_mode", "expanded", "numbering"}          # W19, W21b
-    assert row["numbering"] == 2                                       # W21b: options numbered by key
+                        "show_mode", "expanded", "numbering"}
+    assert row["numbering"] == 2                                       # options numbered by key
     assert row["show_mode"] == "hint" and row["expanded"] is False
     assert row["shown"] is True and row["outcome"] == "pressed:2" and row["executed"] == row["options"][0]["token"]
     assert len(row["state_digest"]) == 40 and row["options"][0]["key"] == 2
-    # W11: the hint each shown option carried (kind[:dir] only, never a title or url)
+    # the hint each shown option carried (kind[:dir] only, never a title or url)
     sent = r["payload"]["options"]
     assert [o.get("hint") for o in row["options"]] == [
         (h["kind"] + (f":{h['dir']}" if h.get("dir") else "")) if (h := so.get("hint")) else None for so in sent]
@@ -304,7 +304,7 @@ def test_evaluate_show_press_execute_log(rows, model):
 
 
 def test_show_ttl_from_settings_every_show(rows, model, data_dir):
-    """W9: gate.ttl_ms is read for every show (no restart), clamped to 1.5-60 s."""
+    """gate.ttl_ms is read for every show (no restart), clamped to 1.5-60 s."""
     pre = _showable(rows, model)
     lv, _ = _live(pre, model, {"event": "dismissed", "reason": "ttl"})
     paths.ensure_private_root()
@@ -409,7 +409,7 @@ def test_status_file_and_counters(rows, model):
     st = json.loads((paths.status_dir() / "oi-live.json").read_text())
     assert set(st) == {"ts", "state", "pid", "dry_run", "shows_today", "pressed_today", "last_show_ts",
                        "model_trained_at", "moments_today", "context"}
-    assert set(st["context"]) == {"app", "host", "desk"}          # W12: never a title or a URL path
+    assert set(st["context"]) == {"app", "host", "desk"}          # never a title or a URL path
     assert (st["state"], st["shows_today"], st["pressed_today"], st["moments_today"]) == ("running", 1, 0, 1)
     assert st["last_show_ts"] == live.now_iso(1000.0)
     assert oct((paths.status_dir() / "oi-live.json").stat().st_mode & 0o777) == "0o600"
@@ -420,7 +420,7 @@ def test_status_file_and_counters(rows, model):
     assert (lv2.shows_today, lv2.pressed_today, lv2.last_show_ts) == (1, 0, live.now_iso(1000.0))
 
 
-# ---- W10 summon ---------------------------------------------------------------------------
+# ---- summon ---------------------------------------------------------------------------
 
 def test_summon_options_no_threshold_but_max_show():
     menu = [opt("a", 0.01, token="activate:A"), opt("b", 0.05, token="activate:B"),
@@ -441,12 +441,12 @@ def test_summon_bypasses_gate_and_marks_row(rows, model):
     r = lv.summon(now=1002.0)                                       # ... a summon does not
     assert r["reason"] == "show" and 1 <= len(r["payload"]["options"]) <= CFG["max_show"]
     assert lv.sender.sent[-1] == r["payload"] and r["payload"]["ttl_ms"] == 6000
-    assert "mode" not in r["payload"]                       # W19: a summon is always the full cross
+    assert "mode" not in r["payload"]                       # a summon is always the full cross
     lv.wait_replies(5)
     logged = normalise.read_hud_log(live.now_iso(1000.0)[:10])
     summoned = [x for x in logged if x.get("summoned")]
     assert len(summoned) == 1 and summoned[0]["outcome"] == "dismissed:ttl" and summoned[0]["shown"] is True
-    assert summoned[0]["show_mode"] == "full" and "expanded" not in summoned[0]   # W19
+    assert summoned[0]["show_mode"] == "full" and "expanded" not in summoned[0]
     assert all("summoned" not in x for x in logged if x is not summoned[0])   # gate rows unchanged
 
 
@@ -500,7 +500,7 @@ def test_summon_listener_round_trip_on_a_fake_socket(tmp_path):
 
 
 def test_click_press_keeps_via_and_vocal_rows_are_not_moments(rows, model):
-    """the user 16:5x: a capsule clicked replies pressed + "via":"click"; the hud-log row keeps it. W12: the
+    """the user 16:5x: a capsule clicked replies pressed + "via":"click"; the hud-log row keeps it. the
     vocal rows of the same hud-log never count as moments or shows."""
     pre = _showable(rows, model)
     lv, runner = _live(pre, model, {"event": "pressed", "key": 2, "via": "click"})
@@ -518,10 +518,10 @@ def test_click_press_keeps_via_and_vocal_rows_are_not_moments(rows, model):
     assert toks == ["hud:shown", "hud:pressed:2", "vocal:nova"]
 
 
-# ---- W19: automatic shows as hints -----------------------------------------------------
+# ---- automatic shows as hints -----------------------------------------------------
 
 def test_w19_hud_settings_defaults_and_clamp(data_dir):
-    assert settings.load()["hud"] == {"auto_mode": "hint", "hint_ttl_ms": 4000, "fill_order": ["ctrl", "option", "cmd", "fn"]}   # W20: 2500 -> 4000
+    assert settings.load()["hud"] == {"auto_mode": "hint", "hint_ttl_ms": 4000, "fill_order": ["ctrl", "option", "cmd", "fn"]}   # 2500 -> 4000
     data_dir.mkdir(parents=True, exist_ok=True)
     for raw, want in (({"auto_mode": "full", "hint_ttl_ms": 4000}, ("full", 4000)),
                       ({"auto_mode": "off"}, ("off", 4000)),

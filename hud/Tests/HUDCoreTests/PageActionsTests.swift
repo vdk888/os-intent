@@ -4,7 +4,7 @@ import Testing
 @testable import HUDCore
 import OISettings
 
-// W16: page actions — snapshot JSON, the socket commands, re-find, confirm, press guard, hints.
+// page actions — snapshot JSON, the socket commands, re-find, confirm, press guard, hints.
 
 private func obj(_ line: String) -> [String: Any] {
     (try! JSONSerialization.jsonObject(with: Data(line.utf8))) as! [String: Any]

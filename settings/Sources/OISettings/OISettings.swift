@@ -4,13 +4,13 @@ import Foundation
 /// `{ "paused": false, "hud_enabled": true, "denylist_apps": [..], "repo_dir": "...",
 ///    "hotkeys": {"option_1": {"modifiers": ["option"], "key": "1"}, ...}, "wish": {"locale": "fr-FR"},
 ///    "gate": {"show_min_p": 0.15, ...}, "live": {"poll_s": 2, ...},
-///    "hud": {"slots": {"fn": "left", ...}} (W10), "vocal_recipients": {...} (W12), "updated_at": ISO-8601 }`
-/// `vocal_recipients` (W12) belongs to the python sender (`oi vocal-send`): kept as raw JSON and
+///    "hud": {"slots": {"fn": "left", ...}}, "vocal_recipients": {...}, "updated_at": ISO-8601 }`
+/// `vocal_recipients` belongs to the python sender (`oi vocal-send`): kept as raw JSON and
 /// written back unchanged.
-/// `gate` / `live` belong to the python live driver (`oi live`, W8): kept as flat numbers (and, since
-/// W9, booleans; since W13, strings and null, e.g. `live.predictor`, `live.laya_checkpoint`) and
+/// `gate` / `live` belong to the python live driver (`oi live`): kept as flat numbers (and, since
+///, booleans;, strings and null, e.g. `live.predictor`, `live.laya_checkpoint`) and
 /// written back unchanged, so a menu toggle never drops them. oi-hud reads two
-/// `gate` keys itself (W9): `ttl_ms` (client default) and `hide_on_pointer_travel`.
+/// `gate` keys itself: `ttl_ms` (client default) and `hide_on_pointer_travel`.
 public struct OISettings: Codable, Equatable, Sendable {
     public static let defaultDenylist = ["Passwords", "Keychain Access", "1Password"]
     public static let defaultRepoDir = NSString(string: "~/os-intent").expandingTildeInPath
@@ -25,16 +25,16 @@ public struct OISettings: Codable, Equatable, Sendable {
     public var live: [String: GateValue]?
     public var hud: HUDSettings
     public var vocalRecipients: JSONValue?
-    /// W14: `claude` {enabled, enrich, local_only_domains, debug} belongs to the python side
+    /// `claude` {enabled, enrich, local_only_domains, debug} belongs to the python side
     /// (oi/claude_actions.py): kept as raw JSON and written back unchanged.
     public var claude: JSONValue?
-    /// W17: `shots` {enabled, clipboard, fallback_contact, ttl_ms} and `contact_map` {chat title: agent}
+    /// `shots` {enabled, clipboard, fallback_contact, ttl_ms} and `contact_map` {chat title: agent}
     /// belong to the python side (oi/shots.py, oi/contact.py): kept as raw JSON and written back unchanged.
     /// oi-watcher reads `shots.enabled` / `shots.clipboard` itself (`shotFlags`).
     public var shots: JSONValue?
     public var contactMap: JSONValue?
     public var updatedAt: String?
-    /// W26: top-level keys this struct does not know (a newer python key, a hand edit): kept as read
+    /// top-level keys this struct does not know (a newer python key, a hand edit): kept as read
     /// and written back unchanged, so a save from the menu bar never drops them.
     public var extra: [String: JSONValue] = [:]
 
@@ -51,7 +51,7 @@ public struct OISettings: Codable, Equatable, Sendable {
         case paused, hudEnabled = "hud_enabled", denylistApps = "denylist_apps"
         case repoDir = "repo_dir", hotkeys, wish, gate, live, hud, updatedAt = "updated_at"
         case vocalRecipients = "vocal_recipients", claude
-        case shots, contactMap = "contact_map"   // W17
+        case shots, contactMap = "contact_map"
     }
 
     /// Tolerant: a missing or wrongly typed key falls back to its default.
@@ -69,10 +69,10 @@ public struct OISettings: Codable, Equatable, Sendable {
         hud = (try? c.decodeIfPresent(HUDSettings.self, forKey: .hud)) ?? d.hud
         vocalRecipients = (try? c.decodeIfPresent(JSONValue.self, forKey: .vocalRecipients)) ?? nil
         claude = (try? c.decodeIfPresent(JSONValue.self, forKey: .claude)) ?? nil
-        shots = (try? c.decodeIfPresent(JSONValue.self, forKey: .shots)) ?? nil            // W17
-        contactMap = (try? c.decodeIfPresent(JSONValue.self, forKey: .contactMap)) ?? nil  // W17
+        shots = (try? c.decodeIfPresent(JSONValue.self, forKey: .shots)) ?? nil
+        contactMap = (try? c.decodeIfPresent(JSONValue.self, forKey: .contactMap)) ?? nil
         updatedAt = try? c.decodeIfPresent(String.self, forKey: .updatedAt)
-        extra = JSONValue.unknownKeys(decoder, known: Set(CodingKeys.allCases.map(\.rawValue)))   // W26
+        extra = JSONValue.unknownKeys(decoder, known: Set(CodingKeys.allCases.map(\.rawValue)))
     }
 
     public func encode(to encoder: Encoder) throws {
@@ -85,17 +85,17 @@ public struct OISettings: Codable, Equatable, Sendable {
         try c.encodeIfPresent(vocalRecipients, forKey: .vocalRecipients); try c.encodeIfPresent(claude, forKey: .claude)
         try c.encodeIfPresent(shots, forKey: .shots); try c.encodeIfPresent(contactMap, forKey: .contactMap)
         try c.encodeIfPresent(updatedAt, forKey: .updatedAt)
-        try JSONValue.encodeExtra(extra, to: encoder)   // W26
+        try JSONValue.encodeExtra(extra, to: encoder)
     }
 
-    /// W9: `gate.ttl_ms` — how long the HUD stays (default 6000 since W19, was 15000; clamped 1500-60000).
+    /// `gate.ttl_ms` — how long the HUD stays (default 6000, was 15000; clamped 1500-60000).
     public static let defaultTTLms = 6000
     public var gateTTLms: Int {
         guard let v = gate?["ttl_ms"]?.number, v >= 0 else { return OISettings.defaultTTLms }
         return min(max(Int(v), 1500), 60_000)
     }
 
-    /// W9: when fast pointer travel hides the HUD. ON by default, but never in the first
+    /// when fast pointer travel hides the HUD. ON by default, but never in the first
     /// `pointer_grace_ms` (2000) after a show, and then only on SUSTAINED fast travel
     /// (≥ `pointer_fast_px_s` 1200 px/s for ≥ `pointer_fast_ms` 250 ms): slow or short moves never hide it.
     public var pointerHide: PointerHide {
@@ -109,8 +109,7 @@ public struct OISettings: Codable, Equatable, Sendable {
                            fastMs: num("pointer_fast_ms", d.fastMs))
     }
 
-    /// settings.json `vocal.max_s` (the user 2026-10-21 15:35Z, "il faut augmenter les 60 secondes max parce que ça me
-    /// coupe au milieu"): how long a "Send a vocal to…" recording may run before it sends by itself. Default 300 s,
+    /// settings.json `vocal.max_s` (60 s used to cut a long voice note mid-sentence): how long a "Send a vocal to…" recording may run before it sends by itself. Default 300 s,
     /// clamped 15-900; missing or wrongly typed = the default. `vocal` is otherwise python's (`vocal.shot_offer`) and
     /// kept unchanged in `extra`.
     public static let defaultVocalMaxS: Double = 300
@@ -122,7 +121,7 @@ public struct OISettings: Codable, Equatable, Sendable {
         return min(max(n, OISettings.vocalMaxSRange.lowerBound), OISettings.vocalMaxSRange.upperBound)
     }
 
-    /// W17: oi-watcher's screenshot sources: (files, clipboard images). `shots.enabled` false turns
+    /// oi-watcher's screenshot sources: (files, clipboard images). `shots.enabled` false turns
     /// both off; `shots.clipboard` false only the clipboard. Missing or wrongly typed = on.
     public var shotFlags: (files: Bool, clipboard: Bool) {
         guard case .object(let o)? = shots else { return (true, true) }
@@ -164,7 +163,7 @@ public struct PointerHide: Equatable, Sendable {
     }
 }
 
-/// One flat value of `gate` / `live`: a number, (W9) a boolean, or (W13) a string or null — the
+/// One flat value of `gate` / `live`: a number, a boolean, or a string or null — the
 /// Laya layer's `live.predictor` / `live.laya_url` / `live.laya_checkpoint`, written by `oi laya-promote`; or an
 /// object (the outward gate's per-class `gate.outward` {"vocal": false, …}: kept, never a reason to drop `gate`).
 public indirect enum GateValue: Codable, Equatable, Sendable, ExpressibleByFloatLiteral, ExpressibleByIntegerLiteral,
@@ -205,7 +204,7 @@ public indirect enum GateValue: Codable, Equatable, Sendable, ExpressibleByFloat
     }
 }
 
-/// settings.json `wish`: the wish quick action (W6). `locale` = the on-device dictation
+/// settings.json `wish`: the wish quick action. `locale` = the on-device dictation
 /// language (BCP-47, default "fr-FR"; oi-hud falls back to "en-US" when it has no on-device model).
 public struct WishSettings: Codable, Equatable, Sendable {
     public static let defaultLocale = "fr-FR"
@@ -307,7 +306,7 @@ public final class SettingsCache: @unchecked Sendable {
 }
 
 /// Any JSON value, kept as read and written back unchanged (settings keys owned by the python side,
-/// W12 `vocal_recipients`).
+/// `vocal_recipients`).
 public indirect enum JSONValue: Codable, Equatable, Sendable {
     case null, bool(Bool), number(Double), string(String), array([JSONValue]), object([String: JSONValue])
 
@@ -333,7 +332,7 @@ public indirect enum JSONValue: Codable, Equatable, Sendable {
         }
     }
 
-    /// W26: any-name coding key, for the keys a typed struct does not know.
+    /// any-name coding key, for the keys a typed struct does not know.
     struct AnyKey: CodingKey {
         var stringValue: String; var intValue: Int? { nil }
         init(stringValue: String) { self.stringValue = stringValue }

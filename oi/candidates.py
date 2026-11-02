@@ -62,7 +62,7 @@ def token_values(token: str) -> tuple[str, dict] | None:
     if kind == "key":
         ch = g["chord"]
         return kind, {"chord": ch, "id": "".join(_CHORD.get(c, c) for c in ch)}
-    if kind == "click":   # W16: a learned page button / link -> form C press_button (ui.press)
+    if kind == "click":   # a learned page button / link -> form C press_button (ui.press)
         return kind, {"host": g["host"], "role": g["role"], "slug": g["slug"],
                       "label": g["slug"].replace("-", " "), "id": f"{g['role']}-{g['slug']}"}
     return None
@@ -99,7 +99,7 @@ def build(form: dict, moment: dict, model=None, *, k: int | None = None,
         o = {"key": key, "criteria": _criteria(_fill(spec["criteria"], vals)),
              "primitive": spec.get("primitive"), "params": _fill(spec.get("params") or {}, vals),
              "token": token, "p_markov": p}
-        if spec.get("pin"):          # W14: a summon lists it first (form B mail options, no Markov token)
+        if spec.get("pin"):          # a summon lists it first (form B mail options, no Markov token)
             o["pin"] = True
         if key == NOTHING or is_executable(o):
             out[key] = o

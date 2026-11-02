@@ -1,6 +1,6 @@
 import Foundation
 
-/// W17: screenshot → "send to who the user is talking with". `oi live` drives it over the socket:
+/// screenshot → "send to who the user is talking with". `oi live` drives it over the socket:
 ///  - `{"cmd":"shot_show","options":[…],"ttl_ms":15000}` (the agent picker after "→ other"): `show` with
 ///    `"live":"shot"` (same validation, same wish + vocal options, not rate-limited, kept while typing);
 ///  - `{"cmd":"shot_note","title":"→ Atlas · Claude note","text":"…","placeholder":"…"}`: the editable note
@@ -46,7 +46,7 @@ private struct RawShotNote: Decodable {
     let placeholder: String?
 }
 
-/// W17 decoding of `shot_show` / `shot_note` / `debug_note` (called by `decodeCommand`).
+/// decoding of `shot_show` / `shot_note` / `debug_note` (called by `decodeCommand`).
 public func decodeShotCommand(_ cmd: String, _ line: Data) throws -> HUDCommand {
     switch cmd {
     case "shot_show":

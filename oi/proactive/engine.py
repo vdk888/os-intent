@@ -1,4 +1,4 @@
-"""W24: the proactive engine run by `oi live`.
+"""the proactive engine run by `oi live`.
 
 Sensor thread (`start`): every second, each ENABLED source whose `poll_s` is due is polled (nothing while logging is
 paused); its rows (appear AND gone: sensors.py) are appended to events/<day>.jsonl and queued. The driver's loop
@@ -8,8 +8,8 @@ the events whose state is live NOW). Each new live event goes through the releva
 becomes ONE hint through `Live.dispatch` (keys, glide, long-press, hud-log as any show; the row carries `proactive`
 {source, class, p, priority, important, tier, hist_n, wiki_page?}). ADDENDUM 2: an IMPORTANT event
 (relevance.importance: a priority, the wiki judge — judge.py, run here on the sensor thread before the row is stored —,
-a W22 profile match) OPENS the full cross with its actions, no window change or
-pointer move needed; any other one is the W19 dots with `"marker":"ring"`. Any send those actions lead to goes
+a profile match) OPENS the full cross with its actions, no window change or
+pointer move needed; any other one is the dots with `"marker":"ring"`. Any send those actions lead to goes
 through the outward validation gate (`outward_gate` below marks them; oi.live asks oi/gate.py's panel at the pick —
 reply / forward / draft / the chat — and "Ask <agent>" at its vocal send: pick -> gate -> validate). A gated event
 = one hud-log row {"kind": "proactive", source, class, reason, p, …}. Never a name, a subject or a path in a log.
@@ -440,7 +440,7 @@ def live_now_iso(t: float) -> str:
 # ---- `oi proactive-probe` ----------------------------------------------------------------------------------
 
 def cmd_probe(args) -> int:
-    """W24: poll the chosen sources twice (`--wait` s apart: prime, then new events), print the event TOKENS only
+    """poll the chosen sources twice (`--wait` s apart: prime, then new events), print the event TOKENS only
     (never a name, subject or path), write nothing (no events file, no hint). For install checks."""
     from .config import SOURCES
     cfg = proactive_settings(_raw_settings())
@@ -470,7 +470,7 @@ def cmd_probe(args) -> int:
 
 
 def register(sub) -> None:
-    p = sub.add_parser("proactive-probe", help="W24: poll proactive sensors once (tokens only; nothing written or shown)")
+    p = sub.add_parser("proactive-probe", help="poll proactive sensors once (tokens only; nothing written or shown)")
     p.add_argument("--source", action="append", help="mail | agents | files | cockpit | metrics | markets (default: enabled)")
     p.add_argument("--wait", type=float, default=0.0, help="seconds between the priming poll and the reported one")
     p.set_defaults(func=cmd_probe)

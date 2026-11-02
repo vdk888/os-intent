@@ -1,6 +1,6 @@
-"""W25: the warm, in-process wiki search the orchestrator's context pack uses (budget ≤ 300 ms p50).
+"""the warm, in-process wiki search the orchestrator's context pack uses (budget ≤ 300 ms p50).
 
-The user: "un pipeline de RAG … la requête du wiki, très rapidement".
+Goal: a RAG pipeline that queries the wiki very fast.
 
 Same index and same hybrid scoring as tools/wiki/wiki_search.py (nomic-embed-text through the local Ollama +
 SQLite FTS5, 0.7 vector / 0.3 keyword, min-max normalised): its functions are imported (`search_keyword`,
@@ -276,7 +276,7 @@ def default(repo_dir: str | None = None) -> WarmWiki | None:
 
 
 def snippets(query: str, k: int = 3, repo_dir: str | None = None) -> list[str] | None:
-    """W14's "title: description" lines from the warm index; None when the warm index is not available."""
+    """'s "title: description" lines from the warm index; None when the warm index is not available."""
     w = default(repo_dir)
     if w is None:
         return None
@@ -297,7 +297,7 @@ BENCH_QUERIES = ["fund NAV this month", "reply to a client about an audit", "Lin
 
 def _main(argv: list[str] | None = None) -> int:
     import argparse
-    ap = argparse.ArgumentParser(prog="python -m oi.rag", description="warm wiki search (W25)")
+    ap = argparse.ArgumentParser(prog="python -m oi.rag", description="warm wiki search")
     sub = ap.add_subparsers(dest="cmd", required=True)
     b = sub.add_parser("bench", help="cold load + 10 queries: p50 / p95 latency (prints titles only with --show)")
     b.add_argument("--repo-dir", default=None)

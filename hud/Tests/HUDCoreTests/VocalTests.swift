@@ -3,7 +3,7 @@ import Testing
 @testable import HUDCore
 import OISettings
 
-// W12 "Send a vocal to…"
+// "Send a vocal to…"
 
 @Suite struct VocalPickerTests {
     @Test func pagesAndSlotMapping() {
@@ -20,10 +20,10 @@ import OISettings
     }
 
     @Test func optionsSitAtTheFixedPlacesOfTheirModifier() {
-        // defaults (W21): option 1 fn left, 2 ⌃ top, 3 ⌥ right, 4 ⌘ bottom
+        // defaults: option 1 fn left, 2 ⌃ top, 3 ⌥ right, 4 ⌘ bottom
         let o = VocalPicker.options(page: 0, hotkeys: .defaults)
         #expect(o.map(\.key) == [1, 2, 3, 4])
-        #expect(o.map(\.label) == ["Atlas", "Nova", "Orion", "Lyra"])            // W21: the page reads in key order
+        #expect(o.map(\.label) == ["Atlas", "Nova", "Orion", "Lyra"])            // the page reads in key order
         #expect(o.map(\.icon) == ["initial:A", "initial:N", "initial:O", "initial:L"])
         let pos = FixedSlots.positions(hotkeys: .defaults, slots: HUDSettings.defaultSlots)
         #expect(pos[o.first { $0.label == "Atlas" }!.key] == .left)       // fn left
@@ -149,7 +149,7 @@ import OISettings
         #expect(!hotkeyPlan(optionKeys: [1], hotkeys: .defaults).regs.contains { $0.id == vocalHotkeyID })
     }
 
-    @Test func vocalToCommand() throws {   // W22
+    @Test func vocalToCommand() throws {
         #expect(try decodeCommand(Data(#"{"cmd":"vocal_to","pick":"nova"}"#.utf8)) == .vocalTo(slug: "nova"))
         #expect(throws: CommandError.unknownAgent("bob")) { try decodeCommand(Data(#"{"cmd":"vocal_to","pick":"bob"}"#.utf8)) }
         #expect(throws: CommandError.unknownAgent("")) { try decodeCommand(Data(#"{"cmd":"vocal_to"}"#.utf8)) }
@@ -177,7 +177,7 @@ import OISettings
                          radius: 80, capsuleHeight: 32) { _ in 100 }
 
     @Test func hitTestPerCapsuleShape() {
-        #expect(capsuleHit((0, -80), slots: slots) == 2)              // ⌃ top (W21: 2)
+        #expect(capsuleHit((0, -80), slots: slots) == 2)              // ⌃ top (2)
         #expect(capsuleHit((80, 0), slots: slots) == 3)               // ⌥ right (side = max(80, 66))
         #expect(capsuleHit((0, 80), slots: slots) == 4)               // ⌘ bottom
         #expect(capsuleHit((-80, 0), slots: slots) == 1)              // fn left
@@ -208,7 +208,6 @@ import OISettings
     }
 }
 
-// W20
 @Suite struct DictationSegmentsTests {
     @Test func segmentsAreConcatenatedWithASpace() {
         var d = DictationSegments()
@@ -234,7 +233,7 @@ import OISettings
         #expect(d.text.hasPrefix("mot0 mot1") && d.text.hasSuffix("mot19"))
     }
     @Test func emptyFailuresBackOffButNeverGiveUp() {
-        // W21 (W20 review note): after 5 empty failures in a row the restarts wait 250, 500, 1000, then 2000 ms
+        // (review note): after 5 empty failures in a row the restarts wait 250, 500, 1000, then 2000 ms
         // (capped) — for as long as the dictation runs: speech after a long silence is still transcribed
         var d = DictationSegments()
         _ = d.handle(partial: "déjà dit", final: true, failed: false)

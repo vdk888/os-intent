@@ -2,7 +2,7 @@ import Foundation
 import Testing
 @testable import HUDCore
 
-// W21b: the hint dots follow the pointer while drawn; the developed cross does not.
+// the hint dots follow the pointer while drawn; the developed cross does not.
 
 @Suite struct W21bHintFollowTests {
     let screen = (minX: 0.0, minY: 0.0, maxX: 1000.0, maxY: 800.0)
@@ -103,7 +103,7 @@ import Testing
     }
 }
 
-// W21 review note (b): glide sub-ring keys (oi/glide.py: i+1 per child ring) live INSIDE their parent's ring.
+// review note (b): glide sub-ring keys (oi/glide.py: i+1 per child ring) live INSIDE their parent's ring.
 @Suite struct W21bGlideChildKeyTests {
     func slot(_ k: Int, _ x: Double, _ y: Double) -> HUDSlot { HUDSlot(key: k, x: x, y: y, width: 60, height: 30, position: nil) }
 

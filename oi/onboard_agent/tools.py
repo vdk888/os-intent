@@ -1,7 +1,7 @@
-"""W22b: the CLI tools the onboarding agent runs through its only allowed Bash commands — `oi-mail` and
+"""the CLI tools the onboarding agent runs through its only allowed Bash commands — `oi-mail` and
 `oi-notion`, argument-free wrappers written by agent.py for the sources the person opted into:
 
-  python -m oi.onboard_agent.tools mail   --config <tools dir>/config.json
+  python -m oi.onboard_agent.tools mail --config <tools dir>/config.json
   python -m oi.onboard_agent.tools notion --config <tools dir>/config.json
 
 Each reads its source (readers.py: local-only removed first), writes Markdown pages into the agent's context folder

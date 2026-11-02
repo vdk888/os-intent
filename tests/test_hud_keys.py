@@ -1,4 +1,4 @@
-"""W21: the option number is the key (fn 1, ⌃ 2, ⌥ 3, ⌘ 4), filled in `hud.fill_order`, stable per context."""
+"""the option number is the key (fn 1, ⌃ 2, ⌥ 3, ⌘ 4), filled in `hud.fill_order`, stable per context."""
 import io
 import json
 import threading
@@ -125,12 +125,12 @@ def test_screenshot_offer_and_picker_use_the_keys():
     assert [o["key"] for o in opts] == [2, 3, 4, 1] and keys[1] == "more"   # "More" on fn
 
 
-# ---- W21b: hud-log rows say how they number their options -------------------------------------------------------
+# ---- hud-log rows say how they number their options -------------------------------------------------------
 
 def test_hud_numbering_defaults_to_rank_for_old_rows():
     assert normalise.HUD_NUMBERING == 2
     assert normalise.hud_numbering({"numbering": 2}) == 2
-    assert normalise.hud_numbering({}) == 1                       # rows written before W21
+    assert normalise.hud_numbering({}) == 1                       # rows written before
     assert normalise.hud_numbering({"numbering": True}) == 1      # junk -> the old numbering
     assert normalise.hud_numbering({"numbering": "2"}) == 1
 
@@ -144,7 +144,7 @@ def test_every_live_row_carries_the_key_numbering(data_dir):
 
 
 def test_improve_report_splits_rows_by_numbering(data_dir):
-    hud = [{"ts": "2026-10-19T09:00:00.000Z", "form": "A", "shown": True, "outcome": "pressed:1"},          # pre-W21
+    hud = [{"ts": "2026-10-19T09:00:00.000Z", "form": "A", "shown": True, "outcome": "pressed:1"},          # before key numbering
            {"ts": "2026-10-20T19:00:00.000Z", "form": "A", "shown": True, "outcome": "pressed:4", "numbering": 2}]
     r = improve.report(["2026-10-20"], reader=lambda d: [], hud_reader=lambda d: hud)
     assert r["forms"]["A"]["numbering"] == {"1": 1, "2": 1}

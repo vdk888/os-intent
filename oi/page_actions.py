@@ -1,7 +1,6 @@
-"""W16: page actions — the HUD proposes clicking the button that matters on the current Safari page.
+"""page actions — the HUD proposes clicking the button that matters on the current Safari page.
 
-The user 2026-10-20 ~17:50 Paris, on a GitHub PR page: "i would expect an action proposed to click on squash and
-merge". Three parts, all local:
+Example: on a GitHub PR page, propose the action that clicks "Squash and merge". Three parts, all local:
 
 1. READ (oi-hud, Accessibility): `{"cmd":"page"}` on hud.sock answers `{"event":"page","trusted",
    "app","host","elements":[{"role":"button|link","label","slug","frame":[x,y,w,h]}]}` — the AXButton /
@@ -16,11 +15,11 @@ merge". Three parts, all local:
    re-find the element by role + label slug in the front page at press time and AXPress it; the page
    changed / element gone / other host -> nothing pressed + a toast. oi-hud only presses with a fresh
    ticket from the user's own tap on that option (HUDCore PressGuard). One tap picks; a press that is not known
-   read-only then waits for the outward gate's panel (oi/gate.py, the ONE confirmation, the W16 two-tap
+   read-only then waits for the outward gate's panel (oi/gate.py, the ONE confirmation, the two-tap
    is gone); an irreversible label (merge, delete, send, pay, publish, close, ...) presses only with the ticket
    that panel's validate issues.
 
-The option's target hint (W11 overlay) is the button's own frame: `{"kind":"element","rect":[x,y,w,h]}`
+The option's target hint (overlay) is the button's own frame: `{"kind":"element","rect":[x,y,w,h]}`
 (CG global coordinates, only for drawing; the press never uses it).
 """
 from __future__ import annotations
@@ -193,7 +192,7 @@ def find(page: dict, role: str, slug: str) -> dict | None:
 
 
 def _host_of(ctx: dict) -> str | None:
-    """The page host of a moment context (`url` host/slug) or of a W18 wish context (`host`)."""
+    """The page host of a moment context (`url` host/slug) or of a wish context (`host`)."""
     url = ctx.get("url") if isinstance(ctx.get("url"), str) else None
     if url:
         return url.split("/", 1)[0].lower()
@@ -271,9 +270,9 @@ def valid_params(params: dict) -> bool:
             and bool(_TARGET.match(f"{params['role']}:{params['slug']}")))
 
 
-# ---- W18 wish -> action: the page's buttons as catalogue actions -----------------------------------------
+# ---- wish -> action: the page's buttons as catalogue actions -----------------------------------------
 
-# Spoken / typed phrasings of the rule verbs (FR + EN), matched by W18's local tier (exact / prefix / fuzzy).
+# Spoken / typed phrasings of the rule verbs (FR + EN), matched by's local tier (exact / prefix / fuzzy).
 WISH_PHRASES: dict[str, tuple[str, ...]] = {
     "merge": ("merge", "fusionne", "fusionner", "merge la pr", "fusionne la pr", "merge the pr", "merge pr"),
     "approve": ("approve", "approuve", "approuver", "approve the pr", "approuve la pr"),
@@ -284,7 +283,7 @@ MAX_WISH_BUTTONS = 40
 
 
 def wish_items(page: dict | None, ctx: dict) -> list[dict]:
-    """W18 catalogue items (kind "page", primitive ui.press) for the page on screen: its rule-based key buttons
+    """ catalogue items (kind "page", primitive ui.press) for the page on screen: its rule-based key buttons
     (best first: higher `uses`) and up to MAX_WISH_BUTTONS other buttons. A wish press always asks the outward gate's
     panel (oi.live `_wish_exec`): its validate is the one confirmation and issues oi-hud's press ticket."""
     from .aliases import norm

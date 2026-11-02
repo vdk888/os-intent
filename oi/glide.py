@@ -1,28 +1,28 @@
-"""W15: hold ⌥⌘ + glide + dwell = a Claude-enriched sub-ring marking menu (the driver side).
+"""hold ⌥⌘ + glide + dwell = a Claude-enriched sub-ring marking menu (the driver side).
 
-The user: "when i hold option + cmd ... i can move the mouse pointer to an option,
-and if i stay it triggers context enrichment with claude, so i can chain clicks in relevant context, low distance".
+Goal: hold option + cmd, move the pointer to an option and stay on it: Claude enriches it with follow-ups, so
+clicks chain in context over a short distance.
 
 oi-hud owns the gesture (hold ≥ 250 ms, hover, dwell `hud.dwell_ms`, sub-ring layout, release). It talks to the
 show's owner (`oi live`, on the show's own connection):
-  {"event":"glide","phase":"start"}   -> `GlideSession.prefetch()`: ONE batched haiku call that returns the
+  {"event":"glide","phase":"start"} -> `GlideSession.prefetch`: ONE batched haiku call that returns the
                                          follow-ups of every visible option, cached per context key;
-  {"event":"expand","path":[2,1]}     -> `GlideSession.expand()`: from the cache (or waits for the running prefetch),
+  {"event":"expand","path":[2,1]}     -> `GlideSession.expand`: from the cache (or waits for the running prefetch),
                                          else one haiku call (8 s timeout) for that option; answered with the socket
                                          command {"cmd":"subring","path":[2,1],"options":[{key,label,icon,action}]}
                                          (0 options = a leaf: Claude off or unavailable, nothing that maps);
-  {"event":"pressed","key":2,"path":[2,1],"via":"glide","glide":{...}}  -> `GlideSession.execute()`.
+  {"event":"pressed","key":2,"path":[2,1],"via":"glide","glide":{...}} -> `GlideSession.execute`.
 
-Context is read at REQUEST time (the W14 note): the Mail selection when the prefetch or the expand happens (never
+Context is read at REQUEST time (the note): the Mail selection when the prefetch or the expand happens (never
 an earlier one), and a mail action runs only on the mail it was built for (message id checked by AppleScript).
 
 Follow-ups map to what the driver can execute: the catalogue primitives (app.open of an installed app, url.open of
-a site seen today, space.move, mail.reply / mail.forward), the W14 Claude actions (draft:mail.reply /
-draft:mail.forward, summarise) and a message to a fleet agent (vocal:<slug>:<text>, the W12 path). Anything else
-becomes "Ask Atlas: <text>" (the W12 path to atlas: a local inject). Nothing runs on hover: only on a release or a
+a site seen today, space.move, mail.reply / mail.forward), the Claude actions (draft:mail.reply /
+draft:mail.forward, summarise) and a message to a fleet agent (vocal:<slug>:<text>, the path). Anything else
+becomes "Ask Atlas: <text>" (the path to atlas: a local inject). Nothing runs on hover: only on a release or a
 click.
 
-W23 drill-down: each level acts INSIDE / ON its parent (oi/drill.py): the parent's scope picks local
+ drill-down: each level acts INSIDE / ON its parent (oi/drill.py): the parent's scope picks local
 providers (Finder files / folders, Telegram chats, Music playlists, a site's pages, the mail's reply / forward),
 ranked by history (Markov on the parent token + the logged glide choices); Claude (haiku) only orders / labels /
 fills the generative scopes (a fleet agent, the mail) from those items + the scope's forms, with the path chain;
@@ -82,7 +82,7 @@ ICONS = {"url.open": "sf:safari", "mail.reply": "sf:arrowshape.turn.up.left",
          "mail.forward": "sf:arrowshape.turn.up.right", "draft": "sf:sparkles", "summarise": "sf:text.alignleft",
          "space+": "sf:arrow.right.square", "space-": "sf:arrow.left.square", "ask": "initial:R",
          "back": "sf:arrow.uturn.backward", "dispatch": "sf:arrow.triangle.branch"}
-DISPATCH_FORM = "dispatch:<agent> or dispatch:<agent>:<message>"   # W25: hand over to the roster agent
+DISPATCH_FORM = "dispatch:<agent> or dispatch:<agent>:<message>"   # hand over to the roster agent
 _SPACE = re.compile(r"^(?:[+-]1|=\d{1,2})$")
 # context cards
 WHAT_MAX = 90
@@ -139,7 +139,7 @@ def resolve(fu, parent: dict, env: dict, strict: bool = False) -> dict | None:
     unknown, not allowed here (an app not installed, a site not seen today) or malformed. None = nothing usable.
     Node: {label, icon, action (the id logged: "app.open", "draft:mail.reply", "vocal:nova", "ask"...), kind
     ("primitive" | "draft" | "summary" | "vocal" | "ask"), primitive, params, token, claude}.
-    W23 `strict`: no "Ask Atlas" fallback (an unknown / not-allowed action is dropped; only an explicit ask: stays);
+ `strict`: no "Ask Atlas" fallback (an unknown / not-allowed action is dropped; only an explicit ask: stays);
     "back" = switch back to the app in front at the show (env["front_app"])."""
     if not isinstance(fu, dict):
         return None
@@ -179,7 +179,7 @@ def resolve(fu, parent: dict, env: dict, strict: bool = False) -> dict | None:
     elif action == "summarise" and parent.get("primitive") in ("url.open", "app.open") and env.get("claude_ok"):
         return _node(label, ICONS["summarise"], "summarise", "summary", parent["primitive"],
                      dict(parent.get("params") or {}), parent.get("token"), claude=True)
-    elif kind == "dispatch":           # W25: "pass me to X" (arm) / hand this over to X (a confirmed send)
+    elif kind == "dispatch":           # "pass me to X" (arm) / hand this over to X (a confirmed send)
         slug, _, msg = arg.partition(":")
         slug, msg = slug.strip().lower(), _text(msg, TEXT_MAX)
         name = env.get("agents", {}).get(slug)
@@ -207,7 +207,7 @@ def resolve(fu, parent: dict, env: dict, strict: bool = False) -> dict | None:
 
 
 def resolve_list(raw, parent: dict, env: dict, *, scope: dict | None = None, items: dict | None = None) -> list[dict]:
-    """2-4 nodes (duplicates and unusable entries dropped; more than 4 cut). W23 with a `scope`: an action may name
+    """2-4 nodes (duplicates and unusable entries dropped; more than 4 cut). with a `scope`: an action may name
     one of `items` (id -> provider node; the model may relabel it), anything else is resolved strictly and must pass
     the scope rejector (drill.in_scope)."""
     out, seen = [], set()
@@ -239,7 +239,7 @@ def scoped(fu, parent: dict, env: dict, scope: dict, items: dict) -> dict | None
         return n
     n = resolve(fu, parent, env, strict=True)
     if n and n["action"].startswith("dispatch:") and scope["kind"] not in ("leaf", "space"):
-        return finish(n)                                      # W25: a hand-over is in scope anywhere (like "back")
+        return finish(n)                                      # a hand-over is in scope anywhere (like "back")
     if not n or not drill.in_scope(n, scope):
         return None
     if n["action"] == "back" and scope.get("app") == env.get("front_app"):
@@ -248,7 +248,7 @@ def scoped(fu, parent: dict, env: dict, scope: dict, items: dict) -> dict | None
 
 
 def finish(n: dict) -> dict:
-    """W23: the node's id (a send needs no confirm child: the outward gate's panel confirms it)."""
+    """the node's id (a send needs no confirm child: the outward gate's panel confirms it)."""
     n.setdefault("id", drill.node_id(n))
     return n
 
@@ -542,12 +542,12 @@ ITEM_KINDS = {"folder.open": "folder", "file.open": "file", "telegram.chat": "ch
 
 
 def option_block(k: int, chain: str, items: list[dict], scope: dict, agents: dict) -> tuple[str, dict]:
-    """W23: one option of the prompt: its path, its allowed items (ids i1..), its forms -> (text, id -> item)."""
+    """one option of the prompt: its path, its allowed items (ids i1..), its forms -> (text, id -> item)."""
     ids = {f"i{i + 1}": n for i, n in enumerate(items)}
     listed = "; ".join(f'{i} = {ITEM_KINDS.get(n.get("primitive"), "item")} "{n["label"]}"' for i, n in ids.items())
     fs = drill.forms(scope)
     if scope["kind"] not in ("leaf", "space"):
-        fs = fs + [DISPATCH_FORM]                             # W25: the agent from the roster by topic
+        fs = fs + [DISPATCH_FORM]                             # the agent from the roster by topic
     if "vocal:<agent>:<message>" in fs:
         names = ", ".join(f"{s} ({n})" for s, n in agents.items() if s != "atlas") or "(none)"
         fs = [f if f != "vocal:<agent>:<message>" else f"vocal:<agent>:<message> (agents: {names})" for f in fs]
@@ -557,18 +557,18 @@ def option_block(k: int, chain: str, items: list[dict], scope: dict, agents: dic
 
 def build_prompt(ctx: dict, env: dict, options: list[tuple[int, str, list[dict], dict]], now: float | None = None,
                  wiki: list[str] | None = None, material: str | None = None) -> tuple[str, dict[int, dict]]:
-    """W23: options = [(number, path chain, allowed items, scope)] -> (prompt, number -> {item id -> item}).
+    """options = [(number, path chain, allowed items, scope)] -> (prompt, number -> {item id -> item}).
     `material` = the mail text to summarise for the level-3 context card (None = no card asked)."""
     blocks, ids = [], {}
     for k, chain, items, scope in options:
         text, ids[k] = option_block(k, chain, items, scope, env.get("agents", {}))
         blocks.append(text)
-    # W25: the orchestrator's context pack for this moment (gated host / mail, the path chain, the agent)
+    # the orchestrator's context pack for this moment (gated host / mail, the path chain, the agent)
     agent = next((sc.get("slug") for _, _, _, sc in options if sc.get("kind") == "agent"), None)
     context = {"app": ctx.get("app"), "host": env.get("host"), "space": ctx.get("space"),
                "mail": None if env.get("mail_gated") else env.get("mail"), "mail_gated": env.get("mail_gated"),
                "chain": " | ".join(c for _, c, _, _ in options)[:300], "agent": agent,
-               "events": env.get("events"), "event_habit": env.get("event_habit")}   # W24: proactive context
+               "events": env.get("events"), "event_habit": env.get("event_habit")}   # proactive context
     return ca.render_prompt("glide", {
         "max": str(MAX_FOLLOWUPS),
         "front_app": env.get("front_app") or "(unknown)",
@@ -678,7 +678,7 @@ class GlideSession:
         self.engine, self.keymap, self.ctx, self.env_base = engine, keymap, ctx, env
         self.children: dict[tuple, list[dict]] = {}
         self.mail_id: str | None = None
-        self.mail_fixed: dict | None = None             # W24: set by oi live for a proactive mail hint
+        self.mail_fixed: dict | None = None             # set by oi live for a proactive mail hint
         self._fixed_body: str | None = None              # that mail's body, read once
         self._agent_text: str | None = None              # a proactive agent event's pending messages, read once
         self.expansions: list[dict] = []
@@ -689,16 +689,16 @@ class GlideSession:
 
     def read_context(self) -> tuple[str, dict]:
         """At REQUEST time: settings, the Mail selection NOW (when relevant), the privacy gates -> (key, env).
-        W23: the key is the context only (front app, host, desk, mail, gate); the chain ids complete it per level."""
+        the key is the context only (front app, host, desk, mail, gate); the chain ids complete it per level."""
         cfg = self.engine.settings_loader()
-        mail = self.mail_fixed                          # W24: a proactive mail hint = the event's mail
+        mail = self.mail_fixed                          # a proactive mail hint = the event's mail
         if mail is None and cfg.get("enabled") and self.wants_mail():
             try:
                 mail = self.engine.mail_reader()
             except Exception:
                 mail = None
         host = self.env_base.get("host")
-        gated = ca.mail_local_only(mail, cfg) or bool((mail or {}).get("_private"))   # W24: the event's own gate
+        gated = ca.mail_local_only(mail, cfg) or bool((mail or {}).get("_private"))   # the event's own gate
         if mail is self.mail_fixed and mail and not gated and cfg.get("enabled") and not mail.get("body"):
             if self._fixed_body is None:                # read once per session, never for a gated mail
                 try:
@@ -753,7 +753,7 @@ class GlideSession:
         return " > ".join(parts)
 
     def plan(self, path, env: dict) -> tuple[dict, list[dict], list[dict], bool]:
-        """W23: (scope, fixed head, ranked local items, needs Claude) of the option at `path`. Claude only for a
+        """(scope, fixed head, ranked local items, needs Claude) of the option at `path`. Claude only for a
         generative scope (agent, mail) whose providers are thin."""
         parent = self.node(path)
         scope = drill.scope_of(parent)
@@ -799,7 +799,7 @@ class GlideSession:
 
     def agent_material(self, env: dict) -> str | None:
         """An agent event's pending messages (read once per hold, from the agent's local record; never stored), only
-        when they may go to the model: Claude on, not a private event, no denied term (W25 leaks gate)."""
+        when they may go to the model: Claude on, not a private event, no denied term (leaks gate)."""
         ev = env.get("event_card") or {}
         if not ev.get("agent") or ev.get("private") or not env.get("claude_ok"):
             return None
@@ -967,7 +967,7 @@ class GlideSession:
         return payload
 
     def record(self, path: list[int]) -> None:
-        """W23: a chosen branch -> a training pair (parent id, chain ids, choice id; no label)."""
+        """a chosen branch -> a training pair (parent id, chain ids, choice id; no label)."""
         try:
             ids = self.ids(path)
             self.engine.pair_logger(ids[-2], ids[:-1], ids[-1], self.ctx.get("app"))
@@ -988,13 +988,13 @@ class GlideSession:
             executed = run_primitive(n)
         elif kind in ("draft", "summary"):
             executed, meta = press(n, self.mail_id if kind == "draft" else None)
-        elif kind == "dispatch":                              # W25: arm "pass me to X" (nothing is sent)
+        elif kind == "dispatch":                              # arm "pass me to X" (nothing is sent)
             dispatch.arm(n["params"]["to"])
             executed = f"dispatch:{n['params']['to']}"
         elif kind in drill.SEND_KINDS or kind == "ask":
             r = send_vocal(n["params"]["to"], n["params"]["text"])
             executed = f"vocal:{n['params']['to']}" if r.get("ok") else None
-            if executed and n["params"].get("dispatch"):          # W25: a hand-over also arms that agent
+            if executed and n["params"].get("dispatch"):          # a hand-over also arms that agent
                 dispatch.arm(n["params"]["to"])
         if executed:
             self.record(path)

@@ -11,7 +11,7 @@ from urllib.error import URLError
 from . import aw, normalise, paths
 from .vocab import parse, validate_row
 
-# W3 hook: Markov/serialise/candidates subcommands register from oi/cli_markov.py (not in W1).
+# hook: Markov/serialise/candidates subcommands register from oi/cli_markov.py (not in).
 
 
 def _day(value: str) -> str:
@@ -80,17 +80,17 @@ def cmd_stats(args: argparse.Namespace) -> int:
 
 
 def cmd_live(args: argparse.Namespace) -> int:
-    from . import live  # W8
+    from . import live
     return live.main_live(args.once, args.dry_run, args.socket, dry_exec=args.dry_exec)
 
 
 def cmd_vocal_send(args: argparse.Namespace) -> int:
-    from . import vocal  # W12
+    from . import vocal
     return vocal.main_send(args)
 
 
 def cmd_shot_send(args: argparse.Namespace) -> int:
-    from . import shots  # W17
+    from . import shots
     return shots.main_send(args)
 
 
@@ -122,10 +122,10 @@ def build_parser() -> argparse.ArgumentParser:
     sl.add_argument("--dry-run", action="store_true", help="print the show payloads instead of sending them")
     sl.add_argument("--socket", help="oi-hud socket (default <data dir>/hud.sock)")
     sl.add_argument("--dry-exec", action="store_true",
-                    help="W15: send the shows but execute nothing (print what a press would run; tests, demo)")
+                    help="send the shows but execute nothing (print what a press would run; tests, demo)")
     sl.set_defaults(func=cmd_live)
-    sv = sub.add_parser("vocal-send", help="deliver a HUD voice note's transcript to one fleet agent (W12)")
-    sv.add_argument("--to", required=True, help="recipient slug (atlas, nova, orion, lyra, vega, juno, ...)")
+    sv = sub.add_parser("vocal-send", help="deliver a HUD voice note's transcript to one fleet agent")
+    sv.add_argument("--to", required=True, help="recipient slug (e.g. atlas, nova, orion: settings.json vocal_recipients)")
     sv.add_argument("--text-file", required=True, help="the transcript (read from the file, never argv)")
     sv.add_argument("--audio", help="the .caf kept on this Mac (its path is mentioned, never transferred)")
     sv.add_argument("--app", help="front app when the vocal key was pressed")
@@ -135,8 +135,8 @@ def build_parser() -> argparse.ArgumentParser:
     sv.add_argument("--typed", action="store_true",
                     help="the text was typed / edited by hand in the HUD panel (the line says so)")
     sv.set_defaults(func=cmd_vocal_send)
-    # W17: one screenshot delivery by hand (oi live does it from the HUD offer)
-    sh = sub.add_parser("shot-send", help="send a screenshot + context line / note to one fleet agent (W17)")
+    # one screenshot delivery by hand (oi live does it from the HUD offer)
+    sh = sub.add_parser("shot-send", help="send a screenshot + context line / note to one fleet agent")
     sh.add_argument("--to", required=True, help="recipient slug (atlas, juno: inbox + inject; others: A2A, note only)")
     sh.add_argument("--image", required=True, help="the screenshot (copied to a local inbox, never uploaded)")
     sh.add_argument("--note-file", help="the note (read from the file, never argv)")
@@ -150,15 +150,15 @@ def build_parser() -> argparse.ArgumentParser:
     md.add_argument("--id", type=int, required=True, help="the draft's outgoing message id (from the HUD card)")
     md.add_argument("--dry-run", action="store_true", help="print what would run; touch nothing")
     md.set_defaults(func=cmd_mail_open_draft)
-    from .cli_laya import register   # W13: laya-serve, replay, laya-train, laya-promote, improve-report
+    from .cli_laya import register   # laya-serve, replay, laya-train, laya-promote, improve-report
     register(sub)
     from .laya_switch import register as register_laya_switch   # the menu-bar Laya switch (2026-10-21)
     register_laya_switch(sub)
-    from .intent_resolve import register as register_wish   # W18: wish-resolve
+    from .intent_resolve import register as register_wish   # wish-resolve
     register_wish(sub)
-    from .onboard import register as register_onboard   # W22: onboard, starter-preview
+    from .onboard import register as register_onboard   # onboard, starter-preview
     register_onboard(sub)
-    from .proactive.engine import register as register_proactive   # W24: proactive-probe
+    from .proactive.engine import register as register_proactive   # proactive-probe
     register_proactive(sub)
     from .health import register as register_health   # production health: oi health
     register_health(sub)

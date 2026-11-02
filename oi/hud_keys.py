@@ -1,4 +1,4 @@
-"""W21: the HUD option NUMBER is its KEY, never its rank.
+"""the HUD option NUMBER is its KEY, never its rank.
 
 "commande je veux tout le temps que ce soit 4, option tout le temps 3, contrôle tout le temps 2, et fn tout le temps
 1, parce que mes doigts ne vont pas bouger": fn = 1, ⌃ = 2, ⌥ = 3, ⌘ = 4 (oi-hud's `HotkeySet.defaults`; the

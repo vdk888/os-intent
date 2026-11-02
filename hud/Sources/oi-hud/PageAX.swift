@@ -3,7 +3,7 @@ import ApplicationServices
 import HUDCore
 import OISettings
 
-/// W16 page actions: Accessibility read of Safari's front page and the AXPress of one element.
+/// page actions: Accessibility read of Safari's front page and the AXPress of one element.
 ///
 /// READ: only when Safari is the frontmost app and oi-hud is trusted for Accessibility. From the focused
 /// window, the first AXWebArea (the page); inside it, every AXButton / AXLink (and button variants): role,
@@ -187,7 +187,7 @@ final class PageAX {
     }
 }
 
-/// W16: `status/oi-hud.json` {ts, ax, pid}, rewritten every 30 s, so oi-menubar can say whether oi-hud has
+/// `status/oi-hud.json` {ts, ax, pid}, rewritten every 30 s, so oi-menubar can say whether oi-hud has
 /// Accessibility (page actions need it). No other content.
 final class HUDStatusWriter {
     private var timer: Timer?

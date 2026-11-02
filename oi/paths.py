@@ -24,7 +24,7 @@ def wishes_dir() -> Path:
 
 
 def hud_log_dir() -> Path:
-    """`oi live` (W8) logs every evaluated moment and its HUD outcome here: hud-log/YYYY-MM-DD.jsonl."""
+    """`oi live` logs every evaluated moment and its HUD outcome here: hud-log/YYYY-MM-DD.jsonl."""
     return data_dir() / "hud-log"
 
 

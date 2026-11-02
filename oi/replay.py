@@ -1,4 +1,4 @@
-"""`oi replay` (W13): offline replay of logged moments, Markov vs Laya (design §5 table).
+"""`oi replay`: offline replay of logged moments, Markov vs Laya (design §5 table).
 
 Read-only on tokens/. Days are split by DAY, never shuffled: train days (strictly before the test days) fit the
 Markov model and the calibration; test days are scored. Inside the train days the last CALIB_FRAC of moments

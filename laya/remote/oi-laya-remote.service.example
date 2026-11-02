@@ -21,6 +21,8 @@ Environment=LAYA_HOST=127.0.0.1
 Environment=LAYA_PORT=8782
 Environment=LAYA_MODELS=english
 Environment=LAYA_PRELOAD=1
+# cpu works but is slow (about 2.5 s per warm answer on 2 vCPU, docs/LAYA-REMOTE.md): use your GPU device
+# here if your laya build supports it
 Environment=LAYA_DEVICE=cpu
 Environment=LAYA_THREADS=2
 # warning: no per-request (access) log lines, so no moment text ever reaches the journal
@@ -43,6 +45,11 @@ ProtectKernelModules=yes
 ProtectControlGroups=yes
 RestrictAddressFamilies=AF_INET AF_INET6 AF_UNIX
 LockPersonality=yes
+RestrictNamespaces=yes
+CapabilityBoundingSet=
+# loopback only, and the hub is offline: no network beyond the proxy on the same machine
+IPAddressDeny=any
+IPAddressAllow=localhost
 
 [Install]
 WantedBy=multi-user.target

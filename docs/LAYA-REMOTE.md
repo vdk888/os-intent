@@ -4,6 +4,10 @@ Laya, the reranker, normally runs on the Mac: one local server under the memory 
 Remote mode runs it on another machine you control (your own server on a private network) instead, so the Mac
 keeps that memory. It is off by default and nothing changes unless you turn it on.
 
+**Which machine.** Use another Apple Silicon Mac or a machine with a GPU. A CPU-only server works but is slow:
+measured with the English checkpoint on 2 vCPU, it answered in about 2.5 s once warm (the Mac's own server answers
+in about 150 ms warm), so its answers mostly arrive after the HUD has already shown Markov's ranking.
+
 ## Modes
 
 `settings.json` → `live.laya_mode`:
@@ -22,9 +26,13 @@ When Laya is slow, down or refused, the HUD ranks with Markov exactly as before:
 For every moment Laya is asked about (shadow, blend or live ranking, and typed wishes), the Mac sends to the
 configured server:
 
-- the front app name, the web site host and the window / page title (60 characters at most);
-- your last 5 actions (app switches and pages, with how long ago and for how long), the day, time and desktop
-  number, and today's top 3 apps with durations (the serialised moment, about 256 tokens at most);
+- the front app name and the window title, or in Safari the site host and the page's URL path turned into
+  words (60 characters at most);
+- your last 5 actions, with how long ago and for how long: app switches, pages, the labels of page buttons you
+  clicked (`click:<host>/<role>:<label>`), short slugs of your past typed wishes (`wish:<slug>`) and the names
+  of voice-note recipients (`vocal:<name>`);
+- the day, time and desktop number, and today's top 3 apps with durations (the serialised moment, about 256
+  tokens at most);
 - the menu of candidate next actions (short labels; a label can name an app, a site, a file or a contact);
 - for a typed wish: the wish text (200 characters at most) and the front app.
 
@@ -37,17 +45,31 @@ only. Whoever runs that server sees this data: use a machine you control, on a p
 - **URL.** `https://` to any host, or plain `http://` only to a private address: `127.0.0.0/8`, `10.0.0.0/8`,
   `172.16.0.0/12`, `192.168.0.0/16`, `100.64.0.0/10` (CGNAT, used by tailnets), `::1`, `fd00::/8`, `localhost`
   or a `*.ts.net` name. Plain http to anything else is refused and nothing is sent. Host names are never
-  resolved to decide: a LAN name such as `laya.lan` needs https, or use its address.
+  resolved to decide: a LAN name such as `laya.lan` needs https, or use its address. The host must be an IP
+  address or a plain DNS name: no percent-encoding, backslash, user info or trailing dot.
+- **When plain http is not safe.** A private address is only trustworthy on a network you control. If the Mac
+  (a laptop) joins another network that uses the same range (a café, a hotel, another office on `192.168.1.x`
+  or `10.x`), every moment and the token go **in clear** to whatever answers at that address there. A
+  `*.ts.net` name over http is only safe while Tailscale's DNS answers it: with Tailscale off, the name goes to
+  the local resolver, which can return any address. Prefer **https**, or a **tailnet IP** (`100.64.0.0/10`),
+  which is only routed while the tailnet is up.
+- **No proxy.** Remote calls never go through a proxy: neither `http_proxy` / `HTTPS_PROXY` nor the macOS system
+  proxy (which a managed or corporate network can set). They connect straight to the configured server.
 - **Token.** A bearer token in the macOS Keychain, service `os-intent-laya`, account = the URL's host. It is
   never stored in `settings.json`, never passed on a command line, never logged. Without a token nothing is
   sent (`no_token`).
 - **Redirects.** A redirect to another origin (scheme, host or port) is never followed: the call fails
   (`redirect_refused`), so neither the token nor the moment reaches a third host.
 - **Timeout.** `live.laya_remote_timeout_ms`, default **5000 ms** (range 100-10000), replaces
-  `live.laya_timeout_ms` (3000 ms, local) in remote mode. A remote server usually runs on CPU (no Apple GPU) and
-  adds a network round trip, so its tail sits above the local one; the call is off the HUD path, so a longer
-  bound costs nothing on screen. The typed-wish path keeps its 0.15 s health check: fine on a LAN or tailnet.
-- `oi live` builds its client once per setting change: after replacing the token in the Keychain, restart it
+  `live.laya_timeout_ms` (3000 ms, local) in remote mode. It adds a network round trip to the server's own time
+  (about 2.5 s warm on a 2 vCPU CPU server, above); the call is off the HUD path, so a longer bound costs
+  nothing on screen and a late answer still merges into the next ranking.
+- **Typed wishes.** You wait for a wish, so in remote mode its Laya call is capped at **1500 ms** and its health
+  probe at 0.5 s (0.15 s locally); past that, the next tier (Claude, if enabled) answers. A CPU-only server is
+  too slow for this path.
+- **Token cache.** The token is read from the Keychain once and kept in memory per process for 5 minutes (an
+  absent token for 30 s), so neither moments nor wishes start `security` each time. A replaced token is picked
+  up within 5 minutes; restart `oi live` to use it at once
   (`launchctl kickstart -k gui/$(id -u)/com.osintent.oi-live`).
 
 ## Commands
@@ -76,14 +98,19 @@ To go back: `oi laya-remote disable`, or set `live.laya_mode` to `local` in `set
 placeholder.
 
 - `oi-laya-remote.service.example`: `laya-serve` bound to `127.0.0.1:8782` only, `DynamicUser`,
-  `MemoryMax=3.5G`, `CPUQuota=200%`, CPU device, `LAYA_LOG_LEVEL=warning` (no per-request log lines),
-  Hugging Face hub offline (put the weights in `HF_HOME` first; the unit never downloads).
+  `MemoryMax=3.5G`, `CPUQuota=200%`, `LAYA_LOG_LEVEL=warning` (no per-request log lines), Hugging Face hub
+  offline (put the weights in `HF_HOME` first; the unit never downloads), `IPAddressAllow=localhost` only. It
+  says `LAYA_DEVICE=cpu`: set your GPU device there if your laya build supports one (CPU is slow, above).
 - `oi-laya-auth-proxy.service.example` + `oi_laya_auth_proxy.py`: laya-serve has no authentication, so a small
   stdlib proxy listens on your **private interface address**, port 8781, checks `Authorization: Bearer <token>`
   (constant time), forwards only `GET /health` and `POST /v1/systemone` (64 KB body cap) to `127.0.0.1:8782`,
-  logs no request and never passes a redirect on.
-- `token.env.example`: `/etc/oi-laya/token.env`, `root:root`, mode `0600`, one line `OI_LAYA_TOKEN=…`
-  (`openssl rand -base64 32`). systemd reads it as root before dropping to the dynamic user.
+  logs no request and never passes a redirect on. A connection idle for 10 s is dropped and at most 32 run at
+  once. The unit is hardened (`ProtectSystem=strict`, `ProtectHome`, `PrivateTmp`, `NoNewPrivileges`, an empty
+  `CapabilityBoundingSet`, `SystemCallFilter=@system-service`, `MemoryDenyWriteExecute`,
+  `RestrictAddressFamilies`, `IPAddressAllow=localhost __CLIENT_RANGE__`).
+- `token.env.example`: `/etc/oi-laya/token.env`, `root:root`, mode `0600`, one line `OI_LAYA_TOKEN=…`. It ships
+  **empty**: the proxy refuses to start on an empty token, one under 32 characters or a placeholder. Generate
+  it with `openssl rand -base64 32`. systemd reads it as root before dropping to the dynamic user.
 
 ```bash
 sudo install -d -m 0755 /opt/oi-laya && sudo install -m 0644 laya/remote/oi_laya_auth_proxy.py /opt/oi-laya/
@@ -95,3 +122,7 @@ sudo systemctl daemon-reload && sudo systemctl enable --now oi-laya-remote oi-la
 Bind the proxy to a private address only (LAN, VPN or tailnet) and keep port 8781 closed on any public
 interface. For a server reached over the internet, put it behind https (a reverse proxy with a certificate) and
 use an `https://` URL on the Mac.
+
+On another Mac (no systemd), run `laya-serve` with `LAYA_HOST=127.0.0.1 LAYA_PORT=8782` and the proxy with the
+same environment variables, each under its own LaunchAgent; the proxy is plain Python 3 with no Linux
+dependency.

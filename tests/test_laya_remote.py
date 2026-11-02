@@ -20,7 +20,7 @@ from oi import health, intent_resolve, laya, laya_remote, laya_switch, paths, se
 
 FORM = {"form_id": "generic.next_action", "question": {"instructions": "Which action will the user take next?"}}
 MENU = [{"key": "open_app_mail", "criteria": "switch to Mail"}, {"key": "nothing", "criteria": "keep working here"}]
-TOKEN = "test-token-0123456789abcdef"
+TOKEN = "test-token-0123456789abcdefGHIJKLMNOPqrst"   # invented, 44 characters
 REPLY = json.dumps({"answers": {"next": {"choice": "nothing",
                                          "probabilities": {"open_app_mail": 0.25, "nothing": 0.75}}}}).encode()
 
@@ -74,6 +74,13 @@ def servers():
     yield make
     for s in made:
         s.close()
+
+
+@pytest.fixture(autouse=True)
+def fresh_token_cache():
+    laya_remote._TOKENS.clear()
+    yield
+    laya_remote._TOKENS.clear()
 
 
 @pytest.fixture
@@ -147,7 +154,9 @@ def test_allowed_urls(url):
     "http://203.0.113.7:8781", "http://8.8.8.8", "http://172.32.0.1", "http://100.128.0.1",
     "http://laya.example.com", "http://laya.lan:8781", "http://[2001:db8::1]:8781", "ftp://10.0.0.1",
     "http://", "not a url", "http://user:pw@10.0.0.1:8781", "http://10.0.0.1:99999",
-    "http://example.ts.net.evil.com"])
+    "http://example.ts.net.evil.com", "http://evil.com%2f.ts.net", "http://10.0.0.1.", "http://x.ts.net.",
+    "http://a..ts.net", "http://10.0.0.1%23@evil.com", "http://ex\\@10.0.0.1", "http://-bad.ts.net",
+    "http://[fe80::1%25en0]:8781", "http://xn--bcher-kva.ts.net%2e"])
 def test_refused_urls(url):
     assert laya_remote.check_url(url)
 
@@ -280,6 +289,65 @@ def test_live_laya_call_returns_an_error_row_and_never_starts_a_server(data_dir,
     assert spawned == []
 
 
+def test_no_proxy_is_ever_used(data_dir, servers, keychain, monkeypatch):
+    """http_proxy / HTTP_PROXY (and the macOS system proxy, read by the same ProxyHandler) are ignored."""
+    s = servers()
+    trap = servers()                                                   # a "proxy" that must never see a request
+    for k in ("http_proxy", "HTTP_PROXY", "https_proxy", "HTTPS_PROXY", "all_proxy", "ALL_PROXY"):
+        monkeypatch.setenv(k, trap.url)
+    monkeypatch.delenv("no_proxy", raising=False)
+    monkeypatch.delenv("NO_PROXY", raising=False)
+    monkeypatch.setattr(urllib.request, "getproxies", lambda: {"http": trap.url, "https": trap.url})
+    keychain.store[("os-intent-laya", "10.9.9.9")] = TOKEN
+    keychain.store[("os-intent-laya", "127.0.0.1")] = TOKEN
+    # a private address with no server: through the trap proxy it would "work"; direct, it cannot
+    c = laya.LayaClient.from_settings(_remote("http://10.9.9.9:8781", laya_remote_timeout_ms=300))
+    with pytest.raises(laya.LayaError):
+        c.predict(FORM, MENU, "x")
+    laya.LayaClient.from_settings(_remote(s.url)).predict(FORM, MENU, "x")
+    _write(data_dir, _remote(s.url))
+    assert laya.configured_health(s.url)
+    assert trap.requests == [] and len(s.requests) == 2
+    handlers = laya_remote.opener().__self__.handlers
+    proxies = [h for h in handlers if isinstance(h, urllib.request.ProxyHandler)]
+    assert all(not h.proxies for h in proxies)      # ProxyHandler({}) registers nothing: no default handler either
+
+
+def test_token_is_cached_per_process(data_dir, servers, keychain):
+    s = servers()
+    keychain.store[("os-intent-laya", "127.0.0.1")] = TOKEN
+    for _ in range(3):
+        laya.LayaClient.from_settings(_remote(s.url)).predict(FORM, MENU, "x")
+    assert sum(1 for c in keychain.calls if c[0][1] == "find-generic-password") == 1
+    laya_remote._TOKENS["127.0.0.1"] = (time.monotonic() - laya_remote.TOKEN_TTL_S - 1, TOKEN)
+    laya.LayaClient.from_settings(_remote(s.url)).predict(FORM, MENU, "x")
+    assert sum(1 for c in keychain.calls if c[0][1] == "find-generic-password") == 2
+
+
+def test_wish_uses_a_short_remote_bound(data_dir):
+    from test_intent_resolve import FakeLaya, engine
+    _write(data_dir, _remote("http://10.0.0.5:8781"))
+    seen = []
+    eng = engine(laya_up=True, fake_laya=FakeLaya(pick="Notes"))
+    eng.laya_client = lambda lv: seen.append(lv) or FakeLaya(pick="Notes")
+    assert eng.resolve("mes notes de réunion", {"app": "Finder"})["tier"] == "laya"
+    assert seen and laya.LayaClient(timeout_s=laya_remote.timeout_s(seen[0])).timeout_s == 1.5
+    assert laya_remote.for_wish({"laya_mode": "remote", "laya_remote_timeout_ms": 800})["laya_remote_timeout_ms"] == 800
+    assert laya_remote.for_wish({"laya_mode": "local", "laya_timeout_ms": 3000}) == {"laya_mode": "local",
+                                                                                   "laya_timeout_ms": 3000}
+
+
+def test_wish_health_probe_timeouts(data_dir, monkeypatch):
+    got = []
+    monkeypatch.setattr(laya, "health", lambda url, t, **kw: got.append((t, bool(kw))) or True)
+    monkeypatch.setattr(laya_remote, "request_kw", lambda lv, token_fn=None: {"headers": {}, "opener": None})
+    eng = intent_resolve.WishEngine(dry_run=True, out=io.StringIO())
+    eng.laya_health("http://127.0.0.1:8781")                            # local mode
+    _write(data_dir, _remote("http://10.0.0.5:8781"))
+    eng.laya_health("http://10.0.0.5:8781")
+    assert got == [(0.15, False), (0.5, True)]
+
+
 # ---- no local supervisor ---------------------------------------------------------------------------------
 
 def test_ensure_server_never_starts_in_remote_mode(data_dir, monkeypatch):
@@ -352,7 +420,7 @@ def test_cli_enable_prints_the_notice_asks_and_stores_the_token(data_dir, keycha
         rc = laya_remote.cmd_laya_remote(_args("enable", url="http://100.64.0.10:8781/"), ask=lambda q: "y",
                                          secret=lambda q: TOKEN, run=keychain.run, stop=lambda: stopped.append(1) or "x")
     text = out.getvalue()
-    assert rc == 0 and "window / page title" in text and "screenshots" in text and TOKEN not in text
+    assert rc == 0 and "window title" in text and "URL path" in text and "voice-note" in text and "screenshots" in text and TOKEN not in text
     assert keychain.store == {("os-intent-laya", "100.64.0.10"): TOKEN} and stopped == [1]
     raw = json.loads((data_dir / "settings.json").read_text())
     assert raw["live"] == {"laya_mode": "remote", "laya_url": "http://100.64.0.10:8781"}
@@ -402,7 +470,7 @@ def _load_proxy():
 def proxy(servers):
     mod = _load_proxy()
     up = servers()
-    httpd = ThreadingHTTPServer(("127.0.0.1", 0), mod.make_handler(TOKEN, ("127.0.0.1", up.port)))
+    httpd = mod.make_server(("127.0.0.1", 0), TOKEN, ("127.0.0.1", up.port))
     threading.Thread(target=httpd.serve_forever, daemon=True).start()
     yield SimpleNamespace(url=f"http://127.0.0.1:{httpd.server_address[1]}", up=up, mod=mod)
     httpd.shutdown()
@@ -448,10 +516,55 @@ def test_proxy_upstream_down_or_redirect_is_502(servers):
             httpd.shutdown()
 
 
-def test_proxy_refuses_to_start_without_a_token(monkeypatch, capsys):
+@pytest.mark.parametrize("tok", [None, "", "   ", "short-token-0123456789",
+                                 "__REPLACE_WITH_A_LONG_RANDOM_TOKEN__", "replace-me-with-a-long-random-token-0123",
+                                 "a" * 40, "ab" * 20])
+def test_proxy_refuses_to_start_on_a_missing_short_or_placeholder_token(monkeypatch, capsys, tok):
     mod = _load_proxy()
-    monkeypatch.delenv("OI_LAYA_TOKEN", raising=False)
-    assert mod.main() == 2 and "OI_LAYA_TOKEN" in capsys.readouterr().err
+    if tok is None:
+        monkeypatch.delenv("OI_LAYA_TOKEN", raising=False)
+    else:
+        monkeypatch.setenv("OI_LAYA_TOKEN", tok)
+    monkeypatch.setattr(mod, "make_server", lambda *a: pytest.fail("must not listen"))
+    assert mod.main() == 2 and "refusing to start" in capsys.readouterr().err
+
+
+def test_shipped_token_example_is_empty_and_refused():
+    mod = _load_proxy()
+    env = (Path(__file__).resolve().parents[1] / "laya" / "remote" / "token.env.example").read_text()
+    line = [x for x in env.splitlines() if x.startswith("OI_LAYA_TOKEN=")]
+    assert line == ["OI_LAYA_TOKEN="] and mod.token_problem("") and mod.token_problem(line[0].split("=", 1)[1])
+    assert mod.token_problem(TOKEN) is None
+
+
+def test_proxy_drops_idle_and_short_body_connections(servers, monkeypatch):
+    import socket
+    mod = _load_proxy()
+    assert mod.make_handler(TOKEN, ("127.0.0.1", 1)).timeout == mod.CONN_TIMEOUT_S == 10
+    monkeypatch.setattr(mod, "CONN_TIMEOUT_S", 0.5)                    # same mechanism, faster test
+    up = servers()
+    httpd = mod.make_server(("127.0.0.1", 0), TOKEN, ("127.0.0.1", up.port))
+    threading.Thread(target=httpd.serve_forever, daemon=True).start()
+    try:
+        s = socket.create_connection(("127.0.0.1", httpd.server_address[1]))
+        s.sendall(b"POST /v1/systemone HTTP/1.1\r\nAuthorization: Bearer " + TOKEN.encode()
+                  + b"\r\nContent-Length: 100\r\n\r\n{")             # promises 100 bytes, sends 1
+        s.settimeout(5)
+        t0 = time.monotonic()
+        data = s.recv(100)                        # the server closes the connection after its timeout
+        assert time.monotonic() - t0 < 4 and data == b"" and up.requests == []
+        s.close()
+    finally:
+        httpd.shutdown()
+
+
+def test_proxy_caps_concurrent_connections():
+    mod = _load_proxy()
+    srv = mod.make_server(("127.0.0.1", 0), TOKEN, ("127.0.0.1", 9))
+    try:
+        assert isinstance(srv._slots, type(__import__("threading").BoundedSemaphore(1))) and mod.MAX_CONNS == 32
+    finally:
+        srv.server_close()
 
 
 def test_proxy_logs_nothing(proxy, capsys):

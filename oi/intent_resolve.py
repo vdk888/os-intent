@@ -56,7 +56,7 @@ from difflib import SequenceMatcher
 from pathlib import Path
 from typing import Callable
 
-from . import aliases, aw, candidates, claude_actions, laya, orchestrator, paths, settings, vocal
+from . import aliases, aw, candidates, claude_actions, laya, laya_remote, orchestrator, paths, settings, vocal
 from .orchestrator import dispatch
 from .aliases import norm
 
@@ -447,7 +447,8 @@ class WishEngine:
             self.claude.wiki = lambda q: []
         self.claude_runner = claude_runner or (lambda prompt, model: claude_actions.run_claude(prompt, model))
         self.claude_settings = claude_settings
-        self.laya_health = laya_health or (lambda url: laya.configured_health(url, timeout_s=0.15))
+        self.laya_health = laya_health or (lambda url: laya.configured_health(
+            url, timeout_s=0.15, remote_timeout_s=laya_remote.WISH_HEALTH_TIMEOUT_S))
         self.laya_client = laya_client
         self.apps, self.history, self.raw_settings = apps, history, raw_settings
         self.vocal_send = vocal_send
@@ -517,7 +518,7 @@ class WishEngine:
         menu.append({"key": "nothing", "criteria": "none of these actions"})
         form = {"form_id": "wish.resolve", "question": {"instructions": "Which action does the user's wish ask for?"}}
         state = f"wish: {' '.join(text.split())[:200]}\nfront app: {ctx.get('app') or 'unknown'}"
-        r = self.laya_client(lv).predict(form, menu, state)
+        r = self.laya_client(laya_remote.for_wish(lv)).predict(form, menu, state)
         probs = r.get("probs") or {}
         key = max(probs, key=probs.get) if probs else None
         if not key or key == "nothing" or probs[key] < LAYA_MIN_P:

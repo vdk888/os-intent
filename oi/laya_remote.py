@@ -28,6 +28,7 @@ import json
 import re
 import subprocess
 import sys
+import time
 import urllib.parse
 import urllib.request
 
@@ -37,17 +38,26 @@ SERVICE = "os-intent-laya"
 MODES = ("local", "remote", "off")
 REMOTE_TIMEOUT_MS = 5000
 REMOTE_TIMEOUT_RANGE_MS = (100, 10000)
+WISH_TIMEOUT_MS = 1500        # a typed wish waits for the answer: a shorter bound, then the next tier answers
+WISH_HEALTH_TIMEOUT_S = 0.5   # the wish path's health probe over a network (0.15 s stays for the local server)
+TOKEN_TTL_S = 300             # the Keychain token is cached per process; a replaced token is seen within 5 min
+NO_TOKEN_TTL_S = 30
 SECURITY = "/usr/bin/security"
 _PRIVATE_NETS = [ipaddress.ip_network(n) for n in (
     "127.0.0.0/8", "10.0.0.0/8", "172.16.0.0/12", "192.168.0.0/16", "100.64.0.0/10", "::1/128", "fd00::/8")]
-_TOKEN_RE = re.compile(r"^[A-Za-z0-9._~+/=-]{16,512}$")
+_TOKEN_RE = re.compile(r"^[A-Za-z0-9._~+/=-]{32,512}$")
+_NAME_RE = re.compile(r"^(?!-)[a-z0-9-]{1,63}(?<!-)(\.(?!-)[a-z0-9-]{1,63}(?<!-))*$")
+_TOKENS: dict[str, tuple[float, str | None]] = {}
 _HOST_RE = re.compile(r"^[A-Za-z0-9.:-]{1,253}$")
 
 NOTICE = """\
 Remote Laya sends, for every moment Laya is asked about, to {url}:
-  - the front app name, the web site host and the window / page title (60 characters at most),
-  - your last 5 actions (app switches, pages, with how long ago and how long), the day, time and desktop
-    number, and today's top 3 apps with durations (the serialised moment, about 256 tokens at most),
+  - the front app name and the window title, or in Safari the site host and the page URL path turned
+    into words (60 characters at most),
+  - your last 5 actions with how long ago and how long: app switches, pages, the labels of page buttons
+    you clicked, short slugs of your past typed wishes and the names of voice-note recipients,
+  - the day, time and desktop number, and today's top 3 apps with durations
+    (the serialised moment, about 256 tokens at most),
   - the menu of candidate next actions (short labels such as "switch to Mail"; a label can name an app,
     a site, a file or a contact),
   - for a typed wish: the wish text (200 characters at most) and the front app.
@@ -67,7 +77,7 @@ def mode(live: dict) -> str:
 
 
 def is_private_host(host: str) -> bool:
-    host = (host or "").strip("[]").lower().rstrip(".")
+    host = (host or "").strip("[]").lower()
     if host == "localhost" or host.endswith(".ts.net"):
         return True
     try:
@@ -87,11 +97,23 @@ def check_url(url: str) -> str | None:
         return "bad URL"
     if u.scheme not in ("http", "https") or not host:
         return "URL must be http(s)://host[:port]"
-    if u.username or u.password:
+    if "@" in u.netloc or u.username or u.password:
         return "no credentials in the URL (the token lives in the Keychain)"
+    if "%" in u.netloc or "\\" in u.netloc:
+        return "no percent-encoding or backslash in the host"     # urllib would connect to the DECODED name
+    if not _valid_host(host):
+        return "host must be an IP address or a plain DNS name (a-z 0-9 . -, no trailing dot)"
     if u.scheme == "http" and not is_private_host(host):
         return "plain http to a public address (use https, or a private / tailnet address)"
     return None
+
+
+def _valid_host(host: str) -> bool:
+    try:
+        ipaddress.ip_address(host)
+        return True
+    except ValueError:
+        return bool(_NAME_RE.match(host)) and len(host) <= 253
 
 
 def host_of(url: str) -> str:
@@ -111,11 +133,24 @@ def keychain_token(host: str, run=subprocess.run) -> str | None:
     return tok if p.returncode == 0 and tok else None
 
 
+def cached_token(host: str) -> str | None:
+    """keychain_token, cached per process (TOKEN_TTL_S; an absent token NO_TOKEN_TTL_S), so a wish or a moment
+    never spawns `security` each time."""
+    now = time.monotonic()
+    hit = _TOKENS.get(host)
+    if hit and now - hit[0] < (TOKEN_TTL_S if hit[1] else NO_TOKEN_TTL_S):
+        return hit[1]
+    tok = keychain_token(host)
+    _TOKENS[host] = (now, tok)
+    return tok
+
+
 def store_token(host: str, token: str, run=subprocess.run) -> bool:
     """Add or update the Keychain item. The command goes through `security -i` on stdin, so the token never appears
     in a process list. Returns True when the token reads back."""
     if not _HOST_RE.match(host or "") or not _TOKEN_RE.match(token or ""):
         return False
+    _TOKENS.pop(host, None)
     try:
         run([SECURITY, "-i"], input=f"add-generic-password -U -s {SERVICE} -a {host} -w {token}\n",
             capture_output=True, text=True, timeout=10)
@@ -127,6 +162,7 @@ def store_token(host: str, token: str, run=subprocess.run) -> bool:
 def delete_token(host: str, run=subprocess.run) -> bool:
     if not _HOST_RE.match(host or ""):
         return False
+    _TOKENS.pop(host, None)
     try:
         return run([SECURITY, "delete-generic-password", "-s", SERVICE, "-a", host],
                    capture_output=True, text=True, timeout=10).returncode == 0
@@ -151,7 +187,9 @@ class SameOriginRedirect(urllib.request.HTTPRedirectHandler):
 
 
 def opener():
-    return urllib.request.build_opener(SameOriginRedirect).open
+    """No proxy, ever (an empty ProxyHandler: neither http_proxy / HTTPS_PROXY nor the macOS system proxy), and
+    same-origin redirects only: the token and the moment go to the configured server and nowhere else."""
+    return urllib.request.build_opener(urllib.request.ProxyHandler({}), SameOriginRedirect).open
 
 
 def timeout_s(live: dict) -> float:
@@ -171,10 +209,18 @@ def request_kw(live: dict, token_fn=None) -> dict:
     why = check_url(url)
     if why:
         raise RemoteURLRefused("url_refused")
-    tok = (token_fn or keychain_token)(host_of(url))
+    tok = (token_fn or cached_token)(host_of(url))
     if not tok:
         raise RemoteURLRefused("no_token")
     return {"headers": {"authorization": f"Bearer {tok}"}, "opener": opener()}
+
+
+def for_wish(live: dict) -> dict:
+    """The live config for a typed wish: in remote mode the timeout is capped at WISH_TIMEOUT_MS (the user waits;
+    a miss falls through to the next tier)."""
+    if mode(live) != "remote":
+        return live
+    return dict(live, laya_remote_timeout_ms=min(int(timeout_s(live) * 1000), WISH_TIMEOUT_MS))
 
 
 # ---- CLI ---------------------------------------------------------------------------------------------------
@@ -217,7 +263,7 @@ def cmd_laya_remote(args, *, ask=input, secret=getpass.getpass, run=subprocess.r
     else:
         tok = (sys.stdin.readline() if args.token_stdin else secret(f"Bearer token for {host} (not echoed): ")).strip()
         if not _TOKEN_RE.match(tok):
-            print("refused: the token must be 16-512 characters of A-Z a-z 0-9 . _ ~ + / = -", file=sys.stderr)
+            print("refused: the token must be 32-512 characters of A-Z a-z 0-9 . _ ~ + / = -", file=sys.stderr)
             return 2
         if not store_token(host, tok, run):
             print("refused: could not store the token in the Keychain", file=sys.stderr)

@@ -190,9 +190,11 @@ def configured_health_info(url: str = DEFAULT_URL, timeout_s: float = 1.0) -> di
     return info
 
 
-def configured_health(url: str = DEFAULT_URL, timeout_s: float = 1.0) -> bool:
+def configured_health(url: str = DEFAULT_URL, timeout_s: float = 1.0, remote_timeout_s: float | None = None) -> bool:
     kw = _configured_kw(url)
-    return kw is not None and health(url, timeout_s, **kw)
+    if kw is None:
+        return False
+    return health(url, remote_timeout_s if kw and remote_timeout_s else timeout_s, **kw)
 
 
 def _configured_kw(url: str) -> dict | None:

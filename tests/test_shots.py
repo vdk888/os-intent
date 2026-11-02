@@ -925,6 +925,8 @@ def test_a_tier2_claude_note_naming_a_local_only_term_is_withheld(png, data_dir,
 
 def test_new_events_fetches_a_shot_bucket_only_when_it_moved(png):
     so, _, _ = make()
+    t = [NOW]
+    so.gate.clock = lambda: t[0]
     sig = {"oi-watcher-shot_h": ("2026-10-20T16:12:59+00:00", None), "oi-watcher-shot_old": ("2026-01-01T00:00:00+00:00", None),
            "aw-watcher-window_h": ("2026-10-20T16:13:00+00:00", None)}
     so.buckets_fn = lambda: dict(sig)
@@ -933,7 +935,23 @@ def test_new_events_fetches_a_shot_bucket_only_when_it_moved(png):
     assert [e["id"] for e in so.new_events()] == [7]
     assert sorted(fetched) == ["oi-watcher-shot_h", "oi-watcher-shot_old"]
     fetched.clear()
+    t[0] += 15                                                # past the hot window, before the refresh
     assert so.new_events() == [] and fetched == []            # nothing moved: no events request
     sig["oi-watcher-shot_h"] = ("2026-10-20T16:13:01+00:00", None)
     so.new_events()
     assert fetched == ["oi-watcher-shot_h"]
+    fetched.clear()
+    t[0] += shots.REFRESH_S
+    so.new_events()                                           # safety refetch of every shot bucket
+    assert sorted(fetched) == ["oi-watcher-shot_h", "oi-watcher-shot_old"]
+
+
+def test_new_events_late_older_shot_event_within_one_poll(png):
+    """A shot event inserted after a newer one (older timestamp) does not move last_updated: still seen next poll."""
+    so, _, _ = make()
+    evs = [state_ev("live", sec_before=0.5, i=2)]
+    so.buckets_fn = lambda: {"oi-watcher-shot_h": (max(e["timestamp"] for e in evs), None)}
+    so.fetch = lambda b, since: list(evs)
+    assert [e["id"] for e in so.new_events()] == [2]
+    evs.append(shot_ev(png, 1, i=1))                          # older timestamp, arrives late
+    assert [e["id"] for e in so.new_events()] == [1]

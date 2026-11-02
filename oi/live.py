@@ -605,7 +605,8 @@ class Live:
         self.clock = clock
         self.out = out or sys.stdout
         self.do_pull = pull
-        self._aw_seen: dict = {}              # aw.pull: bucket -> last change signature pulled
+        # aw.pull: fetch only the buckets that moved (no hot window: the bucket cursor bounds a re-fetch anyway)
+        self._aw_gate = aw.Gate(aw.LIVE_REFRESH_S, hot_s=0)
         self.resolve_app = resolve_app
         self.is_executable = is_executable
         dry_osa = None
@@ -680,7 +681,7 @@ class Live:
         if not self.do_pull:
             return
         try:
-            results = aw.pull(keep_events=True, seen=self._aw_seen)
+            results = aw.pull(keep_events=True, gate=self._aw_gate)
         except (URLError, OSError) as e:
             now = time.monotonic()
             if now - self._aw_down_logged >= AW_DOWN_LOG_S:

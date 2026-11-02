@@ -79,6 +79,7 @@ from .orchestrator import pack as orch_pack
 
 BUCKET_PREFIX = "oi-watcher-shot"
 POLL_S = 0.5
+REFRESH_S = 30           # each shot bucket re-fetched at least this often, even when its signature did not move
 SHOW_TTL_MS = 15000          # display setting (shots.ttl_ms): how long the cross stays, not how long the shot is live
 NOTE_TIMEOUT_S = 600         # the note panel: the user may take his time
 OCR_TIMEOUT_S = 15          # warm: ~0.1-0.2 s; the very first Vision call of a binary can take ~30 s (warm_ocr)
@@ -603,7 +604,7 @@ class Shots:
 
     def __init__(self, live, *, request: Callable[[dict, tuple, float], dict] | None = None,
                  buckets: Callable[[], dict | list[str]] = aw.bucket_meta,
-                 fetch: Callable[[str, str], list[dict]] = aw.fetch_events,
+                 fetch: Callable[[str, str], list[dict]] = lambda b, s: aw.fetch_events(b, s, timeout=aw.TIMEOUT_S),
                  ocr: Callable[[str], tuple[str, int]] | None = None,
                  claude: Callable[[str, str], dict] | None = None,
                  deliver_fn: Callable[..., dict] = deliver, raw_settings: Callable[[], dict] = vocal._raw_settings,
@@ -623,7 +624,7 @@ class Shots:
         self.out = out
         self.since: str | None = None
         self.seen: dict = {}
-        self._fetched: dict = {}                   # bucket -> aw.bucket_meta signature at its last fetch
+        self.gate = aw.Gate(REFRESH_S, clock=clock)   # which shot buckets moved (aw.bucket_meta)
         self.lock = threading.RLock()
         self.shots: dict[str, dict] = {}           # the live screenshots (id -> shot), oldest first
         self.past: dict[str, dict] = {}            # ended ones a press may still name (the image stays on disk)
@@ -646,12 +647,13 @@ class Shots:
             self.prime()
         listing = self.buckets_fn()               # one GET /buckets/ per poll; events only where it moved
         meta = listing if isinstance(listing, dict) else dict.fromkeys(listing)
+        self.gate.keep(meta)
         fresh: list[dict] = []
         for b, sig in sorted(meta.items()):
-            if not b.startswith(BUCKET_PREFIX) or (sig is not None and self._fetched.get(b) == sig):
+            if not b.startswith(BUCKET_PREFIX) or not self.gate.due(b, sig):
                 continue
             evs = self.fetch(b, self.since)
-            self._fetched[b] = sig
+            self.gate.fetched(b, sig)
             for ev in evs:
                 k = (b, aw._key(ev))
                 if k in self.seen:

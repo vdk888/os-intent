@@ -11,15 +11,19 @@ aw-server also CLIPS events that straddle the requested start/end (same id, shif
 timestamp, shorter duration; observed on v0.14.1), so an upsert merges by id to the
 widest span seen instead of overwriting: a clipped copy never shrinks a stored row.
 
-`oi live` pulls every 2 s, so it passes a `seen` dict to `pull`: one `GET /buckets/` gives each
+`oi live` pulls every 2 s, so it passes a `Gate` to `pull`: one `GET /buckets/` gives each
 bucket's `last_updated` (aw-server Python) or `metadata.end` (aw-server-rust), and only the buckets
-whose value moved since their last pull are fetched. A heartbeat moves the end of the latest event,
-so an active bucket is still fetched on every poll; a bucket without either field is always fetched.
+whose value moved are fetched. A heartbeat moves the end of the latest event, so an active bucket is
+still fetched on every poll; a bucket without either field is always fetched. An event inserted late
+with an older timestamp does not move that value, so a Gate can keep a bucket that moved "hot"
+(fetched every poll) for `hot_s` (the screenshot poller), and every bucket is re-fetched at least
+every `refresh_s` whatever its value.
 """
 from __future__ import annotations
 
 import json
 import os
+import time
 import urllib.parse
 import urllib.request
 from collections import defaultdict
@@ -32,15 +36,17 @@ from .vocab import parse_ts
 
 DEFAULT_URL = "http://127.0.0.1:5600"
 PAGE = 5000
-TIMEOUT_S = 3.0          # localhost: a hung aw-server stalls the 2 s live loop for 3 s, not 30 s
-FULL_TIMEOUT_S = 30.0    # a first pull (no cursor) may page through a long history
+TIMEOUT_S = 3.0          # live polls (localhost): a hung aw-server stalls the 2 s loop for 3 s, not 30 s
+FULL_TIMEOUT_S = 30.0    # `oi pull` and first pulls (no cursor) may page through a long history
+HOT_S = 10.0             # Gate default: a bucket that moved is fetched every poll this long (late, older inserts)
+LIVE_REFRESH_S = 300.0   # `oi live`: every bucket re-fetched at least this often, whatever its signature
 
 
 def server_url() -> str:
     return os.environ.get("OI_AW_URL", DEFAULT_URL).rstrip("/")
 
 
-def _get(url: str, timeout: float = TIMEOUT_S) -> Any:
+def _get(url: str, timeout: float = FULL_TIMEOUT_S) -> Any:
     with urllib.request.urlopen(url, timeout=timeout) as r:  # localhost only
         return json.load(r)
 
@@ -50,18 +56,46 @@ def list_buckets(base: str | None = None) -> list[str]:
     return sorted(_get(f"{base}/api/0/buckets/"))
 
 
+class Gate:
+    """Which buckets a poller fetches this poll, from their `bucket_meta` signature.
+
+    Due: no signature, a new or moved signature, moved less than `hot_s` ago, or not fetched for
+    `refresh_s`. Call `fetched(b, sig)` only after a successful fetch, so a failed one is retried."""
+
+    def __init__(self, refresh_s: float, hot_s: float = HOT_S, clock=time.monotonic):
+        self.refresh_s, self.hot_s, self.clock = refresh_s, hot_s, clock
+        self.state: dict[str, tuple] = {}          # bucket -> (signature, moved_at, fetched_at)
+
+    def due(self, bucket: str, sig: Any) -> bool:
+        st = self.state.get(bucket)
+        if sig is None or st is None or st[0] != sig:
+            return True
+        now = self.clock()
+        return now - st[1] < self.hot_s or now - st[2] >= self.refresh_s
+
+    def fetched(self, bucket: str, sig: Any) -> None:
+        now, st = self.clock(), self.state.get(bucket)
+        self.state[bucket] = (sig, now if st is None or st[0] != sig else st[1], now)
+
+    def keep(self, buckets) -> None:
+        """Forget the buckets aw-server no longer lists."""
+        for b in set(self.state) - set(buckets):
+            del self.state[b]
+
+
 def bucket_meta(base: str | None = None) -> dict[str, Any]:
     """{bucket: change signature} from one `GET /buckets/`; None when the server gives no hint."""
     base = base or server_url()
     out: dict[str, Any] = {}
-    for b, m in _get(f"{base}/api/0/buckets/").items():
+    for b, m in _get(f"{base}/api/0/buckets/", TIMEOUT_S).items():
         m = m if isinstance(m, dict) else {}
         lu, end = m.get("last_updated"), (m.get("metadata") or {}).get("end")
         out[b] = (lu, end) if (lu or end) else None
     return out
 
 
-def fetch_events(bucket: str, start: str | None, base: str | None = None, page: int = PAGE) -> list[dict]:
+def fetch_events(bucket: str, start: str | None, base: str | None = None, page: int = PAGE,
+                 timeout: float = FULL_TIMEOUT_S) -> list[dict]:
     """All events of a bucket from `start` (inclusive, None = everything), oldest first.
 
     aw-server returns newest first and caps by `limit`; we page backwards with `end`.
@@ -76,8 +110,7 @@ def fetch_events(bucket: str, start: str | None, base: str | None = None, page: 
             params["start"] = start
         if end:
             params["end"] = end
-        batch = _get(f"{base}/api/0/buckets/{q}/events?{urllib.parse.urlencode(params)}",
-                     TIMEOUT_S if start else FULL_TIMEOUT_S)
+        batch = _get(f"{base}/api/0/buckets/{q}/events?{urllib.parse.urlencode(params)}", timeout)
         new = 0
         for ev in batch:
             k = _key(ev)
@@ -162,11 +195,11 @@ def store(bucket: str, events: list[dict]) -> int:
 
 
 def pull_bucket(bucket: str, since: str | None = None, base: str | None = None,
-                keep_events: bool = False) -> dict:
+                keep_events: bool = False, timeout: float = FULL_TIMEOUT_S) -> dict:
     """keep_events: also return the fetched rows under "events" (`oi live` merges them in memory)."""
     cur = load_cursor(bucket)
     start = since or (cur or {}).get("ts")
-    events = fetch_events(bucket, start, base)
+    events = fetch_events(bucket, start, base, timeout=timeout if start else FULL_TIMEOUT_S)
     added = store(bucket, events)
     if events:
         last = events[-1]
@@ -182,17 +215,19 @@ def pull_bucket(bucket: str, since: str | None = None, base: str | None = None,
 
 
 def pull(since: str | None = None, base: str | None = None, keep_events: bool = False,
-         seen: dict | None = None) -> list[dict]:
-    """Pull every bucket. With `seen` ({bucket: signature}, kept by the caller between pulls), skip the
-    buckets whose `bucket_meta` signature has not moved since their last successful pull."""
-    if seen is None:
+         gate: Gate | None = None) -> list[dict]:
+    """Pull every bucket (`oi pull`: 30 s timeout). With a `gate` (`oi live`, kept between pulls):
+    short timeout, and only the buckets the gate says are due (all of them when `since` is given)."""
+    if gate is None:
         return [pull_bucket(b, since, base, keep_events) for b in list_buckets(base)]
+    meta = bucket_meta(base)
+    gate.keep(meta)
     out = []
-    for b, sig in sorted(bucket_meta(base).items()):
-        if since is None and sig is not None and seen.get(b) == sig:
+    for b, sig in sorted(meta.items()):
+        if since is None and not gate.due(b, sig):
             continue
-        out.append(pull_bucket(b, since, base, keep_events))
-        seen[b] = sig
+        out.append(pull_bucket(b, since, base, keep_events, timeout=TIMEOUT_S))
+        gate.fetched(b, sig)
     return out
 
 

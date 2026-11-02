@@ -91,7 +91,7 @@ final class HUDController {
     private var hintTimer: Timer?             // fade, then the grace end
     private var hintSeq = 0
     private var developAnchor: NSPoint?       // develop: the cross opens at the pointer
-    // end
+    // end W19
     // the dots follow the pointer while drawn (a 60 Hz timer only then; nothing runs when hidden)
     private var follower = HintFollower()
     private var followTimer: Timer?
@@ -124,13 +124,13 @@ final class HUDController {
         var view = HUDView(model: model) { [weak self] key, claude in
             self?.pressed(key, via: "click", claude: claude)       // ⌥-click = Claude
         }
-        view.onPressPath = { [weak self] path in self?.executePath(path, via: "click") }   // sub-ring click
+        view.onPressPath = { [weak self] path in self?.executePath(path, via: "click") }   // W15 sub-ring click
         view.onOpenDraft = { [weak self] in self?.openDraftInMail() }
         let host = FirstMouseHostingView(rootView: view)
         host.onRightClick = { [weak self] p in self?.rightClick(at: p) }
         host.frame = NSRect(origin: .zero, size: Metrics.panelSize)
         panel.contentView = host
-        // option taps: one modifier only (a ⌥+⌘ summon set never fires option 2 or 3); the vocal SET
+        // option taps: one modifier only (a ⌥+⌘ summon set never fires option 2 or 3); W12: the vocal SET
         // (default ⌃+⌥) on the same monitor while the HUD is visible, on its own monitor while recording
         taps.onTap = { [weak self] set in
             if set.count == 1, let m = set.first { self?.tapped(m) } else { self?.vocalSetTapped(set) }
@@ -178,7 +178,7 @@ final class HUDController {
             self?.pressGuard.issue(target: target, confirmed: true, at: ProcessInfo.processInfo.systemUptime)
             log("wish: page action confirmed, press ticket issued")
         }
-        wish.resolve.onCancelPress = { [weak self] target in self?.pressGuard.revoke(target: target) }   // follow-up
+        wish.resolve.onCancelPress = { [weak self] target in self?.pressGuard.revoke(target: target) }   // W18 follow-up
         // Outward gate: a validated page press = the user's explicit step: its press ticket (the gate may outlast the tap's)
         outwardGate.hotkeys = { [weak self] in self?.settings.current.hotkeys ?? HotkeySet.defaults }
         outwardGate.onValidatedTarget = { [weak self] target in
@@ -189,9 +189,20 @@ final class HUDController {
         // the summon key too (a permanent tap, or a permanent chord).
         syncWishHotkey()
         syncSummon()
-        let t = Timer(timeInterval: 2, repeats: true) { [weak self] _ in self?.syncWishHotkey(); self?.syncSummon() }
+        syncVocalAgents()
+        let t = Timer(timeInterval: 2, repeats: true) { [weak self] _ in
+            self?.syncWishHotkey(); self?.syncSummon(); self?.syncVocalAgents()
+        }
         RunLoop.main.add(t, forMode: .common)
         settingsPoll = t
+    }
+
+    /// The agent picker lists the recipients `oi vocal-send` knows: the defaults + settings.json `vocal_recipients`
+    /// (a demo's OI_HUD_AGENTS wins). Read again when settings.json changes, applied while no picker is up.
+    private func syncVocalAgents() {
+        guard VocalPicker.demoAgents == nil, vocal.stateName == "idle" else { return }
+        let a = VocalPicker.fromSettings(settings.current)
+        if a != VocalPicker.agents { VocalPicker.agents = a; log("vocal picker: \(a.count) agents") }
     }
 
     // MARK: wish
@@ -334,7 +345,7 @@ final class HUDController {
             conn.send(.ok)
         case .success(.show(let options, let ttlMs)):
             show(options, ttlMs: ttlMs, conn: conn)
-        case .success(.showHint(let options, let ttlMs, let hintTTLms, let marker)):   // (+ marker)
+        case .success(.showHint(let options, let ttlMs, let hintTTLms, let marker)):   // W19 (+ W24 marker)
             showHint(options, ttlMs: ttlMs, hintTTLms: hintTTLms, marker: marker, conn: conn)
         case .success(.state):
             conn.send(.state(stateInfo()))
@@ -415,12 +426,12 @@ final class HUDController {
         guard conn == nil || answersSummon || force || limiter.allow(now: now) else {
             conn?.send(.dropped(reason: "rate_limited")); return
         }
-        // ≤ 4 predicted + "Tell me what you wanted" (4:30) + "Send a vocal to…" (7:30)
+        // ≤ 4 predicted + "Tell me what you wanted" (4:30) + W12 "Send a vocal to…" (7:30)
         present(optionsWithWishAndVocal(options), ttlMs: ttlMs, conn: conn)
         liveBound = live                                  // set after present (a swap resets it)
     }
 
-    /// Draws `options` (already final: predicted + wish + vocal, or the agent picker + vocal) and
+    /// Draws `options` (already final: predicted + wish + vocal, or the W12 agent picker + vocal) and
     /// arms their keys; swaps in place when the HUD is already up.
     private func present(_ options: [HUDOption], ttlMs: Int, conn: Connection?) {
         liveBound = nil                               // show() binds it again after a live show
@@ -455,7 +466,7 @@ final class HUDController {
                                     symbol: (h.isTap && !plan.taps.values.contains(k)) ? HotkeySet.legacyChord(k).display : h.display)
         }
         model.badges = badges
-        model.positions = FixedSlots.positions(hotkeys: current.hotkeys, slots: current.hud.slots)   // fixed places
+        model.positions = FixedSlots.positions(hotkeys: current.hotkeys, slots: current.hud.slots)   // W10 fixed places
         // colour per key (the colour of the modifier that owns the option's place), stable across shows.
         // Capsules are always dark: their dark variant. On-screen hints follow the system appearance.
         let darkSystem = NSApp.effectiveAppearance.bestMatch(from: [.darkAqua, .aqua]) == .darkAqua
@@ -580,7 +591,7 @@ final class HUDController {
         }
     }
 
-    ///, 60 Hz while the dots are drawn: they slide after the pointer (Reduce Motion: no easing), on screen.
+    /// W21b, 60 Hz while the dots are drawn: they slide after the pointer (Reduce Motion: no easing), on screen.
     private func followTick() {
         guard follower.running, hintDots.isDrawn, !model.visible else { syncHintFollow(); return }
         let now = uptime
@@ -670,7 +681,7 @@ final class HUDController {
         present(optionsWithWishAndVocal(d.options), ttlMs: d.ttlMs, conn: conn)
         return true
     }
-    // end
+    // end W19
 
     /// resolve and draw each option's target hint (window / Dock icon / halo / edge bar).
     private func showHints(_ options: [HUDOption], colors: [Int: NSColor]) {
@@ -823,7 +834,7 @@ final class HUDController {
         }
     }
 
-    /// label enrichment: upgrade labels in place while the same options are still on screen.
+    /// W14 label enrichment: upgrade labels in place while the same options are still on screen.
     private func updateLabels(_ updates: [LabelUpdate], conn: Connection) {
         if !model.visible, !hintDots.isIdle {             // a hint: relabel what ⌥⌘ would develop
             if hintDots.relabel(updates) > 0 { conn.send(.ok); log("labels updated (hint)") } else { conn.send(.dropped(reason: "stale")) }
@@ -1096,7 +1107,7 @@ final class HUDController {
     }
 
     /// ⌥⌘ released: execute the option under the pointer, cancel on empty space, or (a short hold that touched
-    /// nothing) leave the HUD up exactly as the tap would.
+    /// nothing) leave the HUD up exactly as the W11 tap would.
     private func glideRelease(tapWindow: Bool) {
         guard glide.active else { return }
         guard model.visible else { endGlide(); return }      // released before the HUD came: the summon goes on (a tap)
@@ -1128,7 +1139,7 @@ final class HUDController {
     }
 
     /// Run the option at `path` (a glide release, a click on any capsule while gliding). Only ever on a release or
-    /// a click, never on hover. A Claude-drafted follow-up goes through the spinner and result card.
+    /// a click, never on hover. A Claude-drafted follow-up goes through the W14 spinner and result card.
     private func executePath(_ path: [Int], via: String) {
         guard glide.active, model.visible, let first = path.first else { return }
         if path.count == 1, !(1...maxOptions).contains(first) {   // the wish / vocal capsule: as its click
@@ -1305,7 +1316,7 @@ final class HUDController {
         return (f.minX, f.minY, f.maxX, f.maxY)
     }
 
-    /// What must stay on screen (the cross, wish, vocal); the window itself is larger (sub-rings).
+    /// What must stay on screen (the cross, wish, vocal); the window itself is larger (W15 sub-rings).
     private var halfSize: (w: Double, h: Double) { (Metrics.contentSize.width / 2, Metrics.contentSize.height / 2) }
 
     private func setCentre(_ c: (x: Double, y: Double)) {

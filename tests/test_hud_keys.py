@@ -125,12 +125,12 @@ def test_screenshot_offer_and_picker_use_the_keys():
     assert [o["key"] for o in opts] == [2, 3, 4, 1] and keys[1] == "more"   # "More" on fn
 
 
-# ---- hud-log rows say how they number their options -------------------------------------------------------
+# ---- W21b: hud-log rows say how they number their options -------------------------------------------------------
 
 def test_hud_numbering_defaults_to_rank_for_old_rows():
     assert normalise.HUD_NUMBERING == 2
     assert normalise.hud_numbering({"numbering": 2}) == 2
-    assert normalise.hud_numbering({}) == 1                       # rows written before
+    assert normalise.hud_numbering({}) == 1                       # rows written before W21
     assert normalise.hud_numbering({"numbering": True}) == 1      # junk -> the old numbering
     assert normalise.hud_numbering({"numbering": "2"}) == 1
 

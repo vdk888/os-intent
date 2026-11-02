@@ -4,7 +4,7 @@ import HUDCore
 /// Global hotkeys via Carbon RegisterEventHotKey: no TCC permission needed, and the key is
 /// consumed (it does not also type into the front app).
 /// - the HUD option/dismiss keys are TEMPORARY: registered on show, `unregisterAll()` on every hide;
-/// - the wish key (and the summon key when it is a chord) are PERMANENT: registered while the
+/// - the wish key (and the summon key when it is a chord, W10) are PERMANENT: registered while the
 ///   daemon runs (`setPermanent`), and never touched by `unregisterAll()`.
 final class HotKeys {
     static let escapeID: UInt32 = dismissHotkeyID

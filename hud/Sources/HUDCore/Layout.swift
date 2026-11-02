@@ -15,8 +15,8 @@ public enum FixedSlots {
 
     /// the same four places with capsules of `capsuleWidth` — the left and right ones move
     /// out so their inner edge stays `gap` px from the centre (the pointer spot stays empty); top and
-    /// bottom stay at `radius`.'s 168-px capsules sat exactly there (100 − 84 = 16 px), so for them
-    /// nothing moves;'s 252-px capsules sit at ±142.
+    /// bottom stay at `radius`. W10's 168-px capsules sat exactly there (100 − 84 = 16 px), so for them
+    /// nothing moves; W11's 252-px capsules sit at ±142.
     public static func offset(_ p: SlotPosition, radius: Double, capsuleWidth: Double, gap: Double = 16) -> (x: Double, y: Double) {
         let side = max(radius, capsuleWidth / 2 + gap)
         switch p {
@@ -43,7 +43,7 @@ public enum FixedSlots {
     /// counts as the defaults); a chord option takes the place of its default modifier (option 1 fn,
     /// 2 ⌃, 3 ⌥, 4 ⌘) when free, else the first free place. Places are unique and depend only on the
     /// key, never on how many options are shown: an absent option leaves its place empty.
-    /// Default (the user 15:45): fn left, ⌃ top, ⌥ right, ⌘ bottom → (number = key) option 1 (fn) left,
+    /// Default (the user 15:45): fn left, ⌃ top, ⌥ right, ⌘ bottom → since W21 (number = key) option 1 (fn) left,
     /// 2 (⌃) top, 3 (⌥) right, 4 (⌘) bottom: clockwise from the left, the numbers in keyboard order.
     public static func positions(hotkeys: HotkeySet, slots: [TapModifier: SlotPosition]) -> [Int: SlotPosition] {
         let set = hotkeys.problems().isEmpty ? hotkeys : HotkeySet.defaults

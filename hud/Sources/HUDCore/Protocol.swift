@@ -50,7 +50,7 @@ public struct HUDOption: Codable, Equatable, Sendable {
     }
 }
 
-/// target hint, sent by `oi live` per option:
+/// W11 target hint, sent by `oi live` per option:
 /// `{"kind":"window","app":"Telegram"}` (app.open; url.open → Safari): the app's frontmost window glows;
 /// `{"kind":"edge","dir":"right"|"left"}` (space.move +1 / −1): a bar bounces on that screen edge.
 public enum HUDHint: Codable, Equatable, Sendable {
@@ -144,7 +144,7 @@ public enum HUDCommand: Equatable, Sendable {
     case w18(W18Command)
     /// a `show` bound to a LIVE context state (`"live":"shot"`: a screenshot still on screen). Not
     /// rate-limited and not dismissed by typing or pointer travel while that state is live (he is
-    /// working on the screenshot); oi live takes it down (`hide`) when the state ends.'s `shot_show` (the agent
+    /// working on the screenshot); oi live takes it down (`hide`) when the state ends. W17's `shot_show` (the agent
     /// picker) decodes to it too. The editable note panel and its debug submit: ShotOffer.swift.
     case showLive(options: [HUDOption], ttlMs: Int, live: String)
     case shotNote(ShotNoteRequest)
@@ -152,12 +152,12 @@ public enum HUDCommand: Equatable, Sendable {
     // `show` with `"mode":"hint"`: dots only until the summon key develops them (`ttlMs` = the
     // full cross's ttl after development, `hintTTLms` = how long the dots stay).
     // `"marker":"ring"` = a PROACTIVE hint (the state changed: a mail, an agent, a file, an alert):
-    // the same dots with a thin ring around them. Absent / unknown = nil (the dots as before).
+    // the same dots with a thin ring around them. Absent / unknown = nil (the W19 dots as before).
     case showHint(options: [HUDOption], ttlMs: Int, hintTTLms: Int, marker: HintMarker?)
     /// Outward gate: the confirm panel before a send / an outward page press (OutwardGate.swift).
     case confirmOutward(OutwardConfirmRequest)
     case debugOutward(validate: Bool)
-    // end
+    // end W19
 }
 
 public enum CommandError: Error, Equatable, CustomStringConvertible {
@@ -294,7 +294,7 @@ public func decodeCommand(_ line: Data) throws -> HUDCommand {
             return .showHint(options: opts.sorted { $0.key < $1.key }, ttlMs: ttl, hintTTLms: h,
                              marker: raw.marker.flatMap(HintMarker.init(rawValue:)))
         }
-        // end
+        // end W19
         if let live = raw.live, !live.isEmpty, live.count <= 32 {   // bound to a live context state
             return .showLive(options: opts.sorted { $0.key < $1.key }, ttlMs: ttl, live: live)
         }
@@ -314,8 +314,8 @@ public struct HUDStateInfo: Equatable, Sendable {
     public var wishHotkey: String
     public var wishRegistered: Bool
     public var wishPanel: String          // "closed" | "typing" | "dictating"
-    public var tapsActive: Bool           // per-show option tap exists (must be false whenever !visible)
-    public var summonKey: String          // "⌥⌘" (default), "⇧" or the chord
+    public var tapsActive: Bool           // W9 per-show option tap exists (must be false whenever !visible)
+    public var summonKey: String          // "⌥⌘" (W11 default), "⇧" or the chord
     public var summonArmed: Bool          // the permanent summon tap / chord is live
     public var hints: [DrawnHint]         // the target hints drawn now (empty whenever !visible)
     public var vocalKey: String           // "⌃⌥" (default) or the chord
@@ -361,7 +361,7 @@ public enum HUDEvent: Equatable, Sendable {
     case resolve(ResolveRequest)
     /// the note panel sent with Enter (the reply to `shot_note`).
     case note(text: String)
-    /// follow-up: `{"event":"cancel","id":n}` to the resolver — Esc while "Working…" / confirming.
+    /// W18 follow-up: `{"event":"cancel","id":n}` to the resolver — Esc while "Working…" / confirming.
     case resolveCancel(id: Int)
     /// Outward gate: the answer to `confirm_outward` (exactly one per request).
     case outward(id: String, decision: OutwardDecision)
@@ -390,7 +390,7 @@ public enum HUDEvent: Equatable, Sendable {
         case .summon(let ts): obj = ["event": "summon", "ts": ts]
         case .resolve(let r): obj = r.json
         case .note(let t): obj = ["event": "note", "text": t]
-        case .resolveCancel(let id): obj = ["event": "cancel", "id": id]   // follow-up
+        case .resolveCancel(let id): obj = ["event": "cancel", "id": id]   // W18 follow-up
         case .outward(let id, let d):                                      // outward gate
             var o: [String: Any] = ["event": "outward", "id": id, "decision": d.validated ? "validated" : "cancelled",
                                     "reason": d.reason]

@@ -12,13 +12,13 @@ import Speech
 /// are also written to that .caf file, 0600; the audio never leaves the Mac).
 /// a recogniser isFinal / error mid-speech is the end of a SEGMENT, never of the dictation: the text so
 /// far is kept and a new recognition task starts on the same audio engine (HUDCore.DictationSegments). The
-/// session ends only on `stop` (the user's stop / Esc) or the time limit (`onEnd`). a recogniser that keeps
+/// session ends only on `stop()` (the user's stop / Esc) or the time limit (`onEnd`). W21: a recogniser that keeps
 /// failing with no text restarts after a backoff (250 ms … 2 s), never gives up: speech after a long silence is
 /// still transcribed.
 /// Main thread only.
 final class Dictation {
     var onPartial: ((String) -> Void)?
-    /// Called once per session when it stops by itself (time limit, unavailable / denied; never on a
+    /// Called once per session when it stops by itself (time limit, unavailable / denied; W20: never on a
     /// recogniser final result or error);
     /// the hint (if any) is a one-line reason for the field's placeholder.
     var onEnd: ((String?) -> Void)?

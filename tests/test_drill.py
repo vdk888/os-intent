@@ -59,7 +59,7 @@ def test_launchables_are_never_opened_only_revealed(tmp_path, monkeypatch):
     dl = home / "Downloads"
     names = ["run.command", "x.sh", "y.zsh", "z.tool", "a.pkg", "b.dmg", "c.terminal", "d.scpt", "e.applescript",
              "f.workflow", "G.DMG", "site.webloc", "h.inetloc", "i.fileloc", "j.jar", "K.prefPane", "l.mobileconfig",
-             "m.saver", "n.scptd", "o.action"]
+             "m.saver", "n.scptd", "o.action", "p.afploc", "q.ftploc", "r.shortcut"]
     for n in names:
         (dl / n).write_text("never run")
     (dl / "Tool.app").mkdir()

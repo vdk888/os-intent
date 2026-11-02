@@ -1,6 +1,6 @@
 import Foundation
 
-/// page actions: oi-hud's own Accessibility grant, from `<data_dir>/status/oi-hud.json`
+/// W16 page actions: oi-hud's own Accessibility grant, from `<data_dir>/status/oi-hud.json`
 /// (`{"ts": ISO-8601, "ax": bool, "pid": n}`, rewritten by oi-hud every 30 s). Page actions (read the
 /// Safari page's buttons, AXPress the chosen one) need Accessibility for oi-hud.app; without it the HUD
 /// simply offers none, and the menu shows this hint.

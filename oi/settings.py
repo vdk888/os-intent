@@ -3,9 +3,9 @@
 Schema (every key optional; see docs/DESIGN.md "Settings"):
   {"paused": false, "hud_enabled": true, "denylist_apps": ["Passwords", ...],
    "repo_dir": "/Users/you/os-intent", "updated_at": "2026-10-20T10:00:00Z",
-   "gate": {"show_min_p": 0.15, ..., "outward": true}, "live": {"poll_s": 2, ...}, # `oi live`
+   "gate": {"show_min_p": 0.15, ..., "outward": true}, "live": {"poll_s": 2, ...},   # `oi live`
    (`gate.outward`: the outward gate, read by oi.gate.enabled: true | false | {"vocal"|"shot"|"page": bool})
-   "vocal_recipients": {"nova": {...}, ...}, # read by oi.vocal.recipients
+   "vocal_recipients": {"nova": {...}, ...},   # read by oi.vocal.recipients()
    "vocal": {"max_s": 300, "shot_offer": true, "shot_safe_hosts": [...]}, # max_s: oi-hud's recording limit;
                                                # shot_offer, shot_safe_hosts: oi.vocal_settings
    "laya": {"enabled": true}} # the menu-bar Laya switch (oi.laya_switch); false = Markov only, server stopped
@@ -57,8 +57,8 @@ LEGACY_LAYA_TIMEOUTS_MS = (300, 1050)
 
 
 # `hud.auto_mode` = how the gated (automatic) shows are sent: "hint" (default: coloured dots, ⌥⌘
-# develops them), "full" (the cross, as before) or "off" (nothing; ⌥⌘ still summons); `hud.hint_ttl_ms` = how
-# long the dots stay (4000, was 2500; clamped 500-10000). The other `hud` keys (`hint_dot_size`)
+# develops them), "full" (the cross, as before W19) or "off" (nothing; ⌥⌘ still summons); `hud.hint_ttl_ms` = how
+# long the dots stay (4000 since W20, was 2500; clamped 500-10000). The other `hud` keys (`hint_dot_size`)
 # belong to oi-hud and are not read here.
 AUTO_MODES = ("hint", "full", "off")
 # `hud.fill_order` = which key gets the most likely option, then the next… (see oi/hud_keys.py).
@@ -79,7 +79,7 @@ def _hud(raw) -> dict:
     if isinstance(v, (int, float)) and not isinstance(v, bool) and v == v:
         out["hint_ttl_ms"] = int(min(max(v, HINT_TTL_RANGE_MS[0]), HINT_TTL_RANGE_MS[1]))
     return out
-# end
+# end W19
 
 # 2026-10-21: `laya.enabled` = the master switch, set by the menu bar
 # (`oi laya-switch on|off`). Off = Markov only: `load()` then hands out an EFFECTIVE `live` view with the Laya
@@ -124,7 +124,7 @@ def load(path: Path | None = None) -> dict:
 
 
 def _laya(raw) -> dict:
-    """The keys of `live`, each falling back to its default when absent or wrongly typed."""
+    """The W13 keys of `live`, each falling back to its default when absent or wrongly typed."""
     out = dict(LIVE_LAYA_DEFAULTS)
     if not isinstance(raw, dict):
         return out
@@ -154,6 +154,11 @@ def update_live(changes: dict, path: Path | None = None) -> dict:
 def set_laya_enabled(on: bool, path: Path | None = None) -> dict:
     """The menu-bar Laya switch: settings.json `laya.enabled` (other keys kept). Returns the raw `laya` dict."""
     return _update_section("laya", {"enabled": bool(on)}, path)
+
+
+def set_claude_enabled(on: bool, path: Path | None = None) -> dict:
+    """The opt-in to Claude (settings.json `claude.enabled`; `enrich` untouched). Returns the raw `claude` dict."""
+    return _update_section("claude", {"enabled": bool(on)}, path)
 
 
 def _update_section(section: str, changes: dict, path: Path | None = None) -> dict:

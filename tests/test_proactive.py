@@ -379,32 +379,32 @@ def test_mail_script_never_launches_mail():
 
 def test_agent_sensor_unread_badge_state():
     """An agent chat with an unread badge = a live event; the badge gone (chat read) = its gone row."""
-    chats = [{"Lyra - Sales": 2, "Nova - CEO": 0, "Atlas - R&D": 0}]        # Lyra already unread at start
+    chats = [{"Lyra - Sales": 2, "Nova - Planning": 0, "Atlas - Tools": 0}]        # Lyra already unread at start
     dock = [3]
     s = sensors.AgentSensor(unread=lambda: chats[-1], dock_badge=lambda: dock[-1], running=lambda: True,
                             outbound=FakeOutbound(None))
     cfg = _cfg({})
     start = s.poll(NOW, cfg)                                               # waiting at start = live state, shown
     assert [store.token(e) for e in start] == ["evt:agent:lyra"]
-    chats.append({"Orion - Fund": 1, "Lyra - Sales": 2, "Nova - CEO": 0, "Some friend": 4})
+    chats.append({"Orion - Finance": 1, "Lyra - Sales": 2, "Nova - Planning": 0, "Some friend": 4})
     evs = s.poll(NOW + 8, cfg)
-    assert [store.token(e) for e in evs] == ["evt:agent:orion"] and evs[0]["ref"] == {"chat": "Orion - Fund", "slug": "orion", "n": 1}
-    chats.append({"Orion - Fund": 3, "Lyra - Sales": 2, "Nova - CEO": 0})
+    assert [store.token(e) for e in evs] == ["evt:agent:orion"] and evs[0]["ref"] == {"chat": "Orion - Finance", "slug": "orion", "n": 1}
+    chats.append({"Orion - Finance": 3, "Lyra - Sales": 2, "Nova - Planning": 0})
     ref = s.poll(NOW + 16, cfg)                                            # more messages: the same state, refreshed
     assert [(e["id"], store.token(e), e["ref"]["n"]) for e in ref] == [(evs[0]["id"], "evt:agent:orion", 3)]
     assert s.poll(NOW + 20, cfg) == []                                     # same count: nothing new
-    chats.append({"Lyra - Sales": 2, "Nova - CEO": 0})
+    chats.append({"Lyra - Sales": 2, "Nova - Planning": 0})
     assert s.poll(NOW + 24, cfg) == []                                     # Orion's row not in the list: unknown
     chats.append(None)
     assert s.poll(NOW + 32, cfg) == [] and s.last_error == "chats_unreadable"   # unreadable, Telegram runs: failed
-    chats.append({"Orion - Fund": 0, "Lyra - Sales": 2})
+    chats.append({"Orion - Finance": 0, "Lyra - Sales": 2})
     gone = s.poll(NOW + 10 ** 5, cfg)                                      # read (however late): the event ends
     assert [(e["id"], store.token(e)) for e in gone] == [(evs[0]["id"], "evt:agent:orion:gone")]
-    chats.append({"Orion - Fund": 1, "Lyra - Sales": 0})
+    chats.append({"Orion - Finance": 1, "Lyra - Sales": 0})
     again = s.poll(NOW + 10 ** 5 + 8, cfg)                                 # Lyra read: gone; Orion unread again: new
     assert [(e["id"], store.token(e)) for e in again[:1]] == [(start[0]["id"], "evt:agent:lyra:gone")]
     assert [store.token(e) for e in again[1:]] == ["evt:agent:orion"] and again[1]["id"] != evs[0]["id"]
-    chats.append({"Orion - Fund": 1, "Lyra - Sales": 1})
+    chats.append({"Orion - Finance": 1, "Lyra - Sales": 1})
     lyra = s.poll(NOW + 10 ** 5 + 16, cfg)                                 # unread again = a new event
     assert [store.token(e) for e in lyra] == ["evt:agent:lyra"] and lyra[0]["id"] != start[0]["id"]
     dock.append(0)                                                         # no Dock badge: every chat read
@@ -438,7 +438,7 @@ def test_agent_sensor_outbound_fallback_when_the_chat_list_is_unreadable():
             return pend["atlas"]
     ob = Ob(None)
     s = sensors.AgentSensor(unread=lambda: None, dock_badge=lambda: dock[-1], running=lambda: True, outbound=ob,
-                            titles=lambda: {"atlas": "Atlas - R&D"}, names=lambda: {"atlas": "Atlas"})
+                            titles=lambda: {"atlas": "Atlas - Tools"}, names=lambda: {"atlas": "Atlas"})
     cfg = _ob_cfg()
     cfg["agents"]["bots"] = {"atlas": "AtlasAgentBot"}
     pend["atlas"] = {"n": 0, "first": None, "last": None}
@@ -447,7 +447,7 @@ def test_agent_sensor_outbound_fallback_when_the_chat_list_is_unreadable():
     pend["atlas"] = {"n": 2, "first": NOW - 120, "last": NOW - 30}
     evs = s.poll(NOW + 8, cfg)
     assert [store.token(e) for e in evs] == ["evt:agent:atlas"] and evs[0]["who"] == "Atlas"
-    assert evs[0]["ref"] == {"chat": "Atlas - R&D", "slug": "atlas", "n": 2, "since": vocab.iso_utc(
+    assert evs[0]["ref"] == {"chat": "Atlas - Tools", "slug": "atlas", "n": 2, "since": vocab.iso_utc(
         datetime.fromtimestamp(NOW - 120, timezone.utc)), "bot": "AtlasAgentBot"}
     pend["atlas"] = {"n": 3, "first": NOW - 120, "last": NOW + 10}
     ref = s.poll(NOW + 16, cfg)                                            # one more message: the same state, refreshed
@@ -478,7 +478,7 @@ def test_agent_waiting_at_start_shows_on_the_first_poll():
         def pending(self, spec, ids, after=None):
             return pend["atlas"]
     s = sensors.AgentSensor(unread=lambda: None, dock_badge=lambda: dock[-1], running=lambda: True, outbound=Ob(None),
-                            titles=lambda: {"atlas": "Atlas - R&D"}, names=lambda: {"atlas": "Atlas"})
+                            titles=lambda: {"atlas": "Atlas - Tools"}, names=lambda: {"atlas": "Atlas"})
     cfg = _ob_cfg()
     first = s.poll(NOW, cfg)
     assert [(store.token(e), e["ref"]["n"]) for e in first] == [("evt:agent:atlas", 1)] and s.last_error is None
@@ -788,7 +788,7 @@ def test_event_options_per_source(tmp_path, monkeypatch):
     priv = dict(mail, private=True, subject=None)
     po = engine.event_options(priv, 0.9, names=NAMES, route=lambda t: ("orion", 1.0))
     assert [x["primitive"] for x in po] == ["mail.reply", "mail.show"] and not any(x["claude"] for x in po)
-    ag = _ev("agent", "orion", ref={"chat": "Orion - Fund", "slug": "orion"})
+    ag = _ev("agent", "orion", ref={"chat": "Orion - Finance", "slug": "orion"})
     assert [(x["primitive"], x["label"]) for x in engine.event_options(ag, 0.6, names=NAMES)] == [
         ("telegram.chat", "Telegram — Orion"), ("agent.ask", "Reply to Orion")]
     long = engine.event_options(_ev("agent", "vega", ref={"chat": "Vega - Marketing", "slug": "vega", "bot": "VegaBot"}),
@@ -966,8 +966,8 @@ def test_held_event_is_hinted_later_while_live_and_dropped_once_gone(data_dir, m
     lv, _ = make_live(data_dir, sensors_map={}, clock=lambda: t[0],
                       proactive={"sources": {"agents": True}, "min_p": 0.1})
     lv.proactive.last_hint_at = NOW - 60
-    a = store.make("agent", "orion", ts=NOW, key="a", who="Orion", ref={"chat": "Orion - Fund", "slug": "orion"})
-    b = store.make("agent", "nova", ts=NOW, key="b", who="Nova", ref={"chat": "Nova - CEO", "slug": "nova"})
+    a = store.make("agent", "orion", ts=NOW, key="a", who="Orion", ref={"chat": "Orion - Finance", "slug": "orion"})
+    b = store.make("agent", "nova", ts=NOW, key="b", who="Nova", ref={"chat": "Nova - Planning", "slug": "nova"})
     lv.proactive.q.put(a)
     lv.proactive.q.put(b)
     assert [r["reason"] for r in lv.proactive.drain(settings.load(), NOW + 2)] == ["rate_limited"] * 2
@@ -1039,7 +1039,7 @@ def test_client_mail_opens_the_full_cross_and_the_stream_learns(data_dir, monkey
     blob = json.dumps(logged)
     assert "Sam" not in blob and "NAV" not in blob and "<b@x>" not in blob   # no name / subject / id in logs
     # a second event 3 min later: rate limited (one per 10 min), logged with its reason only
-    ag = store.make("agent", "orion", ts=NOW + 180, key=["orion", 1], who="Orion", ref={"chat": "Orion - Fund", "slug": "orion"})
+    ag = store.make("agent", "orion", ts=NOW + 180, key=["orion", 1], who="Orion", ref={"chat": "Orion - Finance", "slug": "orion"})
     lv.proactive.q.put(ag)
     t[0] = NOW + 182
     assert lv.proactive.drain(settings.load(), t[0])[0]["reason"] == "rate_limited"
@@ -1122,7 +1122,7 @@ def test_pack_gets_the_event_habit_and_recent_events():
     out = p.build({"app": "Mail", "events": lines, "event_habit": "After a mail event (client), the user usually: Mail 80%"}, cfg)
     assert "## After event\nAfter a mail event (client)" in out["text"]
     assert "Sam: NAV du fonds" in out["text"] and "details withheld" in out["text"]
-    assert "AcmeConseil" not in out["text"]                                       # the leaks gate
+    assert "AcmeConseil" not in out["text"]                                       # the W25 leaks gate
 
 
 def test_event_lines_withhold_private_details():
@@ -1187,7 +1187,7 @@ def test_importance_tier_from_local_context():
     assert imp(_mail_ev(NOW), no_prio, {}) is None                               # the class alone is not a verdict
     judged = dict(_other_mail(NOW), wiki={"important": True, "reason": "wiki", "page": "shared/people/x.md"})
     assert imp(judged, no_prio, {}) == "wiki"                                    # judge.py: the wiki said so
-    assert imp(_other_mail(NOW, who="Marc Durand"), cfg, prof) == "profile"    # counterpart
+    assert imp(_other_mail(NOW, who="Marc Durand"), cfg, prof) == "profile"    # W22 counterpart
     assert imp(_other_mail(NOW, subject="Point levée de fonds"), cfg, prof) == "profile"
     priv = dict(_other_mail(NOW, subject="Point levée de fonds"), private=True)
     assert imp(priv, cfg, prof) is None                                          # a private subject is never read

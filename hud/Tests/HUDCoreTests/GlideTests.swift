@@ -30,7 +30,7 @@ private let summonSet: Set<TapModifier> = [.option, .cmd]
         #expect(h.flagsChanged(optCmd, at: 0.03) == .armed); _ = tap.flagsChanged(optCmd, at: 0.03)
         #expect(h.flagsChanged(.option, at: 0.15) == nil)        // released at 120 ms: never held
         #expect(tap.flagsChanged(.option, at: 0.15) == nil)
-        #expect(tap.flagsChanged([], at: 0.18) == summonSet)     // the tap, unchanged
+        #expect(tap.flagsChanged([], at: 0.18) == summonSet)     // the W11 tap, unchanged
         _ = h.flagsChanged([], at: 0.18)
         #expect(h.fire(at: 0.28) == false)                               // the late timer finds nothing
     }

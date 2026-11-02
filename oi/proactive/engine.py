@@ -8,8 +8,8 @@ the events whose state is live NOW). Each new live event goes through the releva
 becomes ONE hint through `Live.dispatch` (keys, glide, long-press, hud-log as any show; the row carries `proactive`
 {source, class, p, priority, important, tier, hist_n, wiki_page?}). ADDENDUM 2: an IMPORTANT event
 (relevance.importance: a priority, the wiki judge — judge.py, run here on the sensor thread before the row is stored —,
-a profile match) OPENS the full cross with its actions, no window change or
-pointer move needed; any other one is the dots with `"marker":"ring"`. Any send those actions lead to goes
+a W22 profile match) OPENS the full cross with its actions, no window change or
+pointer move needed; any other one is the W19 dots with `"marker":"ring"`. Any send those actions lead to goes
 through the outward validation gate (`outward_gate` below marks them; oi.live asks oi/gate.py's panel at the pick —
 reply / forward / draft / the chat — and "Ask <agent>" at its vocal send: pick -> gate -> validate). A gated event
 = one hud-log row {"kind": "proactive", source, class, reason, p, …}. Never a name, a subject or a path in a log.

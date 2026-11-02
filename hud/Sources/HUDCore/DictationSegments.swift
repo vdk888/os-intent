@@ -1,11 +1,11 @@
 import Foundation
 
-//// parler"): the on-device recogniser delivers `isFinal` after a short pause (and errors such as "no speech" or its
-// own ~1 min task limit) while the user is still talking. Before that ended the dictation and the vocal flow
+// W20// parler"): the on-device recogniser delivers `isFinal` after a short pause (and errors such as "no speech" or its
+// own ~1 min task limit) while the user is still talking. Before W20 that ended the dictation and the vocal flow
 // SENT on it (live log: started 18:13:19Z, "vocal: sending" 18:13:30Z, 46 chars). Now a recogniser end is only
 // the end of a SEGMENT: the text so far is kept and a new recognition task starts on the same audio engine. The
 // recording ends only on the user's stop (vocal key / Enter / send), Esc, or the time limit.
-// (review note): after `maxEmptyFailures` empty failures in a row the recogniser is no longer given up
+// W21 (W20 review note): after `maxEmptyFailures` empty failures in a row the recogniser is no longer given up
 // (speech after a long silence was recorded but never transcribed): it restarts after a backoff, 250 ms, 500 ms,
 // 1 s, then 2 s each time, until the user stops or the time limit; any speech resets it to immediate restarts.
 
@@ -13,7 +13,7 @@ import Foundation
 public enum DictationStep: Equatable, Sendable {
     case keepGoing      // a partial result: show it, the task goes on
     /// The task ended (isFinal or error): keep its text, start a new task on the same engine after `afterMs`
-    /// (0 = at once; a backoff after `maxEmptyFailures` empty failures in a row, never a give-up).
+    /// (0 = at once; W21: a backoff after `maxEmptyFailures` empty failures in a row, never a give-up).
     case restart(afterMs: Int)
     public static let restart = DictationStep.restart(afterMs: 0)
 }
@@ -21,7 +21,7 @@ public enum DictationStep: Equatable, Sendable {
 /// The running transcript of one dictation made of recogniser segments, joined with one space.
 public struct DictationSegments: Sendable {
     /// Consecutive segments ending in an error with no text restarted at once; from then on each restart waits
-    /// `backoffMs` (no tight loop when on-device recognition is broken, no give-up either:).
+    /// `backoffMs` (no tight loop when on-device recognition is broken, no give-up either: W21).
     public static let maxEmptyFailures = 5
     public static let backoffStartMs = 250
     public static let backoffCapMs = 2000

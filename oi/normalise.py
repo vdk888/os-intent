@@ -242,13 +242,13 @@ def read_wishes(day: str) -> list[dict]:
     return _read_rows(paths.wishes_dir() / f"{day}.jsonl")
 
 
-# how a hud-log row numbers its options. 1 = by rank (rows before, written without the field),
+# how a hud-log row numbers its options. 1 = by rank (rows before W21, written without the field),
 # 2 = by key (fn 1, ⌃ 2, ⌥ 3, ⌘ 4; `pressed:<k>` and options[].key name the key).
 HUD_NUMBERING = 2
 
 
 def hud_numbering(row: dict) -> int:
-    """A hud-log row's numbering: its `numbering` field, 1 when absent (rows written before)."""
+    """A hud-log row's numbering: its `numbering` field, 1 when absent (rows written before W21)."""
     n = row.get("numbering")
     return n if isinstance(n, int) and not isinstance(n, bool) else 1
 
@@ -260,7 +260,7 @@ def read_hud_log(day: str) -> list[dict]:
 
 def hud_tokens(rows: list[dict]) -> list[TokenRow]:
     """hud-log rows -> `hud:shown` at the show ts, then `hud:pressed:<k>` / `hud:dismissed` at
-    ts + latency_ms (src "oi-hud", dur 0) + `hud:glide:<depth>` for a glide. Rows that were not shown (gate, dry run, HUD dropped) give nothing."""
+    ts + latency_ms (src "oi-hud", dur 0), W15 + `hud:glide:<depth>` for a glide. Rows that were not shown (gate, dry run, HUD dropped) give nothing."""
     out: list[TokenRow] = []
     for r in rows:
         if r.get("kind") == "vocal":                      # a sent voice note -> vocal:<slug>

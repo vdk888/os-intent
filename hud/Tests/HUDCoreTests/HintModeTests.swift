@@ -92,7 +92,7 @@ private func opts(_ keys: [Int]) -> [HUDOption] { keys.map { HUDOption(key: $0, 
             let o = FixedSlots.offset(p, radius: 1)
             #expect(x.x * o.x >= 0 && x.y * o.y >= 0)                         // in the direction of the key's place
         }
-        #expect(HintDotLayout.dotSize == 10 && HintDotLayout.radius == 22)       // (was 6 pt at 16 pt)
+        #expect(HintDotLayout.dotSize == 10 && HintDotLayout.radius == 22)       // W20 (was 6 pt at 16 pt)
     }
     // noticeable yet calm
     @Test func w20DotStyleContrastAndMotion() {

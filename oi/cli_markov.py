@@ -1,4 +1,4 @@
-"""`oi-markov` CLI.'s `oi` CLI may later absorb these as `oi markov` / `oi render`.
+"""`oi-markov` CLI. W1's `oi` CLI may later absorb these as `oi markov` / `oi render`.
 
   oi-markov markov --days N        fit on the last N days of $OI_DATA_DIR/tokens/*.jsonl,
                                    save models/markov-<today>.json, print counts only

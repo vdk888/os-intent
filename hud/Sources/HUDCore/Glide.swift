@@ -1,7 +1,7 @@
 import Foundation
 import OISettings
 
-// hold ⌥⌘ + glide + dwell = a Claude-enriched marking menu (the ask:
+// W15 hold ⌥⌘ + glide + dwell = a Claude-enriched marking menu (the ask:
 // "when i hold option + cmd ... i can move the mouse pointer to an option, and if i stay it triggers context
 // enrichment with claude, so i can chain clicks in relevant context, low distance").
 //
@@ -12,7 +12,7 @@ import OISettings
 // MARK: - hold vs tap
 
 /// The summon SET (⌥+⌘ by default) held down ≥ `threshold` (250 ms) with nothing else (no key, click or scroll
-/// before the threshold) = a HOLD: the glide mode. Released earlier it stays the tap (TapDetector, ≤ 500 ms).
+/// before the threshold) = a HOLD: the glide mode. Released earlier it stays the W11 tap (TapDetector, ≤ 500 ms).
 /// The threshold is checked by a timer (flagsChanged events do not come at 250 ms): `armed` asks the owner to call
 /// `fire(at:)` after `threshold`. Only a set of two or more modifiers can be held (a single ⇧ is held to type).
 public struct SetHoldDetector: Sendable {
@@ -208,7 +208,7 @@ public struct GlideLog: Equatable, Sendable {
 public enum GlideRelease: Equatable, Sendable {
     case execute([Int])     // the option under the pointer (any level)
     case cancel             // empty space
-    case keepAsTap          // a short hold with nothing visited: the HUD stays, as the tap would leave it
+    case keepAsTap          // a short hold with nothing visited: the HUD stays, as the W11 tap would leave it
 }
 
 /// The glide while ⌥⌘ is held: hover → dwell (settings hud.dwell_ms) → expand request → sub-ring, up to depth 3.

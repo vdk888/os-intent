@@ -26,7 +26,7 @@ injectable (tests use fakes; no real Mail, Telegram, network or folder is touche
                  too slow to answer is skipped and stays unknown, never fails the whole poll.
   AgentSensor    Telegram's Dock badge (the Dock's AX status label of its tile, DOCK_BADGE_JS; lsappinfo no longer
                  reports it on macOS 27) = the total unread count, 0 = every chat read. WHO wrote: the unread count of
-                 each chat row (Accessibility, the same chat list the reader walks: the row's title and its numeric
+                 each chat row (Accessibility, the same chat list the W23 reader walks: the row's title and its numeric
                  badge only, never a message text) when the client exposes its chat list; Telegram for macOS 13
                  (ru.keepcoder.Telegram) exposes NO window children at all (AXChildren = kAXErrorFailure, 2026-10-21),
                  so then the Mac agents' OWN local record of what they sent the user (OutboundLog: the telegram reply
@@ -39,7 +39,7 @@ injectable (tests use fakes; no real Mail, Telegram, network or folder is touche
                  BY oi-watcher (TCC denies ~/Desktop to this launchd Python; the signed watcher app has it): this
                  sensor reads its bucket `oi-watcher-file_<host>` (live / gone edges, path + class + mtime + size,
                  never content) and its read state per folder (status/oi-watcher-files.json). Hidden / partial
-                 downloads / screenshots (owns those) are skipped. `evt:file:<drive|desktop|downloads|documents|
+                 downloads / screenshots (W17 owns those) are skipped. `evt:file:<drive|desktop|downloads|documents|
                  folder slug>`, live until the file is opened (Spotlight's kMDItemLastUsedDate changes) or removed.
                  Watcher not running = INFO (`watcher_not_running`); a folder it cannot read = folder_unreadable /
                  folder_missing; aw-server unreadable = aw_unreadable.
@@ -345,7 +345,7 @@ def parse_mail_state(out: str) -> dict[str, str] | None:
 
 
 def private_mail(name: str, address: str, subject: str, ccfg: dict) -> bool:
-    """ local-only domain or the leaks gate on the name / subject."""
+    """W14 local-only domain or the W25 leaks gate on the name / subject."""
     if ca.local_only(ca.domain_of(address), ccfg):
         return True
     return pack.leaks(f"{name} {subject}", ccfg)
@@ -535,7 +535,7 @@ class MailSensor:
         return self.states.step(now, on, off)
 
 
-# Telegram's chat list, read-only: [[title, unread]] per row. The title = the row's first text (as the reader);
+# Telegram's chat list, read-only: [[title, unread]] per row. The title = the row's first text (as the W23 reader);
 # unread = the row's badge: its last short numeric text after the title ("3", "99+", "1.2K") or a count in the
 # row's description ("3 unread"). Nothing else of a row leaves the script (never a preview / message text).
 TELEGRAM_UNREAD_JS = r"""

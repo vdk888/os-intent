@@ -1,8 +1,8 @@
 import Foundation
 import OISettings
 
-/// the SUMMON key. ⌥+⌘ pressed together then released (settings.json
-/// `hotkeys.summon`, default `{"tap":["option","cmd"]}`; was a bare ⇧ tap) asks for the HUD now: oi-hud broadcasts `{"event":"summon","ts":…}` to every connected client, the
+/// the SUMMON key. W11: ⌥+⌘ pressed together then released (settings.json
+/// `hotkeys.summon`, default `{"tap":["option","cmd"]}`; W10 was a bare ⇧ tap) asks for the HUD now: oi-hud broadcasts `{"event":"summon","ts":…}` to every connected client, the
 /// live driver (`oi live`) answers with a `show` built from the current moment (no threshold, no
 /// cooldown), and if no `show` arrives within `summonFallbackDelay` the HUD shows its fallback: the
 /// wish option alone ("Tell me what you wanted"), so the key always gives feedback.
@@ -41,7 +41,7 @@ public struct SummonWindow: Sendable {
     public private(set) var fallbackOnScreen = false
 
     /// A client `show` arrived: true (and closes the window) when a summon is pending, or when the
-    /// fallback is still on screen (review: a late live answer replaces the fallback in place
+    /// fallback is still on screen (W10 review: a late live answer replaces the fallback in place
     /// and skips the rate limit, it is still the answer to the summon).
     public mutating func answer() -> Bool {
         defer { since = nil; fallbackOnScreen = false }
@@ -65,7 +65,7 @@ public struct SummonWindow: Sendable {
 /// What to arm for the summon key: a permanent passive tap, a permanent Carbon chord, or nothing.
 /// An invalid hotkey set falls back to the defaults as a whole (as the option keys and wish do).
 public enum SummonArm: Equatable, Sendable {
-    case tap(Set<TapModifier>)          // one modifier, or a SET pressed together (default ⌥+⌘)
+    case tap(Set<TapModifier>)          // one modifier, or a SET pressed together (W11 default ⌥+⌘)
     case chord(HotkeyRegistration)
     case none
 

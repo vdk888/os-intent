@@ -31,7 +31,7 @@ command `update` (applied only while the same option is still on screen). Never 
 when no show happened.
 
 Privacy: settings.json `claude.local_only_domains` (default []): mails from those domains (and pages on those
-hosts) never go to Claude (plain action only). a mail is local-only when its sender, ANY cc recipient
+hosts) never go to Claude (plain action only). W15: a mail is local-only when its sender, ANY cc recipient
 or its reply-to address is in such a domain (`mail_local_only`). Logged: action, model, latency, ok. The prompt and the output are
 never written to disk (no session persistence either) unless `claude.debug` / OI_CLAUDE_DEBUG=1 (0600 files in
 <data dir>/claude-debug/).
@@ -700,7 +700,7 @@ def plain_mail(primitive: str, osa: Callable | None = None, message_id: str = ""
 # ---- HUD socket ---------------------------------------------------------------------------------------
 
 def send_command(path: Path, payload: dict, timeout: float = 3.0) -> dict:
-    """One command on a fresh connection; the first ok / dropped / error line (`result`, `update`)."""
+    """One command on a fresh connection; the first ok / dropped / error line (W14 `result`, `update`)."""
     try:
         with socket.socket(socket.AF_UNIX, socket.SOCK_STREAM) as s:
             s.settimeout(timeout)
@@ -761,7 +761,7 @@ def draft_card(text: str) -> str:
 # ---- the actions --------------------------------------------------------------------------------------
 
 class ClaudeActions:
-    """Everything does on the python side. Collaborators are injectable (tests, dry-run)."""
+    """Everything W14 does on the python side. Collaborators are injectable (tests, dry-run)."""
 
     def __init__(self, socket_path: Path | None = None, *, runner: Callable[..., dict] = run_claude,
                  osa: Callable = osascript, wiki: Callable[[str], list[str]] = wiki_snippets,

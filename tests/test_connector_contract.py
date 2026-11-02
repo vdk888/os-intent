@@ -61,7 +61,7 @@ def test_mail_closed_is_unknown_state_and_health_info():
 def test_agents_connector():
     w = {"state": "off"}
     dock = {"off": 0, "on": 2, "broken": None}
-    s = sensors.AgentSensor(unread=lambda: {"Atlas - R&D": 2, "Nova - CEO": 0}, dock_badge=lambda: dock[w["state"]],
+    s = sensors.AgentSensor(unread=lambda: {"Atlas - Tools": 2, "Nova - Planning": 0}, dock_badge=lambda: dock[w["state"]],
                             running=lambda: True, outbound=None, names=lambda: NAMES)
     ev = check_connector(s, _cfg({}), lambda st: w.update(state=st), now=NOW)
     assert store.token(ev) == "evt:agent:atlas"

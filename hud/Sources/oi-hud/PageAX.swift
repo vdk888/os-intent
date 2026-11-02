@@ -3,7 +3,7 @@ import ApplicationServices
 import HUDCore
 import OISettings
 
-/// page actions: Accessibility read of Safari's front page and the AXPress of one element.
+/// W16 page actions: Accessibility read of Safari's front page and the AXPress of one element.
 ///
 /// READ: only when Safari is the frontmost app and oi-hud is trusted for Accessibility. From the focused
 /// window, the first AXWebArea (the page); inside it, every AXButton / AXLink (and button variants): role,

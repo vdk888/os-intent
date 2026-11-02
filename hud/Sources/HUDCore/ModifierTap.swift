@@ -38,10 +38,10 @@ public struct HeldModifiers: OptionSet, Sendable, Hashable {
     var single: TapModifier? { rawValue.nonzeroBitCount == 1 ? tapModifiers.first : nil }
 }
 
-/// Detects a bare modifier TAP (shared by, sets). One episode runs from the
+/// Detects a bare modifier TAP (shared by W10, sets W11). One episode runs from the
 /// first modifier down to the moment none is held. It is a tap when no keyDown, click or scroll happened
 /// in between and it was short: ≤ `maxDuration` (350 ms) for ONE modifier, ≤ `maxSetDuration` (500 ms,
-/// first down → last up) for a SET (e.g. ⌥+⌘ pressed together, the summon). The result is the set of
+/// first down → last up) for a SET (e.g. ⌥+⌘ pressed together, the W11 summon). The result is the set of
 /// every modifier that went down in the episode, so ⌥ alone gives {⌥}, ⌥+⌘ together gives {⌥, ⌘}, and
 /// ⌥ then ⌘ one after the other gives {⌥} then {⌘} (two episodes, never the set). A chord (⌘C, ⌥`,
 /// ⌘-click, ⇧A, ⌥⌘C) is never a tap. Each consumer matches the exact set it wants: the option taps take
@@ -52,7 +52,7 @@ public struct TapDetector: Sendable {
     public static let maxDuration: TimeInterval = 0.35
     public static let maxSetDuration: TimeInterval = 0.5
     /// CGEventType raw values that make a held modifier a chord (keyDown 10, left/right/other mouse down
-    /// 1/3/25, scrollWheel 22; ⇧/⌥⌘+scroll is a chord, never a summon). The monitor listens to these
+    /// 1/3/25, scrollWheel 22; W11: ⇧/⌥⌘+scroll is a chord, never a summon). The monitor listens to these
     /// plus flagsChanged.
     public static let spoilerEventTypes: [UInt32] = [10, 1, 3, 25, 22]
     public let maxDuration: TimeInterval

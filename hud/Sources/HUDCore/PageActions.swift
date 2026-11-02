@@ -2,7 +2,7 @@ import Foundation
 import CoreGraphics
 import OISettings
 
-// page actions, pure logic (the AX reading and pressing is oi-hud PageAX.swift):
+// W16 page actions, pure logic (the AX reading and pressing is oi-hud PageAX.swift):
 // - the page snapshot sent to `oi live` (buttons / links of Safari's front page: role, label, frame);
 // - the two socket commands `page` and `ax_press` (handled off the main thread, outside HUDCommand);
 // - re-finding an element by role + label slug at press time (never a stored coordinate);
@@ -160,7 +160,7 @@ public struct PressGuard: Sendable {
         ticket = (target, confirmed, t)
     }
 
-    /// follow-up: Esc on a confirmed page-action wish still resolving: its ticket must not outlive the cancel.
+    /// W18 follow-up: Esc on a confirmed page-action wish still resolving: its ticket must not outlive the cancel.
     public mutating func revoke(target: String) {
         if ticket?.target == target { ticket = nil }
     }

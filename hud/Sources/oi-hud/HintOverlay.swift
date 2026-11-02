@@ -19,7 +19,7 @@ struct PlannedHint {
     let color: NSColor
 }
 
-/// Draws the target hints while the HUD is visible, in each option's colour:
+/// Draws the W11 target hints while the HUD is visible, in each option's colour:
 /// - window: a soft rounded outline + glow pulsing (≈ 1.2 s period, low alpha) around the frame of the
 ///   app's frontmost on-screen window on this desk (CGWindowListCopyWindowInfo(.optionOnScreenOnly):
 ///   owner pid + bounds, layer 0; window titles are never read; no permission needed);

@@ -7,7 +7,7 @@
   3. the QUESTIONS in the terminal (non-interactive: none asked);
   4. STEP 2 (a second run, only when something was answered): it revises the two drafts;
   5. VALIDATION by oi/onboard.py (primitive mapping, params, installed apps, https hosts, roster slugs, priors,
-     triggers noise filter, local-only gate) + the local builder's top-up to 15-30;
+     triggers, W22 noise filter, local-only gate) + the local builder's top-up to 15-30;
   6. LAST EDIT: the catalogue, numbered; remove or rename; then install (0600) — `--dry-run`: nothing written.
 
 The sandbox (one place, `agent_command`; reuses claude_actions.build_command, so the auth is the subscription

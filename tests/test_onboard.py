@@ -180,7 +180,7 @@ def test_attention_validation_and_prior():
     assert a == {"sources": {"mail": 0.8, "markets": 1.0}, "important": [{"who": "Nova", "class": "agent", "weight": 0.95}],
                  "noise": [{"who": "newsletters", "class": "topic", "weight": 0.1}]}
     prof = {"attention": a}
-    assert onboard.attention_prior(prof, "telegram", "Nova - CEO") == 0.95
+    assert onboard.attention_prior(prof, "telegram", "Nova - Planning") == 0.95
     assert onboard.attention_prior(prof, "mail", "Weekly newsletters") == 0.1
     assert onboard.attention_prior(prof, "mail") == 0.8 and onboard.attention_prior(prof, "news") == 0.5
 
@@ -215,7 +215,7 @@ def test_build_with_fake_claude_gates_prompt_and_validates():
                                        confirmed=onboard.source_names(_sources()))
     p = fake.prompts[0]
     assert "acme" not in p.lower() and "Villa Rossi" in p and "archdaily.com" in p
-    assert "HUD orchestrator on the user" not in p                        # prompts are not the user-wrapped
+    assert "HUD orchestrator on the user" not in p                        # W22 prompts are not the user-wrapped
     assert meta["claude"] == "ok" and meta["dropped_items"] == 1 and meta["withheld_answer_parts"] == 1
     assert onboard.MIN_ITEMS <= len(cat["items"]) <= onboard.MAX_ITEMS
     assert cat["items"][0]["source"] == "claude"
@@ -557,3 +557,58 @@ def test_deeplink_allowlist_is_bound_to_the_app():
     assert onboard.deeplink_ok("Visual Studio Code", "vscode://file/x") and onboard.deeplink_ok("Zoom", "zoommtg://x")
     assert not onboard.deeplink_ok("SketchUp", "vscode://file/x")            # another app's handler
     assert not onboard.deeplink_ok("Mail", "file:///etc") and not onboard.deeplink_ok("Mail", "mail")
+    assert not onboard.deeplink_ok("Shortcuts", "shortcuts://run-shortcut?name=x")    # acts: denied for its own app too
+    assert not onboard.deeplink_ok("FaceTime", "facetime://someone@example.com")
+
+
+# ---- Claude off (the shipped default): onboarding asks, and never dead-ends -------------------------------------
+
+def _onboard_args(**kw):
+    import argparse
+    base = dict(offline=False, no_claude=False, sources_file=None, answers=None, model=None, dry_run=True, out=None,
+                no_followups=True, send_source_names=False)
+    return argparse.Namespace(**{**base, **kw})
+
+
+def _claude_off_run(monkeypatch, data_dir, reply):
+    import io as _io
+    from oi import claude_actions as ca
+    from oi.onboard_agent import agent
+    monkeypatch.setitem(ca.CLAUDE_DEFAULTS, "enabled", False)
+    data_dir.mkdir(parents=True, exist_ok=True)
+    seen = []
+    monkeypatch.setattr(agent, "session", lambda io, **kw: seen.append("claude") or 0)
+
+    def local(io, **kw):
+        seen.append(("local", kw["use_claude"]))
+        raise KeyboardInterrupt                                   # stop before the build: the path is what counts
+    monkeypatch.setattr(onboard, "converse", local)
+    out = _io.StringIO()
+    rc = onboard.cmd_onboard(_onboard_args(), onboard.IO(inp=reply, out=out, interactive=True))
+    return rc, seen, out.getvalue()
+
+
+def test_onboarding_with_claude_off_falls_back_to_the_local_builder_on_no(monkeypatch, data_dir):
+    rc, seen, text = _claude_off_run(monkeypatch, data_dir, lambda p: "n")
+    assert seen == [("local", False)] and rc == 130 and "Claude is off" in text
+    assert ca_enabled() is False
+
+
+def test_onboarding_with_claude_off_on_eof_is_a_no(monkeypatch, data_dir):
+    def eof(p):
+        raise EOFError
+    rc, seen, _ = _claude_off_run(monkeypatch, data_dir, eof)
+    assert seen == [("local", False)] and ca_enabled() is False
+
+
+def test_onboarding_with_claude_off_turns_it_on_on_yes(monkeypatch, data_dir):
+    rc, seen, text = _claude_off_run(monkeypatch, data_dir, lambda p: "y")
+    assert seen == ["claude"] and rc == 0 and ca_enabled() is True
+    import json
+    raw = json.loads((data_dir / "settings.json").read_text())
+    assert raw["claude"] == {"enabled": True}                          # enrich stays off unless chosen in Settings
+
+
+def ca_enabled():
+    from oi import claude_actions as ca
+    return ca.claude_settings()["enabled"]

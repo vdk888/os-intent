@@ -5,9 +5,9 @@ import OISettings
 
 /// Bare modifier taps through a passive (listen-only) session event tap on flagsChanged, keyDown,
 /// mouse-down and scroll, fed to a HUDCore.TapDetector. Two instances in oi-hud:
-/// - the OPTION taps (⌃ ⌥ ⌘ fn = options 1-4): exists ONLY while the HUD is on screen,
+/// - W9 the OPTION taps (⌃ ⌥ ⌘ fn = options 1-4): exists ONLY while the HUD is on screen,
 ///   `start()` on show, `stop()` on every hide (invisible = inert, logged "taps OFF");
-/// - the SUMMON tap (default: the ⌥+⌘ set tap): created once when the daemon starts and kept while it
+/// - W10 the SUMMON tap (W11 default: the ⌥+⌘ set tap): created once when the daemon starts and kept while it
 ///   runs (retried every 60 s while Input Monitoring is missing). The keyDown/click/scroll events only
 ///   mark a held modifier as part of a chord (⌥⌘C or ⌥⌘+scroll is not a summon).
 /// `onTap` gets the SET of modifiers tapped together; each owner matches what it wants (the option
@@ -25,7 +25,7 @@ final class ModifierTapMonitor {
     private var lastOK: Bool?
     private let onLine: String
     private let offLine: String
-    /// Delivered on the main queue, after the event callback has returned (review fix).
+    /// Delivered on the main queue, after the event callback has returned (W9 review fix).
     var onTap: ((Set<TapModifier>) -> Void)?
     /// the long-press detector (the option taps only; nil = off). Fed with the same events.
     var longPress: LongPressDetector?

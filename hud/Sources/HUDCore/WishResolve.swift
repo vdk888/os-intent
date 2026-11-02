@@ -1,6 +1,6 @@
 import Foundation
 
-// wish → action: the wish panel's text is resolved to an action by the live driver (`oi live`,
+// W18 wish → action: the wish panel's text is resolved to an action by the live driver (`oi live`,
 // oi/intent_resolve.py) while the user types (a preview "→ Telegram", local tier only, debounced 150 ms) and on
 // Enter (all tiers: local → Laya → haiku). Pure parts: the protocol additions, the stored action of a resolved
 // wish, and the panel's resolve state machine. The AppKit side is oi-hud/WishResolveController.swift.
@@ -90,7 +90,7 @@ private struct RawW18: Decodable {
     let confirm: Bool?
 }
 
-/// The commands; nil for any other command name (the caller then reports `unknown_command`).
+/// The W18 commands; nil for any other command name (the caller then reports `unknown_command`).
 public func decodeW18Command(_ cmd: String, _ line: Data) throws -> W18Command? {
     switch cmd {
     case "resolver":
@@ -117,7 +117,7 @@ public enum WishResolveEffect: Equatable, Sendable {
     case hint(String?)
     /// Show `note` for `holdMs`, then save the wish (with `action` when it was executed) and close the panel.
     case finish(action: WishAction?, note: String, holdMs: Int)
-    /// follow-up: the panel closed (Esc, click outside) with request `id` still open: the resolver drops it.
+    /// W18 follow-up: the panel closed (Esc, click outside) with request `id` still open: the resolver drops it.
     case cancel(id: Int)
 }
 
@@ -137,7 +137,7 @@ public struct WishResolveMachine: Sendable {
 
     public mutating func reset() { phase = .typing; text = ""; lastPreviewId = 0 }
 
-    /// follow-up: the panel closes. A request still resolving (or waiting for its confirm) is cancelled,
+    /// W18 follow-up: the panel closes. A request still resolving (or waiting for its confirm) is cancelled,
     /// so the resolver never executes it; then the machine resets.
     public mutating func closed() -> [WishResolveEffect] {
         defer { reset() }

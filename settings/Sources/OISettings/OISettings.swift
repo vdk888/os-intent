@@ -7,8 +7,8 @@ import Foundation
 ///    "hud": {"slots": {"fn": "left", ...}}, "vocal_recipients": {...}, "updated_at": ISO-8601 }`
 /// `vocal_recipients` belongs to the python sender (`oi vocal-send`): kept as raw JSON and
 /// written back unchanged.
-/// `gate` / `live` belong to the python live driver (`oi live`): kept as flat numbers (and, since
-///, booleans;, strings and null, e.g. `live.predictor`, `live.laya_checkpoint`) and
+/// `gate` / `live` belong to the python live driver (`oi live`, W8): kept as flat numbers (and, since
+/// W9, booleans; since W13, strings and null, e.g. `live.predictor`, `live.laya_checkpoint`) and
 /// written back unchanged, so a menu toggle never drops them. oi-hud reads two
 /// `gate` keys itself: `ttl_ms` (client default) and `hide_on_pointer_travel`.
 public struct OISettings: Codable, Equatable, Sendable {
@@ -88,7 +88,7 @@ public struct OISettings: Codable, Equatable, Sendable {
         try JSONValue.encodeExtra(extra, to: encoder)
     }
 
-    /// `gate.ttl_ms` — how long the HUD stays (default 6000, was 15000; clamped 1500-60000).
+    /// `gate.ttl_ms` — how long the HUD stays (default 6000 since W19, was 15000; clamped 1500-60000).
     public static let defaultTTLms = 6000
     public var gateTTLms: Int {
         guard let v = gate?["ttl_ms"]?.number, v >= 0 else { return OISettings.defaultTTLms }
@@ -306,7 +306,7 @@ public final class SettingsCache: @unchecked Sendable {
 }
 
 /// Any JSON value, kept as read and written back unchanged (settings keys owned by the python side,
-/// `vocal_recipients`).
+/// W12 `vocal_recipients`).
 public indirect enum JSONValue: Codable, Equatable, Sendable {
     case null, bool(Bool), number(Double), string(String), array([JSONValue]), object([String: JSONValue])
 

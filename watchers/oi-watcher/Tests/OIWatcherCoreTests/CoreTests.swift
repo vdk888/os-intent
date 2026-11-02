@@ -146,7 +146,7 @@ struct SpacesTests {
     }
 }
 
-// MARK: - screenshots
+// MARK: - W17 screenshots
 
 @Suite struct ShotTests {
     @Test func screenshotNames() {

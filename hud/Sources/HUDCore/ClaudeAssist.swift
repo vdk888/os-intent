@@ -1,7 +1,7 @@
 import Foundation
 import OISettings
 
-// "Claude in the app": a long-press on an option's modifier (≥ settings hud.long_press_ms, default
+// W14 "Claude in the app": a long-press on an option's modifier (≥ settings hud.long_press_ms, default
 // 600 ms) = the Claude-assisted variant of its primitive (the ask: "if i press 'respond to email' option,
 // for longer, it also writes the response with context in mind"). Pure parts: the long-press detector, the
 // HUD's Claude work state (spinner → result card or the action) and the card text.
@@ -118,7 +118,7 @@ public enum CardText {
     }
 }
 
-/// `{"cmd":"update","options":[{"key":1,"label":"Reply to Sam","expect":"Reply"}]}` (label enrichment):
+/// `{"cmd":"update","options":[{"key":1,"label":"Reply to Sam","expect":"Reply"}]}` (W14 label enrichment):
 /// the new label is applied only while option `key` still shows `expect` (the same option, not a newer show's).
 public struct LabelUpdate: Codable, Equatable, Sendable {
     public var key: Int

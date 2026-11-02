@@ -13,8 +13,8 @@ So on day one (support 0) the priors rank alone; as real usage of a context accu
 take over; an item shown again and again but never picked sinks, a picked one rises. An item with no app / host in
 its trigger ("anywhere") counts half. A starter option present lifts the thin-history gate (that is its purpose).
 
-Refinement (learning): `starter-stats.json` (0600) counts per item `shown` / `picked` (HUD presses, from
-`Live.on_reply`) and `wished` (a wish executed to the same action, from wish-actions/); a wish executed to an
+Refinement (W18 learning): `starter-stats.json` (0600) counts per item `shown` / `picked` (HUD presses, from
+`Live.on_reply`) and `wished` (a W18 wish executed to the same action, from wish-actions/); a wish executed to an
 app / site that no item covers becomes a `learned` item (prior LEARNED_PRIOR, trigger = the app it was made in).
 Settings (settings.json `starter`, every key optional): {"enabled": true, "half_support": 20}.
 Logged: the item id in the hud-log option row (`starter`), never a label's context.

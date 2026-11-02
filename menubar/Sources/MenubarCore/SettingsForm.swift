@@ -10,7 +10,7 @@ import OISettings
 ///   pointer_fast_px_s (oi-hud) · claude.enabled / enrich / local_only_domains (oi/claude_actions.py)
 ///   shots.enabled / clipboard (oi-watcher) / fallback_contact (oi/shots.py) · paused (all) · denylist_apps (watcher)
 ///   gate.outward (oi/gate.py: the outward gate; an object {"vocal": …} reads as on, a save of the toggle writes a bool)
-/// proactive.sources.* / min_p / min_interval_min / quiet_hours / respect_focus (oi/proactive/config.py).
+///   proactive.sources.* / min_p / min_interval_min / quiet_hours / respect_focus (oi/proactive/config.py).
 public struct SettingsForm: Equatable, Sendable {
     public enum Section: String, CaseIterable, Sendable, Identifiable {
         case hud, timings, pointer, colors, fillOrder, keys, claude, screenshots, proactive, vocal, laya, privacy
@@ -306,20 +306,8 @@ public struct SettingsForm: Equatable, Sendable {
     /// The vocal recipients oi vocal-send knows: the defaults (oi/vocal.py DEFAULT_RECIPIENTS, the HUD picker
     /// order), overridden per slug by settings `vocal_recipients` (null removes, a new slug is appended).
     /// oi.vocal DEFAULT_RECIPIENTS (a fictional example; yours come from settings.json `vocal_recipients`).
-    public static let defaultRecipients: [(slug: String, name: String)] = [
-        ("atlas", "Atlas"), ("nova", "Nova"), ("orion", "Orion"),
-    ]
-    public static func recipients(_ s: OISettings) -> [(slug: String, name: String)] {
-        var out = defaultRecipients
-        for (slug, spec) in object(s.vocalRecipients).sorted(by: { $0.key < $1.key }) {
-            if case .null = spec { out.removeAll { $0.slug == slug }; continue }
-            guard case .object(let o) = spec else { continue }
-            let name: String? = { if case .string(let n)? = o["name"], !n.isEmpty { return n }; return nil }()
-            if let i = out.firstIndex(where: { $0.slug == slug }) { if let name { out[i].name = name } }
-            else { out.append((slug, name ?? slug.capitalized)) }
-        }
-        return out
-    }
+    public static var defaultRecipients: [(slug: String, name: String)] { VocalRecipients.defaults }
+    public static func recipients(_ s: OISettings) -> [(slug: String, name: String)] { VocalRecipients.list(s) }
 
     /// Laya: `live.predictor` (markov | laya | blend, set only by `oi laya-promote`), the promoted checkpoint,
     /// and the last training (`model_trained_at` from status/oi-live.json).

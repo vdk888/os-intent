@@ -209,7 +209,7 @@ def test_dry_run_cli_prints_the_exact_command(tmp_path, capsys):
 
 
 def test_audio_suffix_only_for_local_inject_recipients():
-    """ review follow-up (folded in): a remote A2A agent cannot open a path on this Mac."""
+    """W12 review follow-up (folded in W14): a remote A2A agent cannot open a path on this Mac."""
     f = Fake()
     assert _send("nova", runner=f, audio="/x/vocals/a-nova.caf")["ok"]
     assert "(audio:" not in f.calls[0][1].decode()

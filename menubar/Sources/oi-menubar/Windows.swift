@@ -75,7 +75,7 @@ final class DenylistWindowController: NSObject {
     @objc private func cancelAction() { window.close() }
 }
 
-/// Click, then press the combination (like the macOS Keyboard Shortcuts prefs). in
+/// Click, then press the combination (like the macOS Keyboard Shortcuts prefs). W11: in
 /// `capturesTaps` mode it records a modifier TAP instead: press the modifiers together (⌥ and ⌘ for the
 /// summon default), release them all, no other key; a key pressed meanwhile restarts the capture.
 @MainActor

@@ -181,7 +181,7 @@ private func tmpDir() -> URL {
     }
 }
 
-// MARK: - modifier taps
+// MARK: - W9 modifier taps
 
 @Suite struct TapHotkeyTests {
     @Test func defaultsAreTheFourTaps() {
@@ -219,12 +219,12 @@ private func tmpDir() -> URL {
         // what older oi-menubar versions wrote on every save: ⌥1-⌥4 explicit, no "v"
         let legacy = #"{"hotkeys":{"option_1":{"modifiers":["option"],"key":"1"},"option_2":{"modifiers":["option"],"key":"2"},"option_3":{"modifiers":["option"],"key":"3"},"option_4":{"modifiers":["option"],"key":"4"},"dismiss":{"modifiers":[],"key":"Esc"},"wish":{"modifiers":["control","option"],"key":"w"}}}"#
         let s = OISettings.decode(Data(legacy.utf8))
-        #expect(s.hotkeys.option1 == .tap(.fn) && s.hotkeys.option4 == .tap(.cmd))   // straight to the taps
+        #expect(s.hotkeys.option1 == .tap(.fn) && s.hotkeys.option4 == .tap(.cmd))   // straight to the W21 taps
         #expect(s.hotkeys.wish == Hotkey(["control", "option"], "w"))      // a custom wish is kept
         // the same chords with "v": 2 are a deliberate choice: kept
         let chosen = legacy.replacingOccurrences(of: #"{"hotkeys":{"#, with: #"{"hotkeys":{"v":2,"#)
         #expect(OISettings.decode(Data(chosen.utf8)).hotkeys.option1 == Hotkey(["option"], "1"))
-        // a legacy file with one custom option is not the default set: kept as is
+        // a legacy file with one custom option is not the W5 default set: kept as is
         let custom = legacy.replacingOccurrences(of: #""key":"3""#, with: #""key":"8""#)
         #expect(OISettings.decode(Data(custom.utf8)).hotkeys.option1 == Hotkey(["option"], "1"))
     }
@@ -244,14 +244,14 @@ private func tmpDir() -> URL {
     }
 }
 
-// MARK: - summon key
+// MARK: - W10 summon key
 
 @Suite struct SummonHotkeyTests {
     @Test func defaultIsTheOptionCommandSetTap() {
         let d = HotkeySet.defaults
         #expect(d.summon == .tapSet([.cmd, .option]) && d.summon.display == "⌥⌘" && d.summon.isSetTap)
         #expect(d.problems().isEmpty)
-        #expect(HotkeySet.actions.map(\.key).suffix(2) == ["summon", "vocal"])     // adds vocal last
+        #expect(HotkeySet.actions.map(\.key).suffix(2) == ["summon", "vocal"])     // W12 adds vocal last
         #expect(HotkeySet.tapChoices("summon").first == .shift)
         #expect(!HotkeySet.tapChoices("option_1").contains(.shift) && HotkeySet.tapChoices("wish").isEmpty)
     }
@@ -287,7 +287,7 @@ private func tmpDir() -> URL {
     }
 }
 
-// MARK: - fixed HUD slots
+// MARK: - W10 fixed HUD slots
 
 @Suite struct HUDSlotSettingsTests {
     @Test func defaultsAreKeyboardOrder() throws {
@@ -312,7 +312,7 @@ private func tmpDir() -> URL {
     }
 }
 
-// MARK: - summon as a modifier SET tap
+// MARK: - W11 summon as a modifier SET tap
 
 @Suite struct SetTapHotkeyTests {
     @Test func jsonShapeAndRoundTrip() throws {
@@ -333,10 +333,10 @@ private func tmpDir() -> URL {
         #expect(Hotkey.parse("tap:⌥⌘") == HotkeySet.defaultSummon && Hotkey.parse("tap:option+nope") == nil)
     }
     @Test func w10ShiftDefaultMigrates() {
-        // what oi-menubar wrote on every save: summon ⇧, v 2 → the new ⌥+⌘ default
+        // what oi-menubar W10 wrote on every save: summon ⇧, v 2 → the new ⌥+⌘ default
         let w10 = OISettings.decode(Data(#"{"hotkeys":{"v":2,"summon":{"tap":"shift"}}}"#.utf8))
         #expect(w10.hotkeys.summon == HotkeySet.defaultSummon)
-        // a ⇧ summon saved by (v 3) is a deliberate choice: kept
+        // a ⇧ summon saved by W11 (v 3) is a deliberate choice: kept
         let kept = OISettings.decode(Data(#"{"hotkeys":{"v":3,"summon":{"tap":"shift"}}}"#.utf8))
         #expect(kept.hotkeys.summon == .tap(.shift))
     }
@@ -359,7 +359,7 @@ private func tmpDir() -> URL {
     }
 }
 
-// MARK: - colour per key
+// MARK: - W11 colour per key
 
 @Suite struct HUDColorSettingsTests {
     @Test func defaultsArePastelsPerModifier() throws {
@@ -385,7 +385,7 @@ private func tmpDir() -> URL {
     }
 }
 
-// MARK: - wish by one key while the HUD is up
+// MARK: - W11 wish by one key while the HUD is up
 
 @Suite struct WishVisibleHotkeyTests {
     @Test func defaultIsAShiftTapAndRoundTrips() throws {
@@ -416,7 +416,7 @@ private func tmpDir() -> URL {
     }
 }
 
-// MARK: - "Send a vocal to…"
+// MARK: - W12 "Send a vocal to…"
 
 @Suite struct VocalHotkeyTests {
     @Test func defaultIsTheCtrlOptionSetTapAndRoundTrips() throws {
@@ -458,7 +458,7 @@ private func tmpDir() -> URL {
     }
 }
 
-// MARK: - long-press + the python `claude` section
+// MARK: - W14 long-press + the python `claude` section
 
 @Suite struct W14SettingsTests {
     @Test func longPressDefaultClampAndRoundTrip() throws {
@@ -530,7 +530,7 @@ private func tmpDir() -> URL {
     }
 }
 
-// MARK: - the python `shots` / `contact_map` sections + the watcher's flags
+// MARK: - W17 the python `shots` / `contact_map` sections + the watcher's flags
 
 @Suite struct ShotSettingsTests {
     @Test func shotsAndContactMapKeptVerbatim() throws {
@@ -550,7 +550,7 @@ private func tmpDir() -> URL {
     }
 }
 
-// MARK: - number = key (fn 1, ⌃ 2, ⌥ 3, ⌘ 4)
+// MARK: - W21 number = key (fn 1, ⌃ 2, ⌥ 3, ⌘ 4)
 
 @Suite struct W21NumberIsKeyTests {
     static let w9File = #"{"hotkeys":{"v":3,"option_1":{"tap":"ctrl"},"option_2":{"tap":"option"},"option_3":{"tap":"cmd"},"option_4":{"tap":"fn"},"summon":{"tap":["option","cmd"]}}}"#
@@ -570,7 +570,7 @@ private func tmpDir() -> URL {
         #expect([kept.option1, kept.option2, kept.option3, kept.option4] == [.tap(.ctrl), .tap(.option), .tap(.cmd), .tap(.fn)])
     }
     @Test func customOptionsAreNotMigrated() {
-        // below v4 but not the exact defaults: a deliberate choice, kept
+        // below v4 but not the exact W9 defaults: a deliberate choice, kept
         let custom = W21NumberIsKeyTests.w9File.replacingOccurrences(of: #""option_1":{"tap":"ctrl"},"option_2":{"tap":"option"}"#,
                                                                        with: #""option_1":{"tap":"option"},"option_2":{"tap":"ctrl"}"#)
         let h = OISettings.decode(Data(custom.utf8)).hotkeys

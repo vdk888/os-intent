@@ -1,14 +1,13 @@
-"""regenerate oi/orchestrator/roster.yaml from the fleet registry (read-only).
+"""regenerate oi/orchestrator/roster.yaml from your own agent registry (read-only), or keep the hand-written example.
 
   python -m oi.orchestrator.gen_roster [--out PATH] [--check]
 
-Sources (each optional; a missing one only drops its fields):
-  - the canonical roster: $OI_FLEET_DIR/team-roster.md (agents table: first name, role, machine);
-  - the agents' dept.yaml (`department.display_name`, `mandate`, `host`): $OI_FLEET_DIR/*/dept.yaml;
-  - the business-unit rooms: $OI_FLEET_DIR/rooms.yaml (bu, chair, members);
-  ($OI_FLEET_DIR defaults to ~/agents)
-  - how to reach them: oi.vocal.recipients (the path the HUD sends vocals through; kind + host only);
-  - the curated half: roster_overlay.yaml (ask_for, topics, bu).
+Sources, all optional (a missing one only drops its fields), under $OI_FLEET_DIR (default ~/agents):
+  - a markdown table of your agents (first name, role, machine): team-roster.md;
+  - one YAML file per agent with a display name, a one-line purpose and a host: */dept.yaml;
+  - a YAML list of teams and their members: rooms.yaml;
+  - how the HUD reaches each agent: oi.vocal.recipients() (kind + host only);
+  - the hand-curated half: roster_overlay.yaml (ask_for, topics, bu).
 Only the fields above are read; nothing else from those files is copied (no paths to credentials, no tokens).
 The roster lists the agents the HUD can reach (the vocal recipients). `--check` exits 1 when roster.yaml is stale.
 """
@@ -107,7 +106,7 @@ def rooms(path: Path = ROOMS) -> dict[str, list[str]]:
 
 
 def reach(spec: dict) -> dict:
-    """How the HUD reaches the agent: the kind and where (a host name, never a path or a credential)."""
+    """How the HUD reaches the agent: the W12 kind and where (a host name, never a path or a credential)."""
     if spec.get("kind") == "inject":
         return {"via": "vocal", "kind": "inject", "where": "this Mac"}
     return {"via": "vocal", "kind": "a2a", "where": spec.get("to") or "?"}

@@ -200,7 +200,8 @@ export OI_WIKI_DIR=~/wiki                           # a folder of markdown pages
 python3 tools/wiki/wiki_search.py --reindex
 
 # 5. first run
-.venv/bin/oi onboard                                # or menu bar → Onboarding…
+.venv/bin/oi onboard                                # or menu bar → Onboarding…; with Claude off (the default)
+                                                    # it asks y/N to turn Claude on, no = the local onboarding
 .venv/bin/oi health
 ```
 

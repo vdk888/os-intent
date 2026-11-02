@@ -112,7 +112,7 @@ def test_warm_wiki_reloads_when_the_db_changes(wiki_db, monkeypatch):
 
 def test_rag_snippets_none_when_unavailable():
     assert rag.snippets("anything") is None                      # conftest: no real wiki in tests
-    assert ca.wiki_snippets("x", repo_dir="/nonexistent") == []  # fallback path still answers []
+    assert ca.wiki_snippets("x", repo_dir="/nonexistent") == []  # W14 fallback path still answers []
 
 
 # ---- roster ----------------------------------------------------------------------------------------------------
@@ -209,7 +209,7 @@ def test_pack_privacy_gate_host_mail_and_wiki_leaks(wiki_db):
     assert "secretco" not in t.lower() and "Secret Client" not in t           # a wiki note naming a gated domain
     assert all("intra.example.com" not in q and "devis" not in q for q in seen_q)   # nor in the RAG query
     cc = dict(MAIL, sender_address="x@example.com", cc=["boss@acme-conseil.example"])
-    assert "details withheld" in p.build({"app": "Mail", "mail": cc}, cfg)["text"]  # the cc rule
+    assert "details withheld" in p.build({"app": "Mail", "mail": cc}, cfg)["text"]  # the W15 cc rule
 
 
 def test_pack_cache_per_context_key_and_the_rag_deadline(wiki_db):
@@ -321,7 +321,7 @@ def test_wish_topic_routes_to_orion_and_sends_through_the_gate_only(data_dir):
     pv = eng.handle({"id": 1, "text": "demande à quelqu'un le budget du trimestre", "final": False, "context": {"app": "Mail"}})
     assert pv["label"].startswith("→ Send to Orion")
     r = eng.handle({"id": 2, "text": "demande à quelqu'un le budget du trimestre", "final": True, "context": {"app": "Mail"}})
-    # no confirm: oi.vocal.send asks the outward gate's panel (the one confirmation)
+    # no W18 confirm: oi.vocal.send asks the outward gate's panel (the one confirmation)
     assert r["state"] == "done" and r["tier"] == "roster" and sent == [("orion", "demande à quelqu'un le budget du trimestre")]
 
 

@@ -81,7 +81,8 @@ def _remote(slug: str, name: str, host: str) -> dict:
 
 
 # EXAMPLE agents (fictional): replace them with your own in settings.json `vocal_recipients` (a slug set to null
-# removes one). One on this Mac (an inject file), two on another host (the relay command).
+# removes one). One on this Mac (an inject file), two on another host (the relay command). Keep in step with
+# settings/Sources/OISettings/VocalRecipients.swift (the HUD picker and the menu bar list them).
 DEFAULT_RECIPIENTS: dict[str, dict] = {
     "atlas": {"name": "Atlas", "kind": "inject", "path": os.path.expanduser("~/.claude/channels/atlas/inject")},
     "nova": _remote("nova", "Nova", "agent-host"),

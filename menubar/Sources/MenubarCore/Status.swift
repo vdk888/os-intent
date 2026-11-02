@@ -77,7 +77,7 @@ public enum PermState: Equatable, Sendable {
 public enum WatcherPerms: Equatable, Sendable {
     case fresh(WatcherStatus)
     case stale(seconds: Int)     // file older than WatcherStatus.staleAfter (or unparsable ts)
-    case missing                 // no file / unreadable: watcher never ran the build
+    case missing                 // no file / unreadable: watcher never ran the W7 build
 
     public static func from(_ status: WatcherStatus?, now: Date = Date()) -> WatcherPerms {
         guard let status else { return .missing }

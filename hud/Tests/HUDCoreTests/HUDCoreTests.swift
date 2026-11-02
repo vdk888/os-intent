@@ -59,7 +59,7 @@ import OISettings
         let line = #"{"cmd":"show","options":[{"key":2,"label":"Mail","icon":"app:/System/Applications/Mail.app"},{"key":1,"label":"Back","icon":"sf:arrowshape.turn.up.left","confidence":0.41}]}"#
         let cmd = try decodeCommand(Data(line.utf8))
         guard case .show(let opts, let ttl) = cmd else { Issue.record("not show"); return }
-        #expect(ttl == 6000)    // default 6 s (was 15 s)
+        #expect(ttl == 6000)    // default 6 s (W9 was 15 s)
         #expect(opts.map(\.key) == [1, 2])
         #expect(opts[0].confidence == 0.41)
         #expect(HUDIcon(opts[1].icon) == .app(path: "/System/Applications/Mail.app"))
@@ -193,7 +193,7 @@ import OISettings
     }
 }
 
-// MARK: - modifier taps
+// MARK: - W9 modifier taps
 
 @Suite struct ModifierTapTests {
     let ctrl = HeldModifiers(cgEventFlags: 0x40000)
@@ -261,7 +261,7 @@ import OISettings
     }
 }
 
-// MARK: - wish quick action
+// MARK: - W6 wish quick action
 
 private func tmpDataDir() -> URL {
     let d = FileManager.default.temporaryDirectory.appendingPathComponent("oi-hud-wish-\(UUID().uuidString)")
@@ -416,7 +416,7 @@ private func tmpDataDir() -> URL {
         #expect(all.count == 5)
         let wish = all.last!
         #expect(wish.key == wishOptionKey && wish.position == nil && wish.x == 139 && wish.y == 156)   // ≈ 4:30
-        // the 7:30 place (vocal option) mirrors it
+        // the 7:30 place (W12 vocal option) mirrors it
         let v = FixedSlots.vocalOffset(radius: 100, capsuleHeight: 40, vocalWidth: 262)
         #expect(v.x == -139 && v.y == 156)
         let vocal = HUDSlot(key: vocalOptionKey, x: v.x, y: v.y, width: 262, height: 40, position: nil)
@@ -450,7 +450,7 @@ private func tmpDataDir() -> URL {
     }
 }
 
-// MARK: - summon key
+// MARK: - W10 summon key
 
 @Suite struct SummonTests {
     let shift = HeldModifiers(cgEventFlags: 0x20000)
@@ -527,7 +527,7 @@ private func tmpDataDir() -> URL {
     }
 }
 
-// MARK: - summon = ⌥+⌘ set tap, scroll spoiler, late show after the fallback
+// MARK: - W11 summon = ⌥+⌘ set tap, scroll spoiler, late show after the fallback
 
 @Suite struct SetTapSummonTests {
     let opt = HeldModifiers(cgEventFlags: 0x80000)
@@ -603,7 +603,7 @@ private func tmpDataDir() -> URL {
     }
 }
 
-// MARK: - colour per key, labels, hints
+// MARK: - W11 colour per key, labels, hints
 
 @Suite struct ColourAndLabelTests {
     let pos = FixedSlots.positions(hotkeys: .defaults, slots: HUDSettings.defaultSlots)
@@ -620,7 +620,7 @@ private func tmpDataDir() -> URL {
     }
     @Test func colourFollowsThePlaceAndSettings() {
         var hud = HUDSettings(colors: HUDColors([.ctrl: HUDColor(light: "#FF0000", dark: "#FF6666")]))
-        #expect(OptionColors.color(forOption: 2, positions: pos, hud: hud)?.dark == "#FF6666")   // ⌃ (option 2) red
+        #expect(OptionColors.color(forOption: 2, positions: pos, hud: hud)?.dark == "#FF6666")   // ⌃ (option 2 since W21) red
         var h = HotkeySet.defaults
         h.option2 = .tap(.cmd); h.option4 = .tap(.ctrl)                 // option 2 on ⌘: bottom, green
         let p = FixedSlots.positions(hotkeys: h, slots: HUDSettings.defaultSlots)
@@ -641,7 +641,7 @@ private func tmpDataDir() -> URL {
         }
     }
     @Test func sidePlacesMakeRoomForWideCapsules() {
-        #expect(FixedSlots.offset(.right, radius: 100, capsuleWidth: 168) == (100, 0))   // unchanged
+        #expect(FixedSlots.offset(.right, radius: 100, capsuleWidth: 168) == (100, 0))   // W10 unchanged
         #expect(FixedSlots.offset(.left, radius: 100, capsuleWidth: 252) == (-142, 0))
         #expect(FixedSlots.offset(.top, radius: 100, capsuleWidth: 252) == (0, -100))
         let all = hudSlots(options: optionsWithWish((1...4).map { HUDOption(key: $0, label: "x") }), positions: pos,
@@ -733,7 +733,7 @@ private func tmpDataDir() -> URL {
     }
 }
 
-// MARK: - screenshot offer: shot_show / shot_note / debug_note / note event
+// MARK: - W17 screenshot offer: shot_show / shot_note / debug_note / note event
 
 @Suite struct ShotOfferTests {
     @Test func shotShowDecodesLikeShow() throws {

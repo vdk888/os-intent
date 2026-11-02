@@ -26,7 +26,7 @@ final class SettingsModel: ObservableObject {
     @Published var domainsText: String
     @Published var denylistText: String
     private(set) var settings: OISettings
-    /// The form as last loaded / saved: only fields that differ from it are written (review: a menu Pause
+    /// The form as last loaded / saved: only fields that differ from it are written (W26 review: a menu Pause
     /// toggled while the window is open must survive the next edit here).
     private var baseline: SettingsForm
     private(set) var live: LiveStatus?

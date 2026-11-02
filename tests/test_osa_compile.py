@@ -1,6 +1,6 @@
 """Every embedded AppleScript / JXA constant compiles (osacompile only: nothing runs, no app is touched).
 
-A script that does not compile fails silently at run time (osascript rc 1 reads as "app not running"): the mail
+A script that does not compile fails silently at run time (osascript rc 1 reads as "app not running"): the W24 mail
 sensor never produced an event because `rd` / `st` collide with Mail's dictionary terms. Skipped off macOS."""
 import shutil
 import sys

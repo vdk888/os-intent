@@ -116,7 +116,7 @@ class AliasStore:
         self.lock = threading.Lock()
         self._data: dict | None = None
         self._mtime: float | None = None
-        self._pending: dict = {}      # follow-up: non-local resolutions seen once, waiting for a 2nd agreement
+        self._pending: dict = {}      # W18 follow-up: non-local resolutions seen once, waiting for a 2nd agreement
 
     @property
     def path(self) -> Path:
@@ -133,7 +133,7 @@ class AliasStore:
                 al = raw.get("aliases") if isinstance(raw, dict) else None
                 self._data = {k: v for k, v in (al or {}).items()
                               if isinstance(k, str) and isinstance(v, dict) and isinstance(v.get("id"), str)}
-                pe = raw.get("pending") if isinstance(raw, dict) else None   # follow-up
+                pe = raw.get("pending") if isinstance(raw, dict) else None   # W18 follow-up
                 self._pending = {k: v for k, v in (pe or {}).items()
                                  if isinstance(k, str) and isinstance(v, dict) and isinstance(v.get("id"), str)}
             except (OSError, ValueError):
@@ -151,7 +151,7 @@ class AliasStore:
 
     def learn(self, phrases: list[str], item_id: str, label: str, now: datetime | None = None,
               agree: int = 1) -> list[str]:
-        """Record `phrases` -> item_id (a confirmed resolution). Returns the phrases written. follow-up:
+        """Record `phrases` -> item_id (a confirmed resolution). Returns the phrases written. W18 follow-up:
         `agree` = how many times the same phrase must resolve to the same id before it becomes an alias (2 for a
         Claude / Laya resolution, kept in `pending` meanwhile; a different id restarts the count)."""
         ts = (now or datetime.now(timezone.utc)).isoformat(timespec="milliseconds").replace("+00:00", "Z")

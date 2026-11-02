@@ -4,16 +4,16 @@ Goal: every action of OS-intent that leaves the Mac (a mail, a message) first sh
 about to send this message to this recipient: confirm?" ("Ask Atlas" sent on release is gated too).
 
 `outward(cls, to, name, preview)` is called by every sender right before it sends, dry runs included:
-  "vocal" oi.vocal.send (HUD voice note, glide "Ask Atlas" / a send hand-over, wish "send to X")
-  "shot" oi.shots.deliver (screenshot to an agent, every tier, `oi shot-send`)
+  "vocal" oi.vocal.send   (HUD voice note, glide "Ask Atlas" / a send, W25 hand-over, wish "send to X")
+  "shot"  oi.shots.deliver (W17 screenshot to an agent, every tier, `oi shot-send`)
   "page" oi.live ui.press of a page button / link that is not KNOWN read-only (`page_outward`, fail-safe: merge,
           approve, an unknown learned label … all ask; navigation / open / expand / copy … do not), from a HUD
           press or a wish
-  "reply" oi.live: a proactive option marked `"outward": true` (reply / forward / draft to the event's sender,
+  "reply" oi.live: a W24 proactive option marked `"outward": true` (reply / forward / draft to the event's sender,
           the agent's chat), at the pick, before its window opens; its "Ask <agent>" (agent.ask) is gated at the
           send itself (vocal), never twice
-The panel is the ONE confirmation: pick -> gate panel -> validate. The older confirm steps (two-tap, the glide
-"Send ✓"'s ⇧ confirm) are gone on these paths.
+The panel is the ONE confirmation: pick -> gate panel -> validate. The older confirm steps (W16 two-tap, the glide
+"Send ✓", W18's ⇧ confirm) are gone on these paths.
 It asks oi-hud (`{"cmd":"confirm_outward",…}` on hud.sock): a small Liquid Glass panel "Envoyer ce message à Orion ?"
 + 1-3 preview lines, Return (or the action key) / ✓ validates, Esc / ✗ / a click outside / the timeout cancels.
 Only `{"event":"outward","id":<same id>,"decision":"validated"}` lets the action run: no HUD, no reply, a socket

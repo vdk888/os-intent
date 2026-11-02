@@ -13,16 +13,16 @@ show's owner (`oi live`, on the show's own connection):
                                          (0 options = a leaf: Claude off or unavailable, nothing that maps);
   {"event":"pressed","key":2,"path":[2,1],"via":"glide","glide":{...}} -> `GlideSession.execute`.
 
-Context is read at REQUEST time (the note): the Mail selection when the prefetch or the expand happens (never
+Context is read at REQUEST time (the W14 note): the Mail selection when the prefetch or the expand happens (never
 an earlier one), and a mail action runs only on the mail it was built for (message id checked by AppleScript).
 
 Follow-ups map to what the driver can execute: the catalogue primitives (app.open of an installed app, url.open of
-a site seen today, space.move, mail.reply / mail.forward), the Claude actions (draft:mail.reply /
-draft:mail.forward, summarise) and a message to a fleet agent (vocal:<slug>:<text>, the path). Anything else
-becomes "Ask Atlas: <text>" (the path to atlas: a local inject). Nothing runs on hover: only on a release or a
+a site seen today, space.move, mail.reply / mail.forward), the W14 Claude actions (draft:mail.reply /
+draft:mail.forward, summarise) and a message to a fleet agent (vocal:<slug>:<text>, the W12 path). Anything else
+becomes "Ask Atlas: <text>" (the W12 path to atlas: a local inject). Nothing runs on hover: only on a release or a
 click.
 
- drill-down: each level acts INSIDE / ON its parent (oi/drill.py): the parent's scope picks local
+W23 drill-down: each level acts INSIDE / ON its parent (oi/drill.py): the parent's scope picks local
 providers (Finder files / folders, Telegram chats, Music playlists, a site's pages, the mail's reply / forward),
 ranked by history (Markov on the parent token + the logged glide choices); Claude (haiku) only orders / labels /
 fills the generative scopes (a fleet agent, the mail) from those items + the scope's forms, with the path chain;
@@ -139,7 +139,7 @@ def resolve(fu, parent: dict, env: dict, strict: bool = False) -> dict | None:
     unknown, not allowed here (an app not installed, a site not seen today) or malformed. None = nothing usable.
     Node: {label, icon, action (the id logged: "app.open", "draft:mail.reply", "vocal:nova", "ask"...), kind
     ("primitive" | "draft" | "summary" | "vocal" | "ask"), primitive, params, token, claude}.
- `strict`: no "Ask Atlas" fallback (an unknown / not-allowed action is dropped; only an explicit ask: stays);
+    W23 `strict`: no "Ask Atlas" fallback (an unknown / not-allowed action is dropped; only an explicit ask: stays);
     "back" = switch back to the app in front at the show (env["front_app"])."""
     if not isinstance(fu, dict):
         return None
@@ -207,7 +207,7 @@ def resolve(fu, parent: dict, env: dict, strict: bool = False) -> dict | None:
 
 
 def resolve_list(raw, parent: dict, env: dict, *, scope: dict | None = None, items: dict | None = None) -> list[dict]:
-    """2-4 nodes (duplicates and unusable entries dropped; more than 4 cut). with a `scope`: an action may name
+    """2-4 nodes (duplicates and unusable entries dropped; more than 4 cut). W23 with a `scope`: an action may name
     one of `items` (id -> provider node; the model may relabel it), anything else is resolved strictly and must pass
     the scope rejector (drill.in_scope)."""
     out, seen = [], set()
@@ -799,7 +799,7 @@ class GlideSession:
 
     def agent_material(self, env: dict) -> str | None:
         """An agent event's pending messages (read once per hold, from the agent's local record; never stored), only
-        when they may go to the model: Claude on, not a private event, no denied term (leaks gate)."""
+        when they may go to the model: Claude on, not a private event, no denied term (W25 leaks gate)."""
         ev = env.get("event_card") or {}
         if not ev.get("agent") or ev.get("private") or not env.get("claude_ok"):
             return None

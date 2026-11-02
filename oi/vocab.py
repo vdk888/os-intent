@@ -1,4 +1,4 @@
-"""Token vocabulary: the contract shared by (normaliser) (watcher) and (markov/forms).
+"""Token vocabulary: the contract shared by W1 (normaliser), W2 (watcher) and W3 (markov/forms).
 
 Source of truth: docs/DESIGN.md "Token vocabulary". One JSONL row per token:
     {"ts": ISO-8601 UTC, "dur": seconds, "token": str, "app": str|null,

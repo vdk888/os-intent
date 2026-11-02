@@ -2,7 +2,7 @@ import Foundation
 
 /// The Safari front tab as logged. Normalisation keeps scheme + host + path only:
 /// user:password@, the query string and the fragment are dropped (they can carry
-/// tokens; only needs host + first path segment). Non-web pages (start page,
+/// tokens; W1 only needs host + first path segment). Non-web pages (start page,
 /// about:blank, favorites://, bookmarks) are not logged.
 public struct SafariTab: Equatable, Sendable {
     public let url: String

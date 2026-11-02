@@ -103,7 +103,7 @@ import Testing
     }
 }
 
-// review note (b): glide sub-ring keys (oi/glide.py: i+1 per child ring) live INSIDE their parent's ring.
+// W21 review note (b): glide sub-ring keys (oi/glide.py: i+1 per child ring) live INSIDE their parent's ring.
 @Suite struct W21bGlideChildKeyTests {
     func slot(_ k: Int, _ x: Double, _ y: Double) -> HUDSlot { HUDSlot(key: k, x: x, y: y, width: 60, height: 30, position: nil) }
 

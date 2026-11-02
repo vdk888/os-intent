@@ -46,7 +46,7 @@ private struct RawShotNote: Decodable {
     let placeholder: String?
 }
 
-/// decoding of `shot_show` / `shot_note` / `debug_note` (called by `decodeCommand`).
+/// W17 decoding of `shot_show` / `shot_note` / `debug_note` (called by `decodeCommand`).
 public func decodeShotCommand(_ cmd: String, _ line: Data) throws -> HUDCommand {
     switch cmd {
     case "shot_show":

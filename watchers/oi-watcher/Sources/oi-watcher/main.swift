@@ -8,7 +8,7 @@ usage: oi-watcher [--once | --dry-run [--shots-only] | --aw-selftest | --help]
   --once         print the three capabilities' status (no prompts) and exit
   --dry-run      run, but print events to stdout instead of posting them
   --aw-selftest  create/post/read/delete a throwaway bucket on aw-server and exit
-  --shots-only run only the screenshot source (tests: with --dry-run and $OI_SHOT_DIR)
+  --shots-only   run only the screenshot source (tests: with --dry-run and $OI_SHOT_DIR)
 """
 
 let args = Set(CommandLine.arguments.dropFirst())

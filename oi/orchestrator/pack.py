@@ -8,11 +8,11 @@ Sections, most important first (a section that does not fit the budget is cut, t
   Mail sender the selected mail's sender + subject, and their wiki people / client page (excerpt)
   Wiki notes top-3 wiki snippets for the moment (oi.rag warm search: app, host, subject, path, wish)
   Habits       "from <context> the user usually goes next to …" (the last HABIT_DAYS days of tokens)
-  After event "after a mail event (client) the user usually: …" (Markov counts at the proactive event token)
-  Events       the recent proactive events ("18:02 mail (client) from Sam: <subject>"; a gated one =
+  After event  W24: "after a mail event (client) the user usually: …" (Markov counts at the proactive event token)
+  Events       W24: the recent proactive events ("18:02 mail (client) from Sam: <subject>"; a gated one =
                "details withheld"); a line naming a local-only term is dropped
 
-Privacy gate (settings.claude.local_only_domains, the rule): a local-only page host is dropped (from the
+Privacy gate (settings.claude.local_only_domains, the W14/W15 rule): a local-only page host is dropped (from the
 pack AND from the RAG query); a local-only mail (sender, cc or reply-to) gives only "a mail is selected (details
 withheld)" — no sender, no subject, no people page, nothing of it in the query; a path chain, wish or wiki text
 naming a local-only domain is dropped ("Acme-Conseil", "AcmeConseil", "acme_conseil SAS" all count, see leaks). The pack itself is never written to disk (debug files aside: claude.debug).

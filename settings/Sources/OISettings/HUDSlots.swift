@@ -20,19 +20,19 @@ public struct HUDSettings: Codable, Equatable, Sendable {
     public static let defaultSlots: [TapModifier: SlotPosition] = [.fn: .left, .ctrl: .top, .option: .right, .cmd: .bottom]
     public var slots: [TapModifier: SlotPosition]
     public var colors: HUDColors
-    /// `long_press_ms`: holding an option's modifier at least this long = the Claude-assisted
+    /// W14 `long_press_ms`: holding an option's modifier at least this long = the Claude-assisted
     /// variant (default 600, clamped 400-3000: always longer than a tap, 350 ms).
     public var longPressMs: Int
     public static let defaultLongPressMs = 600
     public static func clampLongPress(_ v: Int) -> Int { min(max(v, 400), 3000) }
-    /// `dwell_ms`: during a ⌥⌘ glide, resting this long on a capsule asks for its Claude follow-ups
+    /// W15 `dwell_ms`: during a ⌥⌘ glide, resting this long on a capsule asks for its Claude follow-ups
     /// (the sub-ring). Default 500, clamped 250-2000.
     public var dwellMs: Int
     public static let defaultDwellMs = 500
     public static func clampDwell(_ v: Int) -> Int { min(max(v, 250), 2000) }
     // `auto_mode` = how `oi live` sends its automatic (gated) shows: "hint" (default: coloured
-    // dots, ⌥⌘ develops them), "full" (the cross, as before) or "off" (nothing; ⌥⌘ still summons).
-    // `hint_ttl_ms` = how long the dots stay (default 4000, was 2500; clamped 500-10000). Read by the python driver;
+    // dots, ⌥⌘ develops them), "full" (the cross, as before W19) or "off" (nothing; ⌥⌘ still summons).
+    // `hint_ttl_ms` = how long the dots stay (default 4000 since W20, was 2500; clamped 500-10000). Read by the python driver;
     // kept here so a menu toggle writes them back unchanged.
     public static let autoModes = ["hint", "full", "off"]
     public static let defaultAutoMode = "hint"
@@ -40,12 +40,12 @@ public struct HUDSettings: Codable, Equatable, Sendable {
     public static let defaultHintTTLms = 4000      // 2500 -> 4000 (the user: the dots were never seen)
     public static func clampHintTTL(_ v: Int) -> Int { min(max(v, 500), 10_000) }
     public var hintTTLms: Int
-    // end
-    /// `hint_dot_size` (pt): the hint dots' diameter (default 10, was 6; clamped 4-24). Read by oi-hud.
+    // end W19
+    /// W20 `hint_dot_size` (pt): the hint dots' diameter (default 10, was 6; clamped 4-24). Read by oi-hud.
     public static let defaultHintDotSize = 10
     public static func clampHintDotSize(_ v: Int) -> Int { min(max(v, 4), 24) }
     public var hintDotSize: Int
-    /// `fill_order`: which key gets the most likely option, then the next… (rank 1 first). The NUMBER of an
+    /// W21 `fill_order`: which key gets the most likely option, then the next… (rank 1 first). The NUMBER of an
     /// option is its key (fn 1, ⌃ 2, ⌥ 3, ⌘ 4: `HotkeySet.defaults`), never its rank; fewer than 4 options leave
     /// the last keys of this order empty. Default ⌃ ⌥ ⌘ fn (rank 1 on control). Read by the python driver
     /// (`oi live`, which also keeps an option on its key while it is shown again in the same context); kept here

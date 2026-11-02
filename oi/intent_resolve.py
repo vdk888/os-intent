@@ -16,7 +16,7 @@ Tiers, cheapest first (`resolve`):
               candidate when >= LOCAL_FALLBACK, else nothing.
 While typing only tier 1 runs (`preview`, the "→ Telegram" in the wish field); Enter runs all three (`final`).
 
- roster tier (oi.orchestrator), before the three: "passe-moi Atlas" / "pass me to Orion" arms a dispatch (nothing sent: the user's next note goes to that agent); "demande à quelqu'un le NAV du fonds" (a topic, no person) ->
+W25 roster tier (oi.orchestrator), before the three: "passe-moi Atlas" / "pass me to Orion" arms a dispatch (nothing sent: the user's next note goes to that agent); "demande à quelqu'un le NAV du fonds" (a topic, no person) ->
 the roster agent of that topic (Orion), a gated send. After them: a wish nothing resolves while a dispatch is
 armed -> a gated send to that agent. The Claude tier's catalogue names each agent's topics (the roster).
 
@@ -96,7 +96,7 @@ def iso(t: float) -> str:
 
 
 def needs_confirm(item: dict) -> bool:
-    """The confirm rule: the gated primitives (vocal sends, page presses) never (the outward gate asks once);
+    """The W18 confirm rule: the gated primitives (vocal sends, page presses) never (the outward gate asks once);
     the safe primitives (open an app / a page, change desk, a mail DRAFT, a summary) never; A2A sends and anything
     else always, fail-safe: an action that is neither gated nor known to be safe is confirmed first."""
     prim = item.get("primitive")
@@ -384,7 +384,7 @@ def validate_answer(ans, cat: dict[str, dict]) -> dict | None:
     return _res(item, 0.9, "claude")
 
 
-# ---- the roster tier ------------------------------------------------------------------------------
+# ---- W25: the roster tier ------------------------------------------------------------------------------
 
 def resolve_roster(text: str, cat: dict[str, dict], agents: list[dict] | None = None) -> dict | None:
     """"passe-moi X" -> a dispatch.arm resolution; a topic asked of "someone" -> a send to the roster agent of that
@@ -457,7 +457,7 @@ class WishEngine:
         self._base: tuple[float, list[str], dict, dict, dict] | None = None   # (at, apps, app uses, host uses, recipients)
         self._laya_ok: tuple[float, bool] | None = None
         self.pending: dict[int, tuple[str, dict, float]] = {}
-        self._cancelled: dict = {}             # follow-up: request ids the panel cancelled (Esc)
+        self._cancelled: dict = {}             # W18 follow-up: request ids the panel cancelled (Esc)
         self.pool = ThreadPoolExecutor(max_workers=1, thread_name_prefix="oi-wish")
 
     # -- catalogue -------------------------------------------------------------------------------------
@@ -529,7 +529,7 @@ class WishEngine:
         return validate_answer(ans, cat)
 
     def resolve(self, text: str, ctx: dict) -> dict | None:
-        """the roster tier, then's tiers, then the armed dispatch (a confirmed send)."""
+        """the roster tier, then W18's tiers, then the armed dispatch (a confirmed send)."""
         t0 = self.clock()
         cat = self.catalogue(ctx)
         r = resolve_roster(text, cat)
@@ -635,7 +635,7 @@ class WishEngine:
         mail = acts.mail_reader(previous=True)
         if not mail:
             return False, "No mail selected"
-        if claude_actions.mail_local_only(mail, cfg):   # sender, cc AND reply-to (the rule)
+        if claude_actions.mail_local_only(mail, cfg):   # sender, cc AND reply-to (the W15 rule)
             return plain()
         prompt = claude_actions.mail_prompt(prim, mail, acts.wiki(claude_actions.wiki_query(mail)),
                                             acts.calendar(mail) if prim == "mail.reply" else "(none)")
@@ -690,7 +690,7 @@ class WishEngine:
         target = aliases.strip_fillers(rest) if verb else aliases.strip_fillers(t)
         if r["kind"] in ("app", "host") and target and target != t:
             phrases.append(target)
-        # follow-up: a local match is learned at once; a Claude / Laya guess only once the same wish text
+        # W18 follow-up: a local match is learned at once; a Claude / Laya guess only once the same wish text
         # resolved to the same action twice (never from a single guess)
         local = r["tier"] in ("local", "learned")
         return self.learned.learn(phrases, r["id"], r["label"], agree=1 if local else 2)
@@ -733,7 +733,7 @@ class WishEngine:
                 return {"state": "failed", "label": "Expired: say it again"}, None
             r = p[1]
         else:
-            if self.cancelled(rid):                # follow-up: cancelled before it was even resolved
+            if self.cancelled(rid):                # W18 follow-up: cancelled before it was even resolved
                 return {"state": "failed", "label": "cancelled"}, None
             r = self.resolve(text, ctx)
             if not r:
@@ -743,7 +743,7 @@ class WishEngine:
                     self.pending[rid] = (text, r, now)
                 return {"state": "confirm", "label": confirm_line(r), "tier": r["tier"],
                         **({"press": r["press"]} if r.get("press") else {})}, r    # the HUD's press ticket
-        if self.cancelled(rid):                    # follow-up: Esc while "Working…" -> never executed
+        if self.cancelled(rid):                    # W18 follow-up: Esc while "Working…" -> never executed
             with self.lock:
                 self.pending.pop(rid, None)
             return {"state": "failed", "label": "cancelled", "tier": r["tier"]}, r
@@ -765,7 +765,7 @@ class WishEngine:
         with os.fdopen(fd, "a", encoding="utf-8") as f:
             f.write(json.dumps(row, ensure_ascii=False) + "\n")
 
-    # -- follow-up: Esc cancels -------------------------------------------------------------------
+    # -- W18 follow-up: Esc cancels -------------------------------------------------------------------
     def cancel(self, rid) -> None:
         """The panel closed with this request still open: drop its pending confirm and never execute it."""
         with self.lock:
@@ -782,7 +782,7 @@ class WishEngine:
     def on_event(self, ev: dict, reply: Callable[[dict], None]) -> None:
         """A `resolve` broadcast from oi-hud. Previews answer inline (local tier, fast); finals run on the
         worker thread (Laya / Claude may take seconds) so the listener keeps reading."""
-        if ev.get("event") == "cancel":            # follow-up: the panel closed (Esc) while resolving
+        if ev.get("event") == "cancel":            # W18 follow-up: the panel closed (Esc) while resolving
             self.cancel(ev.get("id"))
             return
         if ev.get("event") != "resolve":

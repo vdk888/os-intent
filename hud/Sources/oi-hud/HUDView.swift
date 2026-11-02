@@ -5,16 +5,16 @@ import HUDCore
 import OISettings
 
 enum Metrics {
-    /// The window: room around the cross for the glide's sub-rings (transparent, click-through outside
+    /// The window: W15 room around the cross for the glide's sub-rings (transparent, click-through outside
     /// the capsules; it may extend past the screen edge, the sub-rings are clamped to the screen).
     static let panelSize = CGSize(width: 1200, height: 900)
-    /// The cross + wish (4:30) + vocal (7:30): what is kept on screen when the HUD is placed at the pointer.
+    /// The cross + wish (4:30) + vocal (7:30, W12): what is kept on screen when the HUD is placed at the pointer.
     static let contentSize = CGSize(width: 600, height: 400)
     static let ringRadius: Double = 80
     /// wide enough for 22 characters ("Switch to Telegram", "Open notion.so/…") + a 28-pt icon.
     /// The user 20/10 16:37 Paris: smaller, more discreet (was 252x44). Since 16:40 ("less text, more symbols")
     /// the width follows the content (`capsuleWidth`, 72-200); this is the maximum.
-    /// (smaller, more subtle): height 28 (was 32), label 10.5 pt (was 11.5), icon 16 pt (was 20).
+    /// W19 (smaller, more subtle): height 28 (was 32), label 10.5 pt (was 11.5), icon 16 pt (was 20).
     static let capsuleSize = CGSize(width: 200, height: 28)
     static let labelPt: CGFloat = 10.5
     static let labelFont = NSFont.systemFont(ofSize: labelPt, weight: .medium)
@@ -43,7 +43,7 @@ enum Metrics {
     }
 
     /// Every option's centre offset and size (each at the fixed place of its key, the wish
-    /// option at its own fixed place below-right the vocal option below-left).
+    /// option at its own fixed place below-right, W12 the vocal option below-left).
     static func slots(_ options: [HUDOption], _ positions: [Int: SlotPosition], badges: [Int: String]) -> [HUDSlot] {
         hudSlots(options: options, positions: positions, radius: ringRadius, capsuleHeight: capsuleSize.height) {
             width($0, badge: badges[$0.key] ?? "")
@@ -68,7 +68,7 @@ final class HUDModel: ObservableObject {
     @Published var halos: Set<Int> = []
     /// The capsule under the pointer (clickable): a subtle highlight in its key's colour.
     @Published var hovered: Int?
-    // Claude-assisted options
+    // W14 Claude-assisted options
     var claudeKeys: Set<Int> = []           // options with a Claude variant (long-press ring drawn only on them)
     @Published var ringKey: Int?            // the capsule whose modifier is held
     @Published var ringFill: Double = 0     // 0...1, full = release now runs the Claude variant
@@ -76,7 +76,7 @@ final class HUDModel: ObservableObject {
     @Published var card: String?            // the result card (≤ 4 lines); the capsules are hidden meanwhile
     var cardOK = true
     @Published var cardOpen = false         // the card offers « Open in Mail » (a draft saved in place)
-    // glide
+    // W15 glide
     @Published var rings: [SubRing] = []    // the open sub-rings (ancestors of the last expansion)
     @Published var trail: [Int]?            // the hovered path during a glide (its ancestors are highlighted)
     @Published var thinkingPath: [Int]?     // the capsule whose follow-ups are being asked (progress arc)
@@ -87,7 +87,7 @@ final class HUDModel: ObservableObject {
     @Published var dotPulse = false                                   // the appear pulse's big phase
     @Published var hintRing = false                                   // a proactive hint (ring around the dots)
     var glass = false                       // Liquid Glass (macOS 26+, no Increase Contrast / Reduce Transparency)
-    // end
+    // end W19
     @Published var contextCard: ShownContextCard?   // the glide direction's context card
 }
 
@@ -458,7 +458,7 @@ struct IconView: View {
     var tint: Color? = nil
     var body: some View {
         switch ref {
-        case .initial(let c):          // agent picker: the initial in a disc of the key's colour
+        case .initial(let c):          // W12 agent picker: the initial in a disc of the key's colour
             ZStack {
                 Circle().fill(tint ?? Color.primary.opacity(0.3))
                 Text(c).font(.system(size: 9.5, weight: .bold, design: .rounded)).foregroundStyle(Color.black.opacity(0.85))   // 9.5 pt in the 16-pt disc

@@ -32,8 +32,8 @@ from oi import contact as _contact  # noqa: E402
 
 SHIPPED_CONTACT_MAP = dict(_contact.DEFAULT_CONTACT_MAP)
 _contact.DEFAULT_CONTACT_MAP.clear()
-_contact.DEFAULT_CONTACT_MAP.update({"Atlas - R&D": "atlas", "Nova - CEO": "nova", "Orion - Fund": "orion",
-                                     "Lyra - Sales": "lyra", "Vega - Marketing": "vega", "Juno - Ext R&D": "juno"})
+_contact.DEFAULT_CONTACT_MAP.update({"Atlas - Tools": "atlas", "Nova - Planning": "nova", "Orion - Finance": "orion",
+                                     "Lyra - Sales": "lyra", "Vega - Marketing": "vega", "Juno - Support": "juno"})
 
 T0 = datetime(2026, 1, 5, 9, 0, 0, tzinfo=timezone.utc)
 WIN = "aw-watcher-window_host-a"
@@ -63,7 +63,7 @@ def no_real_providers(monkeypatch):
     from oi import drill
 
     def blocked(*a, **kw):
-        raise AssertionError("a real provider ran in a test")
+        raise AssertionError("a real W23 provider ran in a test")
     for name in ("_mdfind", "_telegram_titles", "_osa_lines"):
         monkeypatch.setattr(drill, name, blocked)
 
@@ -158,7 +158,7 @@ def fake_aw(monkeypatch):
     f.server.shutdown()
 
 
-# ---- (markov / forms / serialiser) fixtures: seeded synthetic streams, no real data ----
+# ---- W3 (markov / forms / serialiser) fixtures: seeded synthetic streams, no real data ----
 import sys  # noqa: E402
 from pathlib import Path  # noqa: E402
 from zoneinfo import ZoneInfo  # noqa: E402

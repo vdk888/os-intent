@@ -10,8 +10,8 @@ public struct HotkeyRegistration: Equatable, Sendable {
 public let dismissHotkeyID: UInt32 = 100
 
 /// What to arm for one `show`:
-/// - `regs`: Carbon hotkeys — the chord options (ids 1-4), dismiss (id 100) and, a chord vocal key (id 400);
-/// - `taps`: bare modifier taps → option key, served by the passive event tap;
+/// - `regs`: Carbon hotkeys — the chord options (ids 1-4), dismiss (id 100) and, W12, a chord vocal key (id 400);
+/// - `taps`: bare modifier taps → option key, served by the passive event tap; W11
 ///   also `wish_visible` (default ⇧) → `wishOptionKey`: the wish option by one key while visible.
 /// When `tapsAvailable` is false (the event tap could not be created: Input Monitoring missing)
 /// every tap slot n falls back to the Carbon chord ⌥n, unless ⌥n is already taken by another action.

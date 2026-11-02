@@ -225,10 +225,11 @@ final class AppController: NSObject, NSApplicationDelegate, NSMenuDelegate {
         FileManager.default.createFile(atPath: marker.path, contents: Data())
         NSApp.activate(ignoringOtherApps: true)
         let a = NSAlert()
-        a.messageText = "Set up OS-intent with Claude?"
-        a.informativeText = "Claude (your subscription) reads the sources you choose — Claude memory, wiki, recent "
-            + "mails, Notion — asks a few questions, and you check the result, so the HUD proposes useful actions from "
-            + "day one. You can run it later from the menu: Onboarding…"
+        a.messageText = "Set up OS-intent?"
+        a.informativeText = "A short onboarding in Terminal so the HUD proposes useful actions from day one. Claude is "
+            + "off by default: the onboarding first asks whether to turn it on. Yes = Claude (your subscription) reads "
+            + "the sources you choose — Claude memory, wiki, recent mails, Notion — and you check the result; "
+            + "no = a shorter onboarding that stays on this Mac. You can run it later from the menu: Onboarding…"
         a.addButton(withTitle: "Start onboarding")
         a.addButton(withTitle: "Later")
         if a.runModal() == .alertFirstButtonReturn { openOnboarding() }

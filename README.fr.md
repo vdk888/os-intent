@@ -160,7 +160,7 @@ watchers/oi-watcher/install.sh && hud/install.sh && menubar/install.sh && live/i
 (cd ocr && swift build -c release)                  # OCR local (optionnel)
 laya/install.sh                                     # optionnel, OI_LAYA_DIR d'abord
 export OI_WIKI_DIR=~/wiki && python3 tools/wiki/wiki_search.py --reindex   # optionnel
-.venv/bin/oi onboard && .venv/bin/oi health
+.venv/bin/oi onboard && .venv/bin/oi health        # Claude coupé (défaut) : il demande o/N, non = version locale
 ```
 
 Autorisez ensuite, quand macOS le demande : Surveillance de l'entrée, Accessibilité, Automatisation (Safari, Mail,

@@ -75,14 +75,14 @@ def test_w20_hint_cooldown_setting_roundtrip(data_dir):
 def test_settings_gate_and_live_sections(data_dir):
     s = settings.load()
     assert s["gate"] == settings.GATE_DEFAULTS and s["live"] == {"poll_s": 2, "rebuild_s": 600, "retrain_s": 600,
-                                                                  **settings.LIVE_LAYA_DEFAULTS}   # keys
+                                                                  **settings.LIVE_LAYA_DEFAULTS}   # W13 keys
     data_dir.mkdir(parents=True, exist_ok=True)
     (data_dir / "settings.json").write_text(json.dumps(
         {"gate": {"show_min_p": 0.3, "max_show": 2.0, "cooldown_s": "x", "bogus": 1}, "live": {"poll_s": -1}}))
     s = settings.load()
     assert s["gate"]["show_min_p"] == 0.3 and s["gate"]["max_show"] == 2 and isinstance(s["gate"]["max_show"], int)
     assert s["gate"]["cooldown_s"] == 20 and "bogus" not in s["gate"] and s["live"]["poll_s"] == 2
-    assert s["gate"]["ttl_ms"] == 6000                    # default (15000)
+    assert s["gate"]["ttl_ms"] == 6000                    # W19 default (15000)
     (data_dir / "settings.json").write_text(json.dumps(
         {"gate": {"ttl_ms": 20000.0, "hide_on_pointer_travel": True}}))   # the HUD's bool key is ignored here
     s = settings.load()
@@ -420,7 +420,7 @@ def test_status_file_and_counters(rows, model):
     assert (lv2.shows_today, lv2.pressed_today, lv2.last_show_ts) == (1, 0, live.now_iso(1000.0))
 
 
-# ---- summon ---------------------------------------------------------------------------
+# ---- W10 summon ---------------------------------------------------------------------------
 
 def test_summon_options_no_threshold_but_max_show():
     menu = [opt("a", 0.01, token="activate:A"), opt("b", 0.05, token="activate:B"),
@@ -500,7 +500,7 @@ def test_summon_listener_round_trip_on_a_fake_socket(tmp_path):
 
 
 def test_click_press_keeps_via_and_vocal_rows_are_not_moments(rows, model):
-    """the user 16:5x: a capsule clicked replies pressed + "via":"click"; the hud-log row keeps it. the
+    """the user 16:5x: a capsule clicked replies pressed + "via":"click"; the hud-log row keeps it. W12: the
     vocal rows of the same hud-log never count as moments or shows."""
     pre = _showable(rows, model)
     lv, runner = _live(pre, model, {"event": "pressed", "key": 2, "via": "click"})
@@ -518,7 +518,7 @@ def test_click_press_keeps_via_and_vocal_rows_are_not_moments(rows, model):
     assert toks == ["hud:shown", "hud:pressed:2", "vocal:nova"]
 
 
-# ---- automatic shows as hints -----------------------------------------------------
+# ---- W19: automatic shows as hints -----------------------------------------------------
 
 def test_w19_hud_settings_defaults_and_clamp(data_dir):
     assert settings.load()["hud"] == {"auto_mode": "hint", "hint_ttl_ms": 4000, "fill_order": ["ctrl", "option", "cmd", "fn"]}   # 2500 -> 4000

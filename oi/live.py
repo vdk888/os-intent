@@ -19,8 +19,8 @@ Every evaluated moment lands in hud-log/<UTC day>.jsonl (see `log_row`); oi.norm
 into `hud:shown` / `hud:pressed:<k>` / `hud:dismissed` tokens. A status file (status/oi-live.json) is
 rewritten every loop for oi-menubar. Logs never contain titles or URLs.
 
- summon: a reader thread keeps ONE persistent connection to oi-hud's socket and listens for
-the `{"event":"summon"}` broadcast (⌥+⌘ pressed together). It answers at once with a show built from the current
+W10 summon: a reader thread keeps ONE persistent connection to oi-hud's socket and listens for
+the `{"event":"summon"}` broadcast (⌥+⌘ pressed together, W11). It answers at once with a show built from the current
 moment: Markov top-k with NO threshold and NO cooldown (max_show still applies; when the model has
 nothing, an empty show = the HUD's wish option alone). The hud-log row carries `"summoned": true`.
 The regular context-change gate path is unchanged.
@@ -30,7 +30,7 @@ URL path), read by `oi vocal-send` for the vocal's context line. A `pressed` rep
 The user 16:5x: the capsules are clickable) is kept on the hud-log row. hud-log also holds `oi vocal-send`'s rows
 ({"kind": "vocal"}): they are not moments (the counters skip them).
 
- Laya layer. With settings `live.laya_shadow` true (or `live.laya_rank` blend|live), every evaluated
+W13 Laya layer. With settings `live.laya_shadow` true (or `live.laya_rank` blend|live), every evaluated
 moment (gate path and summon) also gets a Laya prediction on the same form, menu and rendered state: the call
 runs on one worker thread (oi.laya, `live.laya_timeout_ms`; at most one call running and one queued, else
 `busy`; a state already asked is not asked again), never delays a show, and its result lands in the moment's
@@ -43,14 +43,14 @@ probabilities only if Laya's answer for the SAME state (digest + menu) is alread
 typically a summon or a re-evaluation seconds after the moment changed), else on Markov's
 (`laya_rank_fallback` = pending | the Laya error). Nothing ever waits for Laya.
 
- glide: oi-hud tells the show's owner (this driver, on the show's connection) `{"event":"glide"}` when a
+W15 glide: oi-hud tells the show's owner (this driver, on the show's connection) `{"event":"glide"}` when a
 ⌥⌘ hold starts over its options (-> one batched haiku prefetch of their follow-ups) and `{"event":"expand","path":[…]}`
 when the pointer rests on an option (-> `subring` command); a release answers `pressed` with `path` (+ the glide
 log). See oi/glide.py. A follow-up runs through the same executor (app / url / desk / plain mail on the mail it was
-built for), the Claude variant (draft, summary) or `oi.vocal.send` (a message to an agent, "Ask Atlas"). The
+built for), the W14 Claude variant (draft, summary) or `oi.vocal.send` (a message to an agent, "Ask Atlas"). The
 row's `glide` field keeps paths, dwell times and the action id; oi.normalise adds a `hud:glide:<depth>` token.
 `oi live --dry-exec` sends the shows but executes nothing (prints what would run; for functional tests).
- page actions (oi/page_actions.py). In Safari, `ui.press` options: learned clicks (form C
+W16 page actions (oi/page_actions.py). In Safari, `ui.press` options: learned clicks (form C
 `press_button`, Markov on `click:` tokens) and, on a summon, the rule-based key button of the page (GitHub
 "Squash and merge", ...), pinned first. Each is offered only if oi-hud's page snapshot (Accessibility) shows
 the element NOW; its hint outlines the button. A press (one tap) that is not known read-only waits for the
@@ -58,7 +58,7 @@ outward gate's panel (oi/gate.py: the one confirmation, which also issues oi-hud
 `ax_press` (role + label slug, re-found at press time, never a coordinate) to oi-hud; a gone element presses
 nothing. The hud-log row gets `ui_press` {ok, reason}.
 
- hints: with settings `hud.auto_mode` "hint" (default) a GATED show goes out as `"mode":"hint"` (+
+W19 hints: with settings `hud.auto_mode` "hint" (default) a GATED show goes out as `"mode":"hint"` (+
 `hint_ttl_ms`): oi-hud draws tiny coloured dots only, and ⌥⌘ develops them into the full cross on the same
 connection (it says `{"event":"hint","phase":"expanded"}` first). "full" = the cross as before, "off" = nothing
 is sent (row `dropped:auto_off`). A summon is always full. The row keeps `show_mode` ("hint" | "full") and, for a
@@ -108,8 +108,8 @@ ALLOWED_PRIMITIVES = ("app.open", "url.open", "space.move", "mail.reply", "mail.
                       "mail.draft", "agent.ask",                                            # starter items
                       "shot.send", "shot.pick", "shot.annotate", "shot.content")            # a live screenshot
 # a proactive hint's actions also use mail.show (that mail in Mail), file.open / folder.open / telegram.chat
-# (the primitives); they come from the event only, never from the Markov menu.
-# Outward gate: a option marked `outward` asks at the pick ("reply"), except agent.ask (gated at its vocal send).
+# (the W23 primitives); they come from the event only, never from the Markov menu.
+# Outward gate: a W24 option marked `outward` asks at the pick ("reply"), except agent.ask (gated at its vocal send).
 OUTWARD_AT_PICK = OUTWARD_PRIMITIVES - {"agent.ask"}
 CONTEXT_KINDS = ("activate", "url", "space")
 TAIL_ACTIVATES = 2          # the tail re-tokenised every loop starts at the 2nd-to-last app switch
@@ -127,7 +127,7 @@ LAYA_CACHE = 8              # Laya answers kept per state digest, for a re-rank 
 
 
 def show_p(o: dict) -> float:
-    """The probability the gate ranks on: Laya's / the blend's when promoted (`p_show`), else Markov's."""
+    """The probability the gate ranks on: Laya's / the blend's when promoted (W13 `p_show`), else Markov's."""
     v = o.get("p_show", o.get("p_markov"))
     return float(v or 0.0)
 
@@ -188,7 +188,7 @@ def summon_options(menu: list[dict], cfg: dict) -> list[dict]:
     max_show (<= 4). No threshold, no cooldown, no nothing/thin-history check: the user asked. the options of
     a live context state (`live`, e.g. the screenshot on screen) come first."""
     opts = [o for o in menu if o.get("primitive") in ALLOWED_PRIMITIVES]
-    # pinned (form B mail) first; pinned page rules keep their rule `rank` (the primary action, e.g.
+    # pinned (form B mail) first; W16: pinned page rules keep their rule `rank` (the primary action, e.g.
     # Squash & merge, before Approve) whatever a probability says (incident 2026-10-21)
     opts.sort(key=lambda o: (not o.get("live"), not o.get("pin"), o.get("rank", 0), -show_p(o), o["key"]))
     return opts[: max(0, min(int(cfg["max_show"]), 4))]
@@ -199,7 +199,7 @@ def gate(menu: list[dict], nothing_p: float, cfg: dict, *, now: float, last_show
     """(options to show, reason). reason == "show" iff the list is non-empty. Order of the checks:
     paused, hud_disabled, thin_history (the current context seen < min_history times in training),
     nothing_likely (P(nothing) > none_max_p), no_option (no allowed option with p >= show_min_p),
-    cooldown (< cooldown_s since the last show; < hint_cooldown_s when the show goes out as a `hint`).
+    cooldown (< cooldown_s since the last show; W20: < hint_cooldown_s when the show goes out as a `hint`).
     At most max_show (<= 4, the HUD's slots) options."""
     if paused:
         return [], "paused"
@@ -439,9 +439,10 @@ class Executor:
                 message_id = params["message_id"]
             return prim if claude_actions.plain_mail(prim, self.osa, message_id) else None
         elif prim in ("folder.open", "file.open"):     # a provider path, re-checked (Finder / default app)
-            if not drill.safe_path(params.get("path")) or drill.launchable(params.get("path")):
+            real = drill.resolved(params.get("path"))  # resolved ONCE: checked, then opened as is
+            if not real or not drill.safe_path(real) or drill.launchable(params["path"]) or drill.launchable(real):
                 return None                             # never run / install (scripts, apps, installers, +x)
-            rc, _ = self.runner(["open", os.path.realpath(params["path"])])   # the path that was checked
+            rc, _ = self.runner(["open", real])
         elif prim == "telegram.chat" and drill.bot_name(params.get("bot")):   # a fleet bot's chat: its deep link
             rc, _ = self.runner(["open", f"tg://resolve?domain={params['bot']}"])
         elif prim == "telegram.chat" and params.get("chat"):   # open that chat (AX press of its row)
@@ -471,7 +472,7 @@ class Executor:
 
 def socket_sender(path: Path, timeout_s: float) -> Callable[..., threading.Thread]:
     """send(payload, on_reply, on_event=None) -> thread. The reply is the first pressed/dismissed/dropped/error line
-    (wish broadcasts are skipped); a socket problem gives {"event":"dropped","reason":"socket_error"}. the
+    (wish broadcasts are skipped); a socket problem gives {"event":"dropped","reason":"socket_error"}. W15: the
     `glide` / `expand` lines of the show (before its reply) go to on_event, each on its own thread."""
     def send(payload: dict, on_reply: Callable[[dict], None],
              on_event: Callable[[dict], None] | None = None) -> threading.Thread:
@@ -539,7 +540,7 @@ def summon_listener(path: Path, on_summon: Callable[[dict], None], *, retry_s: f
                             pass
                     for h in hello or []:
                         reply(h)
-                    # /
+                    # /W18
                     s.settimeout(1.0)
                     buf = b""
                     while not stop.is_set():
@@ -601,7 +602,7 @@ class Live:
                  glide_engine: "glide.GlideEngine | None" = None, exec_dry_run: bool = False,
                  vocal_send: Callable[..., dict] = vocal_mod.send):
         self.dry_run = dry_run
-        self.exec_dry_run = exec_dry_run      # functional tests: shows go out, nothing is executed
+        self.exec_dry_run = exec_dry_run      # W15 functional tests: shows go out, nothing is executed
         self.clock = clock
         self.out = out or sys.stdout
         self.do_pull = pull
@@ -626,7 +627,7 @@ class Live:
         self._sender_events = "on_event" in inspect.signature(self.sender).parameters
         self.claude = claude or claude_actions.ClaudeActions(
             self.socket_path, **({"dry_run": True, "osa": dry_osa, "out": self.out} if exec_dry_run else {}))
-        self.glide = glide_engine or glide.GlideEngine(   #; --dry-exec never reads Mail either
+        self.glide = glide_engine or glide.GlideEngine(   # W15; --dry-exec never reads Mail either
             getattr(self.claude, "sender", None) or (lambda p: claude_actions.send_command(self.socket_path, p)),
             **({"mail_reader": lambda: None, "body_reader": lambda mid: ""} if exec_dry_run else {}))
         self.vocal_send = vocal_send
@@ -647,7 +648,7 @@ class Live:
         self.state = "starting"
         self.context: dict = {}               # {app, host, desk} of the last evaluated moment
         self._aw_down_logged = float("-inf")
-        # Laya layer
+        # W13 Laya layer
         self.laya_client_factory, self.ensure_laya = laya_client, ensure_laya
         self._laya_client, self._laya_key = None, None
         self._laya_pool = ThreadPoolExecutor(max_workers=1, thread_name_prefix="oi-laya")
@@ -863,7 +864,7 @@ class Live:
         return self.dispatch(shown, row, ctx, cfg, now, mode=mode,
                              hint_ttl_ms=int(hud.get("hint_ttl_ms", settings.HUD_DEFAULTS["hint_ttl_ms"])),
                              fill_order=hud.get("fill_order"))
-        # end
+        # end W19
 
     def summon(self, now: float | None = None, trigger: str | None = None) -> dict:
         """answer a summon broadcast with the current moment's best options, gate bypassed
@@ -932,7 +933,7 @@ class Live:
             payload["mode"] = "hint"
             payload["hint_ttl_ms"] = hint_ttl_ms
             row["expanded"] = False
-        # end
+        # end W19
         if marker:                                   # a proactive hint (oi-hud draws a ring around the dots)
             payload["marker"] = marker
         live_show = None
@@ -988,7 +989,7 @@ class Live:
         else:
             self.threads.append(self.sender(payload, on_reply))
         self.threads = [t for t in self.threads if t.is_alive()]
-        if row.get("summoned") and keymap:   # follow-up (PR): a summon prefetches the glide follow-ups so a
+        if row.get("summoned") and keymap:   # W15 follow-up (W18 PR): a summon prefetches the glide follow-ups so a
             threading.Thread(target=on_event, args=({"event": "glide", "phase": "summon"},),   # hold right after
                              daemon=True, name="oi-glide-prefetch").start()   # it blooms at once; never on gated shows
         self.claude.after_show(row.get("form"), shown, payload)   # label enrichment, async
@@ -1092,7 +1093,7 @@ class Live:
                                                                     send_vocal=self._send_vocal(ctx))
                     if meta:
                         row["claude"] = meta
-                elif not self._outward_pick(opt, opt, row):   # outward gate: a `outward` option, cancelled
+                elif not self._outward_pick(opt, opt, row):   # outward gate: a W24 `outward` option, cancelled
                     row["executed"] = None
                 elif reply.get("mode") == "claude":   # long-press -> the Claude variant (always answers the HUD)
                     row["mode"] = "claude"
@@ -1144,7 +1145,7 @@ class Live:
             append_jsonl(paths.hud_log_dir() / f"{row['ts'][:10]}.jsonl", row, self.lock)
         fut.add_done_callback(done)
 
-    # -- page actions -----------------------------------------------------------------------------
+    # -- W16 page actions -----------------------------------------------------------------------------
     def page_menu(self, menu: list[dict], ctx: dict, *, summoned: bool) -> list[dict]:
         """ui.press options only in Safari and only when oi-hud sees the element now; a summon adds the
         rule-based key button(s). Outside Safari every ui.press option is dropped (no snapshot taken)."""
@@ -1159,7 +1160,7 @@ class Live:
         return page_actions.apply(menu, page, ctx, with_rules=summoned)
 
     def wish_page_items(self, ctx: dict) -> list[dict]:
-        """ wish catalogue: the current Safari page's buttons (snapshot cached 3 s: previews run per keystroke)."""
+        """W18 wish catalogue: the current Safari page's buttons (snapshot cached 3 s: previews run per keystroke)."""
         now, host = time.monotonic(), page_actions._host_of(ctx)
         c = self._wish_page
         if c and c[1] == host and now - c[0] < 3.0:
@@ -1178,7 +1179,7 @@ class Live:
         return self.executor.run(opt, ctx, self.url_for)
 
     def _outward_pick(self, opt: dict | None, n: dict | None, row: dict) -> bool:
-        """Outward gate, class "reply": a option marked `"outward": true` (reply / forward / draft, the chat)
+        """Outward gate, class "reply": a W24 option marked `"outward": true` (reply / forward / draft, the chat)
         asks at the pick, before its window opens (the one confirmation). agent.ask is gated at its send (vocal)."""
         prim = (n or {}).get("primitive")
         if not (opt or {}).get("outward") or prim not in OUTWARD_AT_PICK:
@@ -1209,7 +1210,7 @@ class Live:
             log(f"ui.press: nothing pressed ({r.get('reason')})")
         return bool(r.get("ok")) and not r.get("dry_run")
 
-    # -- Laya layer ------------------------------------------------------------------------------
+    # -- W13 Laya layer ------------------------------------------------------------------------------
     def laya_client(self, lv: dict):
         key = (lv.get("laya_url"), lv.get("laya_checkpoint"), lv.get("laya_model"), lv.get("laya_timeout_ms"))
         if self._laya_client is None or key != self._laya_key:
@@ -1402,7 +1403,7 @@ class Live:
         self.start()
         summon_listener(self.socket_path, self.on_summon, on_event=self.wish.on_event,   # wish resolver
                         hello=[{"cmd": "resolver"}])
-        self.shots.start()                   # / own 0.5 s poll of the shot bucket (live state)
+        self.shots.start()                   # its own 0.5 s poll of the shot bucket (live state)
         self.proactive.start()               # the opt-in sensors (all off by default)
         self.ensure_laya_at_start()          # the menu-bar Laya switch on: Laya comes back after a reboot (2026-10-21)
         log(f"started (dry_run={self.dry_run}, model={'yes' if self.model else 'none'}, tokens today={len(self.rows)})")

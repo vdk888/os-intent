@@ -88,7 +88,7 @@ final class WishPanelController: NSObject, NSTextFieldDelegate {
             ve.wantsLayer = true
             panel.contentView = ve; bg = ve
         }
-        // end
+        // end W19
 
         field.placeholderString = WishPanelController.placeholder
         field.font = .systemFont(ofSize: 17)
@@ -276,7 +276,7 @@ final class WishPanelController: NSObject, NSTextFieldDelegate {
         }
     }
 
-    // MARK: wish -> action
+    // MARK: W18 wish -> action
 
     func controlTextDidChange(_ obj: Notification) { resolve.textChanged(field.stringValue) }
     func setPreview(_ s: String) { preview.stringValue = s }

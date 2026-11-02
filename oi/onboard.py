@@ -1,18 +1,18 @@
-"""`oi onboard` is now an AGENTIC session — Claude reads the person's memory, wiki, mails and Notion; this module keeps the validators it relies on and the deterministic path,
+"""`oi onboard` is now an AGENTIC session — Claude reads the person's memory, wiki, mails and Notion; this module keeps the validators it relies on and the W22 deterministic path,
 `oi onboard --offline`, described below.
 
 `oi onboard --offline` — a short conversation with Claude that gathers the person's context (opt-in sources,
 read-only, summarised then discarded) and writes `profile.yaml` + `starter_catalogue.yaml` (oi/starter.py) so the
 HUD can propose useful actions before any history exists.
 
-The user: an onboarding at first launch so the tool is useful from day one and
-shareable — "Lena, architect → SketchUp, 3D render requests to her cloud; us → our agent team". The Q&A also asks what deserves attention vs noise → attention priors in profile.yaml ('s
-relevance gate starts from them).
+Goal: an onboarding at first launch so the tool is useful from day one, for anyone (an architect → SketchUp and
+render requests; a team of agents → the roster). The Q&A also asks what deserves attention vs noise → attention
+priors in profile.yaml (the proactive relevance gate starts from them).
 
 Flow (each step skippable; Ctrl-C = nothing written):
   1. the privacy statement, then each SOURCE with its privacy line and an explicit y/N (installed apps: always);
   2. the core QUESTIONS (typed, or dictated with the macOS dictation key), your agent team (the roster) as counterparts
-     when the person says so (the roster: `oi.orchestrator.roster`);
+     when the person says so (the W25 roster: `oi.orchestrator.roster`);
   2b. LIST AND CONFIRM (before any Claude prompt): every name read from the sources (apps, sites, Drive folders,
      Mail accounts / mailboxes, Notion) is listed and the person removes what must not go to Claude; only the
      confirmed names are ever sent (non-interactive: none; `--send-source-names` for a synthetic sources file);
@@ -23,7 +23,7 @@ Flow (each step skippable; Ctrl-C = nothing written):
      whose target or trigger app / host is what the person called noise (profile attention.noise) is dropped;
   5. both files written 0600 in the data dir (`--out DIR` elsewhere, `--dry-run` prints only).
 
-Privacy: every text sent to Claude goes through the gate (`oi.orchestrator.pack.leaks` over
+Privacy: every text sent to Claude goes through the W25 gate (`oi.orchestrator.pack.leaks` over
 settings.claude.local_only_domains): a line naming a local-only domain / client is dropped before the prompt, and
 any answer item that still names one is dropped after. Denylisted apps never appear. Source summaries keep NAMES
 and COUNTS only (app names, site hosts, hours, folder / mailbox names): never a title, a URL path, a file, a mail.
@@ -338,7 +338,7 @@ def read_source(key: str, deny: list[str]) -> dict:
 # ---- privacy gate ------------------------------------------------------------------------------------
 
 def gate_sources(src: dict, cfg: dict) -> dict:
-    """Drop every name / host naming a local-only domain or client (pack.leaks)."""
+    """Drop every name / host naming a local-only domain or client (W25 pack.leaks)."""
     from .orchestrator import pack
     terms = pack.deny_terms(cfg)
 
@@ -598,6 +598,9 @@ APP_SCHEMES: dict[str, tuple[str, ...]] = {
     "Visual Studio Code": ("vscode",), "Zoom": ("zoommtg", "zoomus"), "Microsoft Teams": ("msteams",),
     "Things3": ("things",), "Things 3": ("things",), "Apple Music": ("music",),
 }
+# Never, even for their own app: built-in handlers that act (run a shortcut, place a call, open settings / files).
+DENIED_SCHEMES = frozenset({"shortcuts", "workflow", "facetime", "facetime-audio", "facetime-group", "tel", "sms",
+                            "x-apple.systempreferences", "file", "javascript", "data", "ssh", "smb", "afp", "ftp"})
 
 
 def deeplink_ok(app: str, deeplink: str) -> bool:
@@ -605,6 +608,8 @@ def deeplink_ok(app: str, deeplink: str) -> bool:
     if not _SCHEME.match(deeplink):
         return False
     scheme = deeplink.split(":", 1)[0].lower()
+    if scheme in DENIED_SCHEMES:
+        return False
     return scheme == re.sub(r"[^a-z0-9]", "", app.lower()) or scheme in APP_SCHEMES.get(app, ())
 
 
@@ -797,7 +802,7 @@ def validate_attention(a, clean: Callable = lambda v: v) -> dict:
 
 
 def attention_prior(profile: dict, source: str, who: str | None = None, default: float = 0.5) -> float:
-    """ entry point: the prior attention for a notification from `source` (and sender / class `who`)."""
+    """W24 entry point: the prior attention for a notification from `source` (and sender / class `who`)."""
     att = (profile or {}).get("attention") or {}
     w = (who or "").lower()
     if w:
@@ -843,7 +848,7 @@ def build(answers: dict, sources: dict, *, team: bool, use_claude: bool, cfg: di
           by: str = "oi onboard (W22)") -> tuple[dict, dict, dict]:
     """(profile, catalogue, meta). `apps_universe`: the app names an app.open may name (default: the source's).
     `confirmed`: the source names the person agreed to send (confirm_names); every other one stays local.
-    `raw`: an answer already produced ({profile, catalogue}: the agent's files) — validated the same way,
+    `raw`: an answer already produced ({profile, catalogue}: the W22b agent's files) — validated the same way,
     no synthesis call."""
     from .orchestrator import pack
     terms = pack.deny_terms(cfg)
@@ -986,18 +991,38 @@ def summary_lines(catalogue: dict) -> list[str]:
     return out
 
 
-def cmd_onboard(a: argparse.Namespace) -> int:
+CLAUDE_OPT_IN = ("Claude is off (Settings → Claude). Turn it on so Claude reads the sources you choose and builds\n"
+                 "your starter actions? Your context then goes to your own `claude -p` (Anthropic). No = a shorter,\n"
+                 "local onboarding on this Mac only.")
+
+
+def claude_opt_in(io: IO) -> bool:
+    """Onboarding with Claude off: ask once (y/N). Yes = settings `claude.enabled` true; no (or no terminal) = False."""
+    if ca.claude_settings().get("enabled"):
+        return True
+    io.say(CLAUDE_OPT_IN)
+    if not io.yes("Turn Claude on?"):
+        io.say("Claude stays off: the local onboarding runs instead.\n")
+        return False
+    oi_settings.set_claude_enabled(True)
+    io.say("Claude is on (menu bar → Settings → Claude turns it off again).\n")
+    return True
+
+
+def cmd_onboard(a: argparse.Namespace, io: IO | None = None) -> int:
+    io = io or IO()
+    if not (a.offline or a.no_claude or a.sources_file) and not claude_opt_in(io):
+        a.offline = True                                    # Claude declined: the local builder, never a dead end
     if not (a.offline or a.no_claude or a.sources_file):      # the agentic session (oi/onboard_agent)
         from .onboard_agent import agent
         preset = yaml.safe_load(Path(a.answers).read_text(encoding="utf-8")) or {} if a.answers else {}
-        return agent.session(IO(), model=a.model, dry_run=a.dry_run, preset=preset,
+        return agent.session(io, model=a.model, dry_run=a.dry_run, preset=preset,
                              out_dir=Path(a.out).expanduser() if a.out else None)
     cfg = ca.claude_settings()
     use_claude = bool(cfg.get("enabled")) and not a.no_claude
     preset = {}
     if a.answers:
         preset = yaml.safe_load(Path(a.answers).read_text(encoding="utf-8")) or {}
-    io = IO()
     if a.sources_file:      # a synthetic person: their source summaries instead of this Mac's
         sources = yaml.safe_load(Path(a.sources_file).read_text(encoding="utf-8")) or {}
         answers, team = dict(preset.get("answers") or {}), bool(preset.get("team"))
@@ -1031,7 +1056,7 @@ def register(sub) -> None:
     so = sub.add_parser("onboard", help="Claude reads your memory, wiki, mail, Notion -> profile.yaml + "
                                        "starter_catalogue.yaml (--offline: the local conversation)")
     so.add_argument("--offline", action="store_true",
-                    help=" deterministic path: questionnaire + names-only sources (+ one synthesis call unless "
+                    help="the deterministic path: questionnaire + names-only sources (+ one synthesis call unless "
                          "--no-claude); no agent")
     so.add_argument("--model", help="the agent's model (default: settings onboarding.model, else sonnet)")
     so.add_argument("--answers", help="YAML {answers: {job: …}, sources: [memory, wiki, mail, notion, activity, …], "

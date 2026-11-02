@@ -416,7 +416,7 @@ def test_prefetch_latency_with_a_fake_runner_is_tiny():
     assert t1 - t0 < 0.5 and t2 - t1 < 0.2
 
 
-# ---- follow-up (PR): a summon prefetches the glide follow-ups ----------------------------------------
+# ---- W15 follow-up (W18 PR): a summon prefetches the glide follow-ups ----------------------------------------
 
 class SilentSender:
     """Plays a HUD that shows and waits: no glide, no reply until released."""
@@ -476,10 +476,10 @@ def test_empty_summon_never_prefetches(data_dir):
     assert rig.prompts == []
 
 
-# ---- review note: sub-ring keys are scoped by their parent path ------------------------------------------
+# ---- W21b review note: sub-ring keys are scoped by their parent path ------------------------------------------
 
 def test_subring_keys_are_one_based_within_the_parent_and_never_root_keys():
-    # root keys are modifier numbers: only ⌃ 2 and ⌥ 3 on screen; the sub-ring of 3 numbers its children 1..n
+    # W21 root keys are modifier numbers: only ⌃ 2 and ⌥ 3 on screen; the sub-ring of 3 numbers its children 1..n
     r = Rig()
     s = r.session(keymap={2: dict(TOPS[1]), 3: dict(TOPS[3])}, pages={"notion.so": ["notion.so/prr", "notion.so/x"]})
     s.prefetch()
@@ -627,7 +627,7 @@ def test_read_mail_body_is_read_only_and_tolerant():
 
 
 AGENT_EV = {"source": "agent", "class": "atlas", "who": "Atlas",
-            "ref": {"chat": "Atlas - R&D", "slug": "atlas", "n": 2, "since": "2026-10-21T12:05:00Z"}}
+            "ref": {"chat": "Atlas - Tools", "slug": "atlas", "n": 2, "since": "2026-10-21T12:05:00Z"}}
 AGENT_CARD = {"summary": ["Atlas asks to merge PR #12", "Decision needed: yes", "No deadline"],
               "excerpt": "need your go on the deploy"}
 
@@ -644,7 +644,7 @@ def test_agent_event_level3_summary_reads_the_agents_messages_once_at_hold():
     r = Rig(answer=dict(ANSWER, context=AGENT_CARD))
     reads = []
     r.engine.agent_reader = lambda slug: (reads.append(slug), "Atlas: PR #12 ready, merge?\n\nSecond: need your go on the deploy")[1]
-    evt = {2: {"key": "evt_1", "primitive": "telegram.chat", "params": {"chat": "Atlas - R&D"}, "token": "telegram.chat:atlas",
+    evt = {2: {"key": "evt_1", "primitive": "telegram.chat", "params": {"chat": "Atlas - Tools"}, "token": "telegram.chat:atlas",
                "label": "Ouvrir Telegram — Atlas", "evt": True}}
     s = r.session(keymap=evt, ctx={"app": "Safari", "url": "notion.so/prr", "space": 2}, event_card=glide.event_card(AGENT_EV))
     s.prefetch()
@@ -657,7 +657,7 @@ def test_agent_event_level3_summary_reads_the_agents_messages_once_at_hold():
 
 
 def test_agent_event_level3_gates():
-    evt = {2: {"key": "evt_1", "primitive": "telegram.chat", "params": {"chat": "Atlas - R&D"}, "token": "t", "evt": True}}
+    evt = {2: {"key": "evt_1", "primitive": "telegram.chat", "params": {"chat": "Atlas - Tools"}, "token": "t", "evt": True}}
     no_read = lambda slug: (_ for _ in ()).throw(AssertionError("no read"))  # noqa: E731
     # a private event: no read, level 2 only
     r = Rig(answer=dict(ANSWER, context=AGENT_CARD))
@@ -665,7 +665,7 @@ def test_agent_event_level3_gates():
     s = r.session(keymap=evt, event_card=dict(glide.event_card(AGENT_EV), private=True))
     s.prefetch()
     assert all("<material>\n(none)" in p for p, _ in r.prompts) and all("summary" not in c[0] for c in _cards(r.sent))
-    # a denied term in the messages (leaks gate): never sent to the model
+    # a denied term in the messages (W25 leaks gate): never sent to the model
     r = Rig(answer=dict(ANSWER, context=AGENT_CARD), settings={"local_only_domains": ["acme-conseil.example"]})
     r.engine.agent_reader = lambda slug: "Acme Conseil wants the quote"
     s = r.session(keymap=evt, event_card=glide.event_card(AGENT_EV))

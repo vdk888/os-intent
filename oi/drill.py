@@ -23,7 +23,7 @@ fleet agent, a desk move, another app). Under it:
      except the explicit "back" (to the app that was in front at the show).
 
 Confirm rule: every send (a vocal to an agent, "Ask Atlas") runs on release and waits for oi.gate's
-confirm panel, the ONE confirmation (the "Send ✓" child is gone). Opens (folders, files,
+confirm panel, the ONE confirmation (the W23 "Send ✓" child is gone). Opens (folders, files,
 chats, playlists, pages) never confirm. An executable / installer (`launchable`) is never opened: only its parent
 folder is offered (revealed in Finder).
 Privacy: titles / names only (no message text, no file content); the training pairs keep ids (hashed when they would
@@ -173,7 +173,7 @@ def _node(label, icon, action, primitive, params, token=None) -> dict:
 
 def safe_path(p: str | None, home: str | None = None) -> bool:
     """A local path a follow-up may open: absolute, existing, under the home folder, no hidden part, not ~/Library
-    (except ~/Library/CloudStorage/<provider>/…, the synced Drive folders), not an app bundle."""
+    (except W24: ~/Library/CloudStorage/<provider>/…, the synced Drive folders), not an app bundle."""
     if not isinstance(p, str) or not p.startswith("/"):
         return False
     home = (home or os.path.expanduser("~")).rstrip("/")
@@ -190,7 +190,12 @@ def safe_path(p: str | None, home: str | None = None) -> bool:
 LAUNCH_EXTS = (".command", ".sh", ".zsh", ".bash", ".csh", ".tool", ".app", ".pkg", ".mpkg", ".dmg", ".terminal", ".term",
                ".scpt", ".scptd", ".applescript", ".workflow", ".action", ".jar", ".webloc", ".inetloc", ".fileloc", ".url",
                ".prefpane", ".mobileconfig", ".saver", ".kext", ".plugin", ".bundle", ".osax", ".qlgenerator", ".appex",
-               ".service", ".systemextension")   # lowercase: compared on the lowercased path
+               ".service", ".systemextension", ".afploc", ".ftploc", ".shortcut")   # lowercase: compared on the lowercased path
+
+
+def resolved(p: str | None) -> str | None:
+    """The absolute path `p` resolves to (symlinks followed), computed once so the path checked is the one opened."""
+    return os.path.realpath(p) if isinstance(p, str) and p.startswith("/") else None
 
 
 def launchable(p: str | None) -> bool:

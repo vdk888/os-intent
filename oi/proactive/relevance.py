@@ -7,11 +7,11 @@ Checks, in order (the first failing one is the row's reason):
   (< min_interval_min since the last proactive hint: a DISPLAY setting, important events skip it).
 Importance tier: an IMPORTANT event (a hard priority, an event the ONE wiki judge found
 important — judge.py, an active client / prospect / current project / known person page —, or a
-sender / topic named in the profile `attention.important`) is dispatched "full": the cross with its actions OPENS, with no window change or pointer move. Every other passing
+sender / topic named in the W22 profile `attention.important`) is dispatched "full": the cross with its actions OPENS, with no window change or pointer move. Every other passing
 event is a ring on the dots. Focus and quiet hours apply to both (only `priorities_break_quiet` lets a priority by).
 An event held back for a passing reason (TRANSIENT) is considered again while its state is live (engine.py).
 p = the history probability that the user acts within the label window after this event token (Markov order-1 counts
-at `evt:<source>:<class>`: 1 - P(nothing)), blended with the attention prior (profile.yaml) while history is
+at `evt:<source>:<class>`: 1 - P(nothing)), blended with the W22 attention prior (profile.yaml) while history is
 thin: p = lam * hist + (1 - lam) * prior, lam = n / (n + HIST_K) — the starter-catalogue rule.
 """
 from __future__ import annotations
@@ -26,7 +26,7 @@ from . import store
 from .config import hhmm
 
 HIST_K = 5
-# the attention source of each token source, and the prior when the profile has none
+# the W22 attention source of each token source, and the prior when the profile has none
 ATTENTION = {"mail": "mail", "agent": "agents", "file": "files", "cockpit": "alerts", "metric": "metrics",
              "market": "markets",
              "calendar": "calendar", "github": "alerts"}
@@ -88,7 +88,7 @@ def is_priority(ev: dict, cfg: dict) -> bool:
 
 def importance(ev: dict, cfg: dict, profile: dict | None = None) -> str | None:
     """Why the event is IMPORTANT (-> the full cross), or None (-> a ring): "priority" (a hard priority) | "wiki"
-    (judge.py weighed it against the wiki on the sensor thread: `ev["wiki"]`) | "profile" (a `attention.important`
+    (judge.py weighed it against the wiki on the sensor thread: `ev["wiki"]`) | "profile" (a W22 `attention.important`
     sender / topic the user declared). Local data only; a private event is matched on its sender, never on a subject."""
     if is_priority(ev, cfg):
         return "priority"

@@ -2,7 +2,7 @@ import Foundation
 import Testing
 @testable import HUDCore
 
-// a proactive hint = the dots with `"marker":"ring"` (a thin ring = "something changed").
+// a proactive hint = the W19 dots with `"marker":"ring"` (a thin ring = "something changed").
 
 private func opts(_ keys: [Int]) -> [HUDOption] { keys.map { HUDOption(key: $0, label: "o\($0)", icon: "sf:app") } }
 

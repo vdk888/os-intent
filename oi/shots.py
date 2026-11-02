@@ -30,12 +30,12 @@ Goal: after a screenshot, offer to send it to the agent you are currently talkin
    note panel is up) is what the user means.
 4. Delivery (`deliver`): atlas / juno (inject recipients on this Mac): copy the image into the channel's
    `inbox/` and append ONE line to its `inject` file: "[Screenshot from the user, HH:MM, context: …] <note> (image:
-   <inbox path>)"; any other agent: the relay command with the note and "image on the user's Mac at <path>"
+   <inbox path>)"; any other agent: the W12 relay command with the note and "image on the user's Mac at <path>"
    (moving the image to another host is a follow-up). Never an upload, never a cloud call for the pixels.
    OI_SHOT_DRY_RUN=1 (or `oi live --dry-run`) prints what would run and sends nothing.
 
 5. Content actions: the
-   offer above is shown at once; in parallel the screenshot is OCR'd (warm, on-device) and sonnet (the context
+   offer above is shown at once; in parallel the screenshot is OCR'd (warm, on-device) and sonnet (the W25 context
    pack: app, host, desk, time, roster; + the OCR text, the last actions and the user's past picks) proposes 1-3
    next actions on existing primitives: mail.draft (a mailto draft, never sent), calendar.event (an .ics that
    Calendar asks to add), url.open, file.open / folder.open (drill.safe_path, never launchable), agent.send (the
@@ -806,7 +806,7 @@ class Shots:
         return shot_options(s, telegram_icon=s["telegram"]) if s else []
 
     def context_line(self) -> str | None:
-        """The glide's "Events" context while a screenshot is live ('s field): no OCR text, no path."""
+        """The glide's "Events" context while a screenshot is live (W24's field): no OCR text, no path."""
         s = self.newest()
         if not s:
             return None

@@ -276,7 +276,7 @@ def default(repo_dir: str | None = None) -> WarmWiki | None:
 
 
 def snippets(query: str, k: int = 3, repo_dir: str | None = None) -> list[str] | None:
-    """'s "title: description" lines from the warm index; None when the warm index is not available."""
+    """W14's "title: description" lines from the warm index; None when the warm index is not available."""
     w = default(repo_dir)
     if w is None:
         return None

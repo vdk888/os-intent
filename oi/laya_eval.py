@@ -1,4 +1,4 @@
-""" follow-up: measure Laya's latency on real-shaped requests and evaluate the shadow log.
+"""W13 follow-up: measure Laya's latency on real-shaped requests and evaluate the shadow log.
 
 `oi laya-bench`: the requests are built by the code `oi live` uses (moments of a token day -> form route ->
 candidate menu -> serialised state -> `laya.build_request`), sent to the RUNNING server (never starts one: the

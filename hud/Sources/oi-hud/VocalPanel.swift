@@ -134,7 +134,7 @@ final class VocalPanelController: NSObject, NSTextFieldDelegate {
             ve.wantsLayer = true
             panel.contentView = ve; bg = ve
         }
-        // end
+        // end W19
 
         badge.alignment = .center
         badge.font = .systemFont(ofSize: 12, weight: .bold)

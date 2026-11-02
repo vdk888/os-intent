@@ -5,7 +5,7 @@ import OISettings
 // `{"cmd":"show","mode":"hint","hint_ttl_ms":2500,"ttl_ms":6000,…}` → the HUD draws only tiny coloured dots
 // at the fixed places of the options (no labels, icons, taps or target hints). The summon key (⌥⌘) tapped
 // while the dots are up, or within `hint_ttl` after they faded, DEVELOPS them: the same options become the
-// full cross (with `ttl_ms`), on the same connection. ⌥⌘ held from a hint = the glide on them.
+// full cross (with `ttl_ms`), on the same connection. ⌥⌘ held from a hint = the W15 glide on them.
 
 /// Default `hint_ttl_ms` (settings.json `hud.hint_ttl_ms`): how long the dots stay, then fade.
 /// 2500 -> 4000.
@@ -14,7 +14,7 @@ public let defaultHintTTLMs = HUDSettings.defaultHintTTLms
 public let hintFadeIn: TimeInterval = 0.12
 
 /// what a hint's marker says. `ring` = proactive ("something changed": a mail, an agent message, a new
-/// file, a cockpit alert), drawn as a thin ring around the dots; no marker = a prediction hint.
+/// file, a cockpit alert), drawn as a thin ring around the dots; no marker = a W19 prediction hint.
 public enum HintMarker: String, Sendable, Equatable {
     case ring
 }
@@ -88,7 +88,7 @@ public struct HintLife: Sendable {
         return (options, fullTTLms)
     }
 
-    /// label enrichment arriving while the dots are up (or faded): the developed cross shows the new labels.
+    /// W14 label enrichment arriving while the dots are up (or faded): the developed cross shows the new labels.
     public mutating func relabel(_ updates: [LabelUpdate]) -> Int {
         guard !isIdle else { return 0 }
         let (o, n) = LabelUpdate.apply(updates, to: options)

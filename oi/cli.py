@@ -11,7 +11,7 @@ from urllib.error import URLError
 from . import aw, normalise, paths
 from .vocab import parse, validate_row
 
-# hook: Markov/serialise/candidates subcommands register from oi/cli_markov.py (not in).
+# W3 hook: Markov/serialise/candidates subcommands register from oi/cli_markov.py (not in W1).
 
 
 def _day(value: str) -> str:

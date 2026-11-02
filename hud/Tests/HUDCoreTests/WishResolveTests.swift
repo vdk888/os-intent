@@ -146,7 +146,7 @@ private func line(_ s: String) -> Data { Data(s.utf8) }
     }
 }
 
-// follow-up: Esc while "Working…" (or while a confirm waits) cancels the request on the resolver.
+// W18 follow-up: Esc while "Working…" (or while a confirm waits) cancels the request on the resolver.
 @Suite struct WishResolveCancelTests {
     @Test func closingWhileResolvingCancelsThatRequest() {
         var m = WishResolveMachine()
@@ -177,7 +177,7 @@ private func line(_ s: String) -> Data { Data(s.utf8) }
     }
 }
 
-// follow-up (after): a cancelled page-action confirm drops its press ticket.
+// W18 follow-up (after W16): a cancelled page-action confirm drops its press ticket.
 @Suite struct WishResolvePressRevokeTests {
     @Test func revokeDropsOnlyThatTicket() {
         var g = PressGuard()

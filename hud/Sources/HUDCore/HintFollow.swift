@@ -1,6 +1,6 @@
 import Foundation
 
-//// should"): while a hint's dots are drawn they follow the pointer (≈ 80 ms lag, no jitter, kept on screen).
+// W21b// should"): while a hint's dots are drawn they follow the pointer (≈ 80 ms lag, no jitter, kept on screen).
 // The follow runs ONLY while the dots are drawn: it stops the moment the hint ends (develop, fade, Esc, replace),
 // and the developed cross is anchored at the pointer of that moment (it does not follow). Pure: the controller
 // owns the timer (60 Hz) and the panel.

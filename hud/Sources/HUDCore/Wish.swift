@@ -1,7 +1,7 @@
 import Foundation
 import OISettings
 
-// The wish quick action : "tell me what you wanted", typed or dictated, at any
+// The wish quick action: "tell me what you wanted", typed or dictated, at any
 // moment. Pure parts only (row encoding, the file store, the hotkey registration rule, the panel
 // state machine, the HUD slot of the wish option); the AppKit/Speech side lives in oi-hud.
 
@@ -206,7 +206,7 @@ public func optionsWithWish(_ predicted: [HUDOption]) -> [HUDOption] {
 }
 
 /// Where each option sits, relative to the centre (y-down): each predicted option at the FIXED place
-/// of its key (`positions`, FixedSlots.positions — no re-flow, an absent option leaves its
+/// of its key (`positions`, FixedSlots.positions — W10: no re-flow, an absent option leaves its
 /// place empty), the wish option at its own fixed place below-right (4:30) and the vocal option
 /// below-left (7:30), so nothing overlaps and the pointer spot in the middle stays empty. The order of
 /// `options` does not matter.

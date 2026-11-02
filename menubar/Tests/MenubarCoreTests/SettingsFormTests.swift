@@ -182,7 +182,7 @@ import OISettings
         #expect(i != nil && j != nil && i! < j! && e[i!].kind == .action(.openSettings) && e[i!].title == "Settings…")
     }
 
-    // review: the window writes only what the user changed, merged into the CURRENT file.
+    // W26 review: the window writes only what the user changed, merged into the CURRENT file.
     @Test func menuPauseWhileWindowOpenSurvivesWindowEdit() throws {
         let dir = FileManager.default.temporaryDirectory.appendingPathComponent("oi-w26-\(UUID().uuidString)")
         defer { try? FileManager.default.removeItem(at: dir) }

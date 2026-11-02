@@ -1,4 +1,5 @@
-"""W13 subcommands: laya-serve, replay, laya-train, laya-promote, improve-report; laya-bench, laya-report.
+"""W13 subcommands: laya-serve, replay, laya-train, laya-promote, improve-report; laya-bench, laya-report;
+relevance-eval.
 Privacy: nothing personal is printed; reports (local, 0600) live under <data dir>/reports/."""
 from __future__ import annotations
 
@@ -49,6 +50,30 @@ def cmd_replay(args) -> int:
         return 2
     print(replay.to_markdown(r))
     print(f"report: {r['path'][:-5]}.md")
+    return 0
+
+
+def cmd_relevance_eval(args) -> int:
+    from . import relevance_eval, replay, starter
+    from .proactive import store
+    try:
+        if args.days:
+            train, test = replay.split_days(_days(args.days), args.test_last)
+        else:
+            train, test = _days(args.train_days or []), _days(args.test_days or [])
+        items = None
+        if args.starters is not None:
+            items = starter.load_catalogue(args.starters or None)
+            if not items:
+                print("relevance-eval: no starter items found (the +starter rows are skipped)", file=sys.stderr)
+        r = relevance_eval.run(train, test, alphas=[float(a) for a in args.alpha.split(",")],
+                               depths=args.depth.split(","), starter_items=items,
+                               events_reader=store.read_day if args.proactive else None)
+    except (replay.SplitError, FileNotFoundError, ValueError) as e:
+        print(f"relevance-eval: {e}", file=sys.stderr)
+        return 2
+    print(json.dumps(r, indent=1) if args.json else relevance_eval.to_markdown(r))
+    print(f"report: {r['path']}", file=sys.stderr)
     return 0
 
 
@@ -124,6 +149,20 @@ def register(sub) -> None:
     r.add_argument("--no-manage", action="store_true", help="never start/stop a laya server (use the running one)")
     r.add_argument("--device", default="mps", choices=["mps", "cpu"])
     r.set_defaults(func=cmd_replay)
+
+    v = sub.add_parser("relevance-eval", help="offline HUD relevance: top-1/top-3/MRR of showable options, per source "
+                       "and per Markov variant (read-only; aggregates only)")
+    v.add_argument("--days", nargs="+", help="days (YYYY-MM-DD, A..B, today); the last --test-last are test")
+    v.add_argument("--test-last", type=int, default=2)
+    v.add_argument("--train-days", nargs="+")
+    v.add_argument("--test-days", nargs="+")
+    v.add_argument("--alpha", default="1", help="comma list of Markov smoothing values to compare (e.g. 1,3,10)")
+    v.add_argument("--depth", default="o2hs", help="comma list of deepest context levels: o1,o1h,o2h,o2hs")
+    v.add_argument("--starters", nargs="?", const="", default=None,
+                   help="add +starter rows (the data dir's starter_catalogue.yaml, or this path)")
+    v.add_argument("--proactive", action="store_true", help="add +proactive rows (events/ of the test days)")
+    v.add_argument("--json", action="store_true", help="print the JSON report instead of the table")
+    v.set_defaults(func=cmd_relevance_eval)
 
     t = sub.add_parser("laya-train", help="head-only fine-tune of Laya on moments (laya-ft), then score once")
     t.add_argument("--train-days", nargs="+", required=True)

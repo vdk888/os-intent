@@ -64,7 +64,7 @@ def test_a_new_screenshot_opens_the_team_picker_at_once(rows, model, png, data_d
 
 
 def test_the_current_contact_is_on_the_first_key(png, data_dir):
-    rows = [{"ts": "2026-10-20T16:12:00.000Z", "dur": 0, "token": "title:Telegram/nova-ceo", "app": "Telegram",
+    rows = [{"ts": "2026-10-20T16:12:00.000Z", "dur": 0, "token": "vocal:nova", "app": "Telegram",
              "src": "aw-window", "raw_id": None}]
     hud = FakeHUD()
     so, _, _ = make(hud, rows=rows)

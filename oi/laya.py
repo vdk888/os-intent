@@ -25,6 +25,10 @@ answers, the supervisor sends ONE warm-up prediction (`warm_up`) so the first fo
 ~1.2 s measured vs ~150 ms warm) is never a user's call. A refusal for memory names the top memory users
 (`top_memory`) so whoever reads the log can act. `ensure_server` starts that supervisor detached when the server is down
 and memory allows (rate-limited by the caller); it never waits.
+
+Remote mode (`live.laya_mode` = "remote", oi.laya_remote, docs/LAYA-REMOTE.md): the client sends the bearer token
+from the Keychain, follows no redirect to another origin and uses `live.laya_remote_timeout_ms`; ensure_server never
+starts anything ('remote'), so the Mac keeps its memory. "off" = Markov only (settings.load turns the layer off).
 """
 from __future__ import annotations
 
@@ -41,7 +45,7 @@ import urllib.request
 from contextlib import contextmanager
 from pathlib import Path
 
-from . import candidates, paths, settings
+from . import candidates, laya_remote, paths, settings
 
 DEFAULT_URL = "http://127.0.0.1:8781"
 TUNED_PORT = 8784
@@ -90,8 +94,11 @@ class LayaClient:
     `opener` is injectable (tests); `temperatures` = {form_id: T} from an oi checkpoint's oi-laya.json."""
 
     def __init__(self, url: str = DEFAULT_URL, *, timeout_s: float = TIMEOUT_S, model: str | None = "english",
-                 checkpoint: str | None = None, temperatures: dict | None = None, opener=None):
+                 checkpoint: str | None = None, temperatures: dict | None = None, opener=None,
+                 headers: dict | None = None, refused: str | None = None):
         self.url = url.rstrip("/")
+        self.headers = dict(headers or {})      # remote mode: the bearer token (never logged, never in a reason)
+        self.refused = refused                  # remote mode: why nothing may be sent (url_refused | no_token)
         self.timeout_s = timeout_s
         self.model = model
         self.checkpoint = checkpoint or f"laya:{model or 'auto'}"
@@ -101,22 +108,31 @@ class LayaClient:
     @classmethod
     def from_settings(cls, live_cfg: dict, **kw) -> "LayaClient":
         meta = load_checkpoint_meta(live_cfg.get("laya_checkpoint"))
+        t = max(0.1, min(5.0, float(live_cfg.get("laya_timeout_ms") or TIMEOUT_S * 1000) / 1000))
+        if laya_remote.mode(live_cfg) == "remote":      # docs/LAYA-REMOTE.md: auth, same-origin only, network timeout
+            t = laya_remote.timeout_s(live_cfg)
+            try:
+                kw = laya_remote.request_kw(live_cfg) | kw
+            except laya_remote.RemoteURLRefused as e:
+                kw = {"refused": str(e)} | kw
         return cls(live_cfg.get("laya_url") or DEFAULT_URL,
-                   timeout_s=max(0.1, min(5.0, float(live_cfg.get("laya_timeout_ms") or TIMEOUT_S * 1000) / 1000)),
+                   timeout_s=t,
                    model=None if meta else (live_cfg.get("laya_model") or "english"),
                    checkpoint=meta.get("version") if meta else None,
                    temperatures=(meta or {}).get("temperatures"), **kw)
 
     def predict(self, form: dict, menu: list[dict], state_text: str) -> dict:
+        if self.refused:
+            raise LayaError(self.refused)
         body = json.dumps(build_request(form, menu, state_text, self.model)).encode()
         req = urllib.request.Request(self.url + "/v1/systemone", data=body,
-                                     headers={"content-type": "application/json"}, method="POST")
+                                     headers={"content-type": "application/json", **self.headers}, method="POST")
         t0 = time.monotonic()
         try:
             with self.opener(req, timeout=self.timeout_s) as r:
                 raw = r.read()
         except urllib.error.HTTPError as e:
-            raise LayaError(f"http_{e.code}") from None
+            raise LayaError("redirect_refused" if 300 <= e.code < 400 else f"http_{e.code}") from None
         except (TimeoutError, OSError, urllib.error.URLError) as e:
             reason = getattr(e, "reason", e)
             raise LayaError("timeout" if "timed out" in str(reason) or isinstance(reason, TimeoutError)
@@ -135,23 +151,58 @@ class LayaClient:
                 "checkpoint": self.checkpoint}
 
 
-def health(url: str = DEFAULT_URL, timeout_s: float = 1.0, opener=None) -> bool:
+def _health_req(url: str, headers: dict | None):
+    return urllib.request.Request(url.rstrip("/") + "/health", headers=dict(headers or {}))
+
+
+def health(url: str = DEFAULT_URL, timeout_s: float = 1.0, opener=None, headers: dict | None = None) -> bool:
     try:
-        with (opener or urllib.request.urlopen)(url.rstrip("/") + "/health", timeout=timeout_s) as r:
+        with (opener or urllib.request.urlopen)(_health_req(url, headers), timeout=timeout_s) as r:
             return r.status == 200
     except Exception:
         return False
 
 
-def health_info(url: str = DEFAULT_URL, timeout_s: float = 1.0, opener=None) -> dict | None:
+def health_info(url: str = DEFAULT_URL, timeout_s: float = 1.0, opener=None,
+                headers: dict | None = None) -> dict | None:
     """laya-serve's /health JSON ({"status", "loaded": [checkpoints], "device"}), None when down or unreadable."""
     try:
-        with (opener or urllib.request.urlopen)(url.rstrip("/") + "/health", timeout=timeout_s) as r:
+        with (opener or urllib.request.urlopen)(_health_req(url, headers), timeout=timeout_s) as r:
             if r.status != 200:
                 return None
             d = json.loads(r.read())
             return d if isinstance(d, dict) else None
     except Exception:
+        return None
+
+
+def configured_health_info(url: str = DEFAULT_URL, timeout_s: float = 1.0) -> dict | None:
+    """health_info with the configured mode: in remote mode (when `url` is the configured laya_url) the bearer token
+    and the same-origin opener are used, and the round trip is added as `probe_ms`. None when down, refused (bad
+    URL, no token) or unreadable."""
+    kw = _configured_kw(url)
+    if kw is None:
+        return None
+    t0 = time.monotonic()
+    info = health_info(url, timeout_s, **kw)
+    if info is not None and kw:
+        info["probe_ms"] = int((time.monotonic() - t0) * 1000)
+    return info
+
+
+def configured_health(url: str = DEFAULT_URL, timeout_s: float = 1.0) -> bool:
+    kw = _configured_kw(url)
+    return kw is not None and health(url, timeout_s, **kw)
+
+
+def _configured_kw(url: str) -> dict | None:
+    """{} (local), the remote auth kwargs, or None when remote mode refuses to send anything (bad URL, no token)."""
+    lv = settings.load()["live"]
+    if laya_remote.mode(lv) != "remote" or url.rstrip("/") != (lv.get("laya_url") or "").rstrip("/"):
+        return {}
+    try:
+        return laya_remote.request_kw(lv)
+    except laya_remote.RemoteURLRefused:
         return None
 
 
@@ -403,8 +454,11 @@ def ensure_server(url: str = DEFAULT_URL, checkpoint: str | None = None, *, pref
     memory rule allows; never waits for it (the first predictions miss until it is up). ('disabled', why) when
     the menu-bar switch `laya.enabled` is off (oi.laya_switch): nothing is started. A refusal is written to
     status/oi-laya.json like the supervisor's own, so the menu bar shows it."""
-    if not settings.load()["laya"]["enabled"]:
+    cfg = settings.load()
+    if not cfg["laya"]["enabled"]:
         return "disabled", "laya.enabled is false (menu bar)"
+    if laya_remote.mode(cfg["live"]) == "remote":       # the server runs elsewhere: nothing is ever started here
+        return "remote", "live.laya_mode is remote: no local server"
     if health(url):
         return "running", url
     ok, why = preflight()

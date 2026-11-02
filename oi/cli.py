@@ -154,6 +154,8 @@ def build_parser() -> argparse.ArgumentParser:
     register(sub)
     from .laya_switch import register as register_laya_switch   # the menu-bar Laya switch (2026-10-21)
     register_laya_switch(sub)
+    from .laya_remote import register as register_laya_remote   # optional remote Laya (docs/LAYA-REMOTE.md)
+    register_laya_remote(sub)
     from .intent_resolve import register as register_wish   # wish-resolve
     register_wish(sub)
     from .onboard import register as register_onboard   # onboard, starter-preview

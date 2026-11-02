@@ -52,8 +52,10 @@ PREDICTORS = ("markov", "laya", "blend")
 LAYA_RANKS = ("shadow", "blend", "live")
 LIVE_LAYA_DEFAULTS: dict = {"laya_shadow": False, "predictor": "markov", "laya_rank": "shadow",
                             "laya_url": "http://127.0.0.1:8781", "laya_checkpoint": None, "laya_model": "english",
-                            "laya_timeout_ms": 3000}
+                            "laya_timeout_ms": 3000,
+                            "laya_mode": "local", "laya_remote_timeout_ms": 5000}   # docs/LAYA-REMOTE.md
 LEGACY_LAYA_TIMEOUTS_MS = (300, 1050)
+LAYA_MODES = ("local", "remote", "off")   # off = Markov only, whatever the menu-bar switch says
 
 
 # `hud.auto_mode` = how the gated (automatic) shows are sent: "hint" (default: coloured dots, ⌥⌘
@@ -118,6 +120,8 @@ def load(path: Path | None = None) -> dict:
     lw = raw.get("laya")
     if isinstance(lw, dict) and isinstance(lw.get("enabled"), bool):
         out["laya"]["enabled"] = lw["enabled"]
+    if out["live"]["laya_mode"] == "off":
+        out["laya"]["enabled"] = False
     if not out["laya"]["enabled"]:                     # the switch is off: the Laya layer is off, Markov only
         out["live"].update(laya_shadow=False, laya_rank="shadow", predictor="markov")
     return out
@@ -136,6 +140,11 @@ def _laya(raw) -> dict:
         out["laya_rank"] = raw["laya_rank"]
     elif out["predictor"] in ("laya", "blend"):
         out["laya_rank"] = {"laya": "live", "blend": "blend"}[out["predictor"]]
+    if raw.get("laya_mode") in LAYA_MODES:
+        out["laya_mode"] = raw["laya_mode"]
+    v = raw.get("laya_remote_timeout_ms")
+    if isinstance(v, (int, float)) and not isinstance(v, bool) and v > 0:
+        out["laya_remote_timeout_ms"] = max(100, min(10000, int(v)))
     for k in ("laya_url", "laya_checkpoint", "laya_model"):
         if isinstance(raw.get(k), str) and raw[k].strip():
             out[k] = raw[k].strip()

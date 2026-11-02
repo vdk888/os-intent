@@ -447,7 +447,7 @@ class WishEngine:
             self.claude.wiki = lambda q: []
         self.claude_runner = claude_runner or (lambda prompt, model: claude_actions.run_claude(prompt, model))
         self.claude_settings = claude_settings
-        self.laya_health = laya_health or (lambda url: laya.health(url, timeout_s=0.15))
+        self.laya_health = laya_health or (lambda url: laya.configured_health(url, timeout_s=0.15))
         self.laya_client = laya_client
         self.apps, self.history, self.raw_settings = apps, history, raw_settings
         self.vocal_send = vocal_send

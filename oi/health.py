@@ -32,7 +32,7 @@ from datetime import datetime, timezone
 from pathlib import Path
 from typing import Callable
 
-from . import laya, paths, settings
+from . import laya, laya_remote, paths, settings
 
 FLUSH_S = 60
 DAY_S = 86400
@@ -290,15 +290,21 @@ def check_laya(live: dict, info: dict | None, status: dict | None, rows: list[di
     if not laya_enabled(live):
         return [], [], {"enabled": False}
     probs, notes = [], []
-    st = status or {}
+    remote = live.get("laya_mode") == "remote"           # docs/LAYA-REMOTE.md: no local supervisor, no memory rule
+    st = {} if remote else (status or {})
     refused = st.get("state") == "refused" and now - float(st.get("ts") or 0) < LAYA_REFUSED_INFO_S
     if refused:
         notes.append("laya: refused by the memory rule (" + str(st.get("reason") or "").split(";")[0][:60] + ")")
-    if info is None:
+    if info is None and remote:
+        why = laya_remote.check_url(live.get("laya_url") or "")
+        probs.append(f"laya: remote URL refused ({why})" if why else "laya: remote server unreachable (or no token)")
+    elif info is None:
         if not refused:
             probs.append(f"laya: server down (last state {st.get('state') or 'unknown'})")
     elif not info.get("loaded"):
         probs.append("laya: server up, no model loaded")
+    if remote and info is not None:
+        notes.append(f"laya: remote server reachable, health round trip {info.get('probe_ms')} ms")
     n = len(rows)
     kinds: dict[str, int] = {}
     for r in rows:
@@ -318,7 +324,8 @@ def check_laya(live: dict, info: dict | None, status: dict | None, rows: list[di
     return probs, notes, {"enabled": True, "up": info is not None, "loaded": (info or {}).get("loaded"),
                           "state": st.get("state"), "shows": n, "timeouts": timeouts, "other_errors": others,
                           "p50_ms": sorted(ok)[len(ok) // 2] if ok else None,
-                          "timeout_ms": live.get("laya_timeout_ms")}
+                          "timeout_ms": live.get("laya_remote_timeout_ms" if remote else "laya_timeout_ms"),
+                          "mode": "remote" if remote else "local", "probe_ms": (info or {}).get("probe_ms")}
 
 
 def _laya_status() -> dict | None:
@@ -330,7 +337,7 @@ def _laya_status() -> dict | None:
 
 def run_checks(now: float | None = None, *, listing: Callable[[], dict] = launchctl_list,
                compile_: Callable = compile_script, enabled: Callable[[], list[str]] | None = None,
-               laya_probe: Callable[[str], dict | None] = laya.health_info) -> dict:
+               laya_probe: Callable[[str], dict | None] = laya.configured_health_info) -> dict:
     now = time.time() if now is None else now
     if enabled is None:
         def enabled():
@@ -344,8 +351,9 @@ def run_checks(now: float | None = None, *, listing: Callable[[], dict] = launch
     srcs = enabled()
     logs = log_errors(paths.data_dir() / "logs", now)
     services = listing()
+    local_laya = laya_switch_on() and settings.load()["live"].get("laya_mode") != "remote"   # remote: no local agent
     probs = check_sensors(data, srcs, now) + [p for p in check_services(services)       # Laya off: stopped on purpose
-                                              if laya_switch_on() or not p.startswith("service oi-laya:")]
+                                              if local_laya or not p.startswith("service oi-laya:")]
     probs += [f"log {k}: {n} ERROR/Traceback lines in 24 h" for k, n in logs.items() if n]
     scripts = check_scripts(compile_)
     probs += scripts

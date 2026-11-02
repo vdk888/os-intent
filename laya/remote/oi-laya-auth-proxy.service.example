@@ -1,0 +1,34 @@
+# Example only: the bearer-token front of the remote Laya server (docs/LAYA-REMOTE.md).
+# Replace every __PLACEHOLDER__, copy to /etc/systemd/system/oi-laya-auth-proxy.service.
+#
+# __PRIVATE_ADDR__  the address of your private interface (a LAN, VPN or tailnet address), never a public one
+# __PROXY_PY__      where you copied oi_laya_auth_proxy.py, e.g. /opt/oi-laya/oi_laya_auth_proxy.py
+# /etc/oi-laya/token.env (root:root, mode 0600) holds one line:  OI_LAYA_TOKEN=<a long random token>
+# systemd reads the EnvironmentFile as root before it drops to the dynamic user, so the file stays root-only.
+
+[Unit]
+Description=Bearer-token front for the OS-intent Laya server
+Requires=oi-laya-remote.service
+After=oi-laya-remote.service network-online.target
+Wants=network-online.target
+
+[Service]
+Type=simple
+DynamicUser=yes
+EnvironmentFile=/etc/oi-laya/token.env
+Environment=OI_LAYA_LISTEN=__PRIVATE_ADDR__:8781
+Environment=OI_LAYA_UPSTREAM=127.0.0.1:8782
+ExecStart=/usr/bin/python3 -I __PROXY_PY__
+MemoryMax=128M
+Restart=on-failure
+RestartSec=5
+NoNewPrivileges=yes
+ProtectSystem=strict
+ProtectHome=yes
+PrivateTmp=yes
+PrivateDevices=yes
+RestrictAddressFamilies=AF_INET AF_INET6
+LockPersonality=yes
+
+[Install]
+WantedBy=multi-user.target

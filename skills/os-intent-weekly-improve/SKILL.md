@@ -30,7 +30,9 @@ is measured. Read it before step 3.
    …). A change that needs code (a form option or label, Markov smoothing or depth) is proposed upstream (step 7),
    not applied.
 6. **User confirms every change.** Apply nothing the user has not confirmed in this session, one change at a time.
-   A scheduled or unattended run stops after step 4 (report-only mode).
+   A scheduled or unattended run stops after step 4 (report-only mode) and changes no setting, catalogue or
+   profile; the only thing it may write besides the reports and the proposals file is `"kept"` lines in the
+   changelog (step 3).
 
 ## Paths
 
@@ -119,7 +121,9 @@ Rollbacks: <id> <key> <after> → <before>: <metric> went <before value> → <no
 Upstream only (needs a code change): <lever> — <measured delta>. Draft an issue? (yes / no)
 ```
 
-**Unattended / scheduled run: stop here.** Notify the user that proposals are ready; apply nothing.
+**Unattended / scheduled run: stop here.** Notify the user that proposals are ready. Change no setting, catalogue
+or profile, rollbacks included (they wait for the user); appending `"kept"` lines to the changelog is the only write
+allowed besides the proposals file.
 
 ## Step 5 — Apply only what the user confirmed
 
@@ -131,18 +135,26 @@ again. For each confirmed item, in order:
    - `settings.json`: read the JSON, change that key only, keep every other key, write to a temp file in `D` and
      rename it over `settings.json` (atomic), mode 0600. If the menu bar's Settings window is open, ask the user to
      close it first so it does not write its older copy back;
-   - `starter_catalogue.yaml` / `profile.yaml`: edit that one item / list entry, keep the rest of the file as it is,
-     mode 0600; check the YAML still loads (`python3 -c 'import yaml,sys; yaml.safe_load(open(sys.argv[1]))' <file>`).
+   - `starter_catalogue.yaml` / `profile.yaml`: a TARGETED LINE EDIT, never a load-and-dump. Change only the
+     line(s) of that one item / value with your editor tool (exact text replacement); every other line, comment,
+     key order and quoting stays byte for byte as it was. Do not rewrite the file with `yaml.safe_dump` or any
+     serializer: it drops the comments. Keep mode 0600. Then check the YAML still loads
+     (`python3 -c 'import yaml,sys; yaml.safe_load(open(sys.argv[1]))' <file>`) and `diff` it against the backup:
+     the diff must show only the lines you meant to change.
 3. Append to `D/weekly-improve/changelog.jsonl` one line:
    `{"id": "<today>-<n>", "date": "<today>", "status": "applied", "file": "settings.json", "key": "gate.show_min_p",
    "before": 0.15, "after": 0.2, "target_metric": "dismiss_rate", "metrics_before": {…this week's aggregates…},
    "expected": "<one line>", "backup": "backup/<today>/settings.json"}`
+   If the key was absent before (the app used its default), write `"before": null, "before_absent": true`, not the
+   default value.
    and the same in a readable line to `CHANGELOG.md` (newest first).
 4. Tell the user it takes effect on its own: `oi live` re-reads settings.json as it runs, and the starter catalogue
    and profile.yaml as soon as the file changes. Nothing needs a restart.
 
-A rollback is applied the same way (restore `before` from the changelog, or the backup file if the item was a
-catalogue / profile edit) and logged with `"status": "rolled_back"`, `"of": "<id>"`.
+A rollback is applied the same way, on that one key or item only (never by copying the whole backup file back, which
+would undo later changes too): restore `before` from the changelog. If the entry has `"before_absent": true`, DELETE
+the key (settings.json) or the item / line you added (YAML) instead of writing the default value, so the app's
+default applies again and future default changes reach the user. Log it with `"status": "rolled_back"`, `"of": "<id>"`.
 
 Declined items are logged too (`"status": "declined"`) so the same proposal is not repeated next week unless the
 numbers moved.

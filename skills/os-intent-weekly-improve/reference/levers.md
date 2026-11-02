@@ -13,7 +13,7 @@ only drafted as an issue (SKILL.md step 7).
 |---|---|---|---|---|---|
 | Show threshold | `settings.json` `gate.show_min_p` | 0.15 | dismiss rate high, press rate low → raise; `dropped.no_option` high and summon share high → lower | ±0.05 | next week's funnel |
 | "Probably nothing" cut | `settings.json` `gate.none_max_p` | 0.6 | `dropped.nothing_likely` dominates while the user summons often → raise; many dismissals → lower | ±0.05 | next week's funnel |
-| Options shown | `settings.json` `gate.max_show` | 3 (≤ 4) | rank miss (`outside_top3`) high and top-3 ≪ MRR suggests a 4th slot → 4; dismissals high → 2 | ±1 | next week's funnel |
+| Options shown | `settings.json` `gate.max_show` | 3 (≤ 4) | rank miss (`outside_top3`) high, i.e. the next action is often in the menu but ranked 4th or lower → 4; dismissals high → 2 | ±1 | next week's funnel |
 | Pause between shows | `settings.json` `gate.cooldown_s`, `gate.hint_cooldown_s` | 20, 8 | dismiss rate high with many shows per moment → raise; `dropped.cooldown` large with good press rate → lower | ×1.5 / ÷1.5 | next week's funnel |
 | Thin-history guard | `settings.json` `gate.min_history` | 1 | early weeks: low press rate on rarely seen contexts → 2 or 3 | +1 | next week's funnel |
 | How shows look | `settings.json` `hud.auto_mode` (`hint` / `full` / `off`) and `hud.hint_ttl_ms` (500-10000) | `hint`, 4000 | expiry rate high (`ttl`) with a good press rate on the shows that were used → longer `hint_ttl_ms`; the user finds shows distracting → `off` (⌥⌘ still summons) | one value | next week's funnel |

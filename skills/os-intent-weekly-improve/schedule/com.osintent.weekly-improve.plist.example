@@ -17,6 +17,8 @@
   To turn it off:
     launchctl bootout gui/$(id -u)/com.osintent.weekly-improve
     rm ~/Library/LaunchAgents/com.osintent.weekly-improve.plist
+  The log folder (~/.local/share/os-intent/logs, created by the oi install) must exist before loading: launchd does
+  not create it (mkdir -p ~/.local/share/os-intent/logs; chmod 700 ~/.local/share/os-intent).
   If you use OI_DATA_DIR, add it under EnvironmentVariables and change the log paths.
 -->
 <plist version="1.0">

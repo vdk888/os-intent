@@ -1,0 +1,61 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<!--
+  OPTIONAL, OFF by default: nothing installs this file. It runs weekly-reports.sh every Friday at the time you choose:
+  the two local reports + a macOS notification asking you to run the weekly improvement with your agent.
+  It never applies a change and makes no network call.
+
+  To turn it on (replace the placeholders, then load it):
+    __REPO__   your OS-intent checkout (settings.json repo_dir, e.g. ~/os-intent; absolute path)
+    __HOME__   your home folder (absolute path)
+    __HOUR__ / __MINUTE__   the Friday time (local time, 0-23 / 0-59)
+  sed -e "s#__REPO__#$HOME/os-intent#g" -e "s#__HOME__#$HOME#g" -e "s#__HOUR__#17#" -e "s#__MINUTE__#0#" \
+      skills/os-intent-weekly-improve/schedule/com.osintent.weekly-improve.plist.example \
+      > ~/Library/LaunchAgents/com.osintent.weekly-improve.plist
+  launchctl bootstrap gui/$(id -u) ~/Library/LaunchAgents/com.osintent.weekly-improve.plist
+
+  To turn it off:
+    launchctl bootout gui/$(id -u)/com.osintent.weekly-improve
+    rm ~/Library/LaunchAgents/com.osintent.weekly-improve.plist
+  The log folder (~/.local/share/os-intent/logs, created by the oi install) must exist before loading: launchd does
+  not create it (mkdir -p ~/.local/share/os-intent/logs; chmod 700 ~/.local/share/os-intent).
+  If you use OI_DATA_DIR, add it under EnvironmentVariables and change the log paths.
+-->
+<plist version="1.0">
+<dict>
+	<key>Label</key>
+	<string>com.osintent.weekly-improve</string>
+	<key>ProgramArguments</key>
+	<array>
+		<string>/bin/sh</string>
+		<string>__REPO__/skills/os-intent-weekly-improve/schedule/weekly-reports.sh</string>
+		<string>--notify</string>
+	</array>
+	<key>EnvironmentVariables</key>
+	<dict>
+		<key>OI</key>
+		<string>__REPO__/.venv/bin/oi</string>
+	</dict>
+	<key>StartCalendarInterval</key>
+	<dict>
+		<key>Weekday</key>
+		<integer>5</integer>
+		<key>Hour</key>
+		<integer>__HOUR__</integer>
+		<key>Minute</key>
+		<integer>__MINUTE__</integer>
+	</dict>
+	<key>RunAtLoad</key>
+	<false/>
+	<key>LimitLoadToSessionType</key>
+	<string>Aqua</string>
+	<key>ProcessType</key>
+	<string>Background</string>
+	<key>LowPriorityIO</key>
+	<true/>
+	<key>StandardOutPath</key>
+	<string>__HOME__/.local/share/os-intent/logs/weekly-improve.log</string>
+	<key>StandardErrorPath</key>
+	<string>__HOME__/.local/share/os-intent/logs/weekly-improve.log</string>
+</dict>
+</plist>

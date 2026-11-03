@@ -156,7 +156,7 @@ public enum SubRingLayout {
 
 /// A sub-ring's colour: the parent's colour family, lighter with each level and a touch per option
 /// (mixed toward white; "#RRGGBB" in and out, nil when the base is malformed).
-/// W23: colour inheritance per branch: every node of a branch carries its ROOT key's colour, lighter per
+/// colour inheritance per branch: every node of a branch carries its ROOT key's colour, lighter per
 /// depth; the per-option touch is capped below one depth step, so a deeper level is always lighter than the one above.
 public enum GlideTint {
     public static func fraction(depth: Int, index: Int) -> Double {

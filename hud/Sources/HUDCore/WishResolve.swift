@@ -30,7 +30,7 @@ public struct Resolution: Codable, Equatable, Sendable {
     public var token: String?
     public var tier: String?
     public var target: String?
-    /// W16: a `confirm` for a page action carries its element ("button:squash-and-merge"): the HUD issues
+    /// a `confirm` for a page action carries its element ("button:squash-and-merge"): the HUD issues
     /// the press ticket (PressGuard) when the user confirms, so oi-hud may AXPress it.
     public var press: String?
 
@@ -124,7 +124,7 @@ public enum WishResolveEffect: Equatable, Sendable {
 /// typing --(debounced text)--> preview request; Enter --> resolving(id) --> done | noted | failed (finish) or
 /// confirm --> confirming(id, text) --(⇧ or Enter, same text)--> resolving(id, confirmed) --> finish.
 /// Editing the text while confirming drops the confirm. Without a resolver connection `enter` returns nil:
-/// the panel saves the wish as before (W6).
+/// the panel saves the wish as before.
 public struct WishResolveMachine: Sendable {
     public enum Phase: Equatable, Sendable { case typing, resolving(id: Int, text: String), confirming(id: Int, text: String) }
 

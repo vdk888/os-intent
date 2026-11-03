@@ -1,12 +1,12 @@
-"""W22: the starter catalogue in the live driver — priors that make the HUD useful from day one.
+"""the starter catalogue in the live driver — priors that make the HUD useful from day one.
 
 `oi onboard` (oi/onboard.py) writes `<data dir>/starter_catalogue.yaml`: 15-30 contextual actions, each
 {id, label, primitive, params, trigger {apps, hosts, hours, days}, prior}. `oi live` asks `Starters` for the items
 whose trigger fits the moment and BLENDS them into the Markov / Laya menu:
 
     λ        = half_support / (half_support + support)     support = the Markov count of the current context
-    p_item   = (prior · A + picked) / (A + shown)             the item's own usage (A = PRIOR_WEIGHT pseudo-shows)
-    matched  : p_show = (1 - λ) · p_markov/laya + λ · p_item  (a Markov option on the same app / host)
+    p_item = (prior · A + picked) / (A + shown)             the item's own usage (A = PRIOR_WEIGHT pseudo-shows)
+    matched : p_show = (1 - λ) · p_markov/laya + λ · p_item (a Markov option on the same app / host)
     new      : p_show = λ · p_item                            (no history for it yet)
 
 So on day one (support 0) the priors rank alone; as real usage of a context accumulates λ → 0 and Markov / Laya

@@ -149,14 +149,14 @@ final class RecorderField: NSTextField {
     }
 }
 
-/// Hotkeys editor. Options 1-4: a segmented choice "⌃ tap | ⌥ tap | ⌘ tap | fn tap | chord" (W9:
+/// Hotkeys editor. Options 1-4: a segmented choice "⌃ tap | ⌥ tap | ⌘ tap | fn tap | chord" (
 /// a tap = the bare modifier pressed and released alone while the HUD is visible); "chord" enables the
-/// recorder (click, press the combination). Wish while the HUD is up (W11): "⇧ tap | ⌃ tap | ⌥ tap | ⌘ tap |
-/// fn tap" (default ⇧; tap only). Summon (W10, W11): "⌥⌘ tap | ⇧ tap | record tap |
+/// recorder (click, press the combination). Wish while the HUD is up: "⇧ tap | ⌃ tap | ⌥ tap | ⌘ tap |
+/// fn tap" (default ⇧; tap only). Summon: "⌥⌘ tap | ⇧ tap | record tap |
 /// chord" (default ⌥⌘ pressed together: shows the HUD with the current options at any time); "record tap"
 /// captures any modifier set pressed together (click, press them, release). Dismiss and wish are chords
 /// only. Validation (collisions, typing keys without modifier) blocks Save; "Reset to defaults" restores
-/// ⌃ ⌥ ⌘ fn taps, Esc, ⌥`, ⌥⌘ summon, ⌃⌥ vocal. Vocal (W12): "⌃⌥ tap | record tap | chord".
+/// ⌃ ⌥ ⌘ fn taps, Esc, ⌥`, ⌥⌘ summon, ⌃⌥ vocal. Vocal: "⌃⌥ tap | record tap | chord".
 @MainActor
 final class HotkeysWindowController: NSObject {
     private let window = makeWindow(title: "OS-intent — HUD hotkeys", size: NSSize(width: 640, height: 520))
@@ -169,7 +169,7 @@ final class HotkeysWindowController: NSObject {
 
     override init() {
         super.init()
-        let help = NSTextField(wrappingLabelWithString: "Options 1-4: a tap = press and release the modifier alone while the HUD is shown (taps need Input Monitoring for oi-hud; without it the HUD uses ⌥1-⌥4). Summon: press ⌥ and ⌘ together and release them (no other key) any time to show the HUD with the current options; record tap captures another modifier set. Wish while the HUD is up: tap ⇧ to open the wish panel (⌥` works any time). Send a vocal to… (W12): with the HUD up, press ⌃ and ⌥ together and release them: pick the agent with its key (⌃⌥ again = next page), speak, ⌃⌥ or Enter sends, Esc cancels (Speech Recognition + Microphone for oi-hud). Chord: click the field, then press the combination (physical key positions). The HUD reads these on its next show.")
+        let help = NSTextField(wrappingLabelWithString: "Options 1-4: a tap = press and release the modifier alone while the HUD is shown (taps need Input Monitoring for oi-hud; without it the HUD uses ⌥1-⌥4). Summon: press ⌥ and ⌘ together and release them (no other key) any time to show the HUD with the current options; record tap captures another modifier set. Wish while the HUD is up: tap ⇧ to open the wish panel (⌥` works any time). Send a vocal to…: with the HUD up, press ⌃ and ⌥ together and release them: pick the agent with its key (⌃⌥ again = next page), speak, ⌃⌥ or Enter sends, Esc cancels (Speech Recognition + Microphone for oi-hud). Chord: click the field, then press the combination (physical key positions). The HUD reads these on its next show.")
         help.font = .systemFont(ofSize: NSFont.smallSystemFontSize)
         let grid = NSGridView()
         for (action, _) in HotkeySet.actions {
@@ -180,7 +180,7 @@ final class HotkeysWindowController: NSObject {
                 self.current[action] = h; self.validate()
             }
             fields[action] = f
-            var row: [NSView] = [NSTextField(labelWithString: HotkeySet.windowLabel(action))]   // W19/W21: "Option 2 (⌃ control)"
+            var row: [NSView] = [NSTextField(labelWithString: HotkeySet.windowLabel(action))]   // "Option 2 (⌃ control)"
             let presets = HotkeySet.tapPresets(action)
             if !presets.isEmpty {
                 let labels = presets.map { "\($0.display) tap" } + (HotkeySet.capturesTapSet(action) ? ["record tap"] : [])

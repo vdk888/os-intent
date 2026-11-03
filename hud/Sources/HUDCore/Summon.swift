@@ -1,7 +1,7 @@
 import Foundation
 import OISettings
 
-/// W10: the SUMMON key. W11: ⌥+⌘ pressed together then released (settings.json
+/// the SUMMON key. W11: ⌥+⌘ pressed together then released (settings.json
 /// `hotkeys.summon`, default `{"tap":["option","cmd"]}`; W10 was a bare ⇧ tap) asks for the HUD now: oi-hud broadcasts `{"event":"summon","ts":…}` to every connected client, the
 /// live driver (`oi live`) answers with a `show` built from the current moment (no threshold, no
 /// cooldown), and if no `show` arrives within `summonFallbackDelay` the HUD shows its fallback: the
@@ -41,7 +41,7 @@ public struct SummonWindow: Sendable {
     public private(set) var fallbackOnScreen = false
 
     /// A client `show` arrived: true (and closes the window) when a summon is pending, or when the
-    /// fallback is still on screen (W11, W10 review: a late live answer replaces the fallback in place
+    /// fallback is still on screen (W10 review: a late live answer replaces the fallback in place
     /// and skips the rate limit, it is still the answer to the summon).
     public mutating func answer() -> Bool {
         defer { since = nil; fallbackOnScreen = false }

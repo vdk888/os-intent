@@ -1,4 +1,4 @@
-"""W22b: the agentic onboarding session.
+"""the agentic onboarding session.
 
   1. OPENING: the sources and the exact read roots, each with an explicit y/N (installed apps: always; each choice
      is remembered for this run only);
@@ -13,7 +13,7 @@
 The sandbox (one place, `agent_command`; reuses claude_actions.build_command, so the auth is the subscription
 seat exactly as at runtime and an API key never reaches the child):
   --restricted                    file tools confined to the working dirs; no Bash unless --tools names it;
-  --tools Read,Glob,Grep,Write,Edit[,Bash]   no WebFetch / WebSearch / Agent / MCP (--strict-mcp-config, none);
+  --tools Read,Glob,Grep,Write,Edit[,Bash] no WebFetch / WebSearch / Agent / MCP (--strict-mcp-config, none);
   --permission-mode dontAsk       anything not allowed below is denied (nobody to ask);
   --add-dir <root>                each opted-in read root (memory folders, wiki, custom roots);
   --allowedTools                  Read/Glob/Grep, each scoped to those roots + the context folder; Write/Edit under
@@ -154,7 +154,7 @@ def opening(io: onboard.IO, home: Path, cfg: dict, ccfg: dict, *, preset: dict |
     roster_ok = has_roster if has_roster is not None else bool(onboard._agents_for(True))
     team = preset.get("team")
     if team is None:
-        team = roster_ok and io.yes("Do you work with your agent team (the roster: Atlas, Nova, Orion, Lyra, …)?")
+        team = roster_ok and io.yes("Do you work with your agent team (the roster: Atlas, Nova, Orion, …)?")
     plan.team = bool(team)
     return plan
 
@@ -193,7 +193,7 @@ def prepare(work: Path, tools_dir: Path, plan: Plan, cfg: dict, ccfg: dict, home
     cmds = {}
     for t in plan.tools:
         p = tools_dir / f"oi-{t}"
-        _private_write(p, "#!/bin/sh\n# W22b: read-only onboarding tool (no arguments).\n"
+        _private_write(p, "#!/bin/sh\n# read-only onboarding tool (no arguments).\n"
                           f"PYTHONPATH={_q(str(pkg_root))} exec {_q(python)} -m oi.onboard_agent.tools {t} "
                           f"--config {_q(str(tools_dir / 'config.json'))}\n", 0o700)
         cmds[t] = str(p)

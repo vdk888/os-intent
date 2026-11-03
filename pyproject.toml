@@ -30,3 +30,4 @@ packages = ["oi", "oi.forms", "oi.orchestrator", "oi.onboard_agent", "oi.proacti
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]
+pythonpath = ["."]

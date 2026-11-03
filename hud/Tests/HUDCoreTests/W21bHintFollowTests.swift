@@ -2,7 +2,7 @@ import Foundation
 import Testing
 @testable import HUDCore
 
-// W21b: the hint dots follow the pointer while drawn; the developed cross does not.
+// the hint dots follow the pointer while drawn; the developed cross does not.
 
 @Suite struct W21bHintFollowTests {
     let screen = (minX: 0.0, minY: 0.0, maxX: 1000.0, maxY: 800.0)

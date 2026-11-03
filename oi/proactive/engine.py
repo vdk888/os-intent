@@ -1,4 +1,4 @@
-"""W24: the proactive engine run by `oi live`.
+"""the proactive engine run by `oi live`.
 
 Sensor thread (`start`): every second, each ENABLED source whose `poll_s` is due is polled (nothing while logging is
 paused); its rows (appear AND gone: sensors.py) are appended to events/<day>.jsonl and queued. The driver's loop
@@ -440,7 +440,7 @@ def live_now_iso(t: float) -> str:
 # ---- `oi proactive-probe` ----------------------------------------------------------------------------------
 
 def cmd_probe(args) -> int:
-    """W24: poll the chosen sources twice (`--wait` s apart: prime, then new events), print the event TOKENS only
+    """poll the chosen sources twice (`--wait` s apart: prime, then new events), print the event TOKENS only
     (never a name, subject or path), write nothing (no events file, no hint). For install checks."""
     from .config import SOURCES
     cfg = proactive_settings(_raw_settings())
@@ -470,7 +470,7 @@ def cmd_probe(args) -> int:
 
 
 def register(sub) -> None:
-    p = sub.add_parser("proactive-probe", help="W24: poll proactive sensors once (tokens only; nothing written or shown)")
+    p = sub.add_parser("proactive-probe", help="poll proactive sensors once (tokens only; nothing written or shown)")
     p.add_argument("--source", action="append", help="mail | agents | files | cockpit | metrics | markets (default: enabled)")
     p.add_argument("--wait", type=float, default=0.0, help="seconds between the priming poll and the reported one")
     p.set_defaults(func=cmd_probe)

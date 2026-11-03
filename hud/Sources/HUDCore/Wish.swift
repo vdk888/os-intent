@@ -1,7 +1,7 @@
 import Foundation
 import OISettings
 
-// The wish quick action (W6, ): "tell me what you wanted", typed or dictated, at any
+// The wish quick action: "tell me what you wanted", typed or dictated, at any
 // moment. Pure parts only (row encoding, the file store, the hotkey registration rule, the panel
 // state machine, the HUD slot of the wish option); the AppKit/Speech side lives in oi-hud.
 
@@ -52,7 +52,7 @@ public struct WishRow: Codable, Equatable, Sendable {
     public var text: String
     public var source: WishSource
     public var context: WishContext
-    /// W18: the action a resolved wish ran (absent for a wish that was only noted).
+    /// the action a resolved wish ran (absent for a wish that was only noted).
     public var action: WishAction? = nil
 
     public init(ts: String, text: String, source: WishSource, context: WishContext) {
@@ -164,7 +164,7 @@ public enum WishPanelInput: Equatable, Sendable {
     case hotkey            // the wish hotkey (or the HUD's wish option)
     case mic               // the mic button
     case enter, escape, clickOutside
-    case dictationEnded    // 20 s limit or dictation unavailable (W20: never a recogniser final / error)
+    case dictationEnded    // 20 s limit or dictation unavailable (never a recogniser final / error)
 }
 
 public enum WishPanelEffect: Equatable, Sendable { case open, startDictation, stopDictation, save, cancel }
@@ -207,7 +207,7 @@ public func optionsWithWish(_ predicted: [HUDOption]) -> [HUDOption] {
 
 /// Where each option sits, relative to the centre (y-down): each predicted option at the FIXED place
 /// of its key (`positions`, FixedSlots.positions — W10: no re-flow, an absent option leaves its
-/// place empty), the wish option at its own fixed place below-right (4:30) and (W12) the vocal option
+/// place empty), the wish option at its own fixed place below-right (4:30) and the vocal option
 /// below-left (7:30), so nothing overlaps and the pointer spot in the middle stays empty. The order of
 /// `options` does not matter.
 public struct HUDSlot: Equatable, Sendable {

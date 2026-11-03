@@ -8,9 +8,9 @@ import Speech
 /// (default fr-FR), falling back to en-US when that locale has no on-device model.
 /// Permissions: "Speech Recognition" and "Microphone", asked once each, the first time the mic
 /// is used. Denied or unavailable → `onEnd(hint)` and the panel stays a typing field.
-/// W12: the vocal recording reuses it with settings `vocal.max_s` (default 300 s) and `recordTo` (the microphone buffers
+/// the vocal recording reuses it with settings `vocal.max_s` (default 300 s) and `recordTo` (the microphone buffers
 /// are also written to that .caf file, 0600; the audio never leaves the Mac).
-/// W20: a recogniser isFinal / error mid-speech is the end of a SEGMENT, never of the dictation: the text so
+/// a recogniser isFinal / error mid-speech is the end of a SEGMENT, never of the dictation: the text so
 /// far is kept and a new recognition task starts on the same audio engine (HUDCore.DictationSegments). The
 /// session ends only on `stop()` (the user's stop / Esc) or the time limit (`onEnd`). W21: a recogniser that keeps
 /// failing with no text restarts after a backoff (250 ms … 2 s), never gives up: speech after a long silence is
@@ -27,9 +27,9 @@ final class Dictation {
     private var request: SFSpeechAudioBufferRecognitionRequest?
     private var task: SFSpeechRecognitionTask?
     private var recognizer: SFSpeechRecognizer?
-    private var segments = DictationSegments()        // W20
-    private var segment = 0                           // W20: callbacks of an older task are ignored
-    private let sink = RequestSink()                  // W20: the tap feeds the current request
+    private var segments = DictationSegments()
+    private var segment = 0                           // callbacks of an older task are ignored
+    private let sink = RequestSink()                  // the tap feeds the current request
     private var limit: Timer?
     private var audioFile: AVAudioFile?
     private var session = 0
@@ -164,8 +164,8 @@ final class Dictation {
         log("dictation started (\(rec.locale.identifier), on-device)")
     }
 
-    /// W20: a new recognition task (and request) on the running engine; the tap switches to it.
-    /// W21: `afterMs` > 0 (the backoff) switches the tap to the new request at once — the audio of the wait is
+    /// a new recognition task (and request) on the running engine; the tap switches to it.
+    /// `afterMs` > 0 (the backoff) switches the tap to the new request at once — the audio of the wait is
     /// queued in it — and starts its recognition task only after the wait.
     private func startSegment(_ s: Int, afterMs: Int = 0) {
         guard recognizer != nil else { return }
@@ -233,7 +233,7 @@ final class Dictation {
     }
 }
 
-/// W20: the request the audio tap (audio thread) appends to; swapped on the main thread at each new segment.
+/// the request the audio tap (audio thread) appends to; swapped on the main thread at each new segment.
 private final class RequestSink: @unchecked Sendable {
     private let lock = NSLock()
     private var request: SFSpeechAudioBufferRecognitionRequest?

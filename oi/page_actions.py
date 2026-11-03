@@ -1,7 +1,6 @@
-"""W16: page actions — the HUD proposes clicking the button that matters on the current Safari page.
+"""page actions — the HUD proposes clicking the button that matters on the current Safari page.
 
-The user 2026-10-20 ~17:50 Paris, on a GitHub PR page: "i would expect an action proposed to click on squash and
-merge". Three parts, all local:
+Example: on a GitHub PR page, propose the action that clicks "Squash and merge". Three parts, all local:
 
 1. READ (oi-hud, Accessibility): `{"cmd":"page"}` on hud.sock answers `{"event":"page","trusted",
    "app","host","elements":[{"role":"button|link","label","slug","frame":[x,y,w,h]}]}` — the AXButton /
@@ -93,7 +92,7 @@ RULES: dict[str, list[tuple[str, str, str, str]]] = {
         ("delete-branch", "button", "Delete branch", "trash"),
         ("close-pull-request", "button", "Close PR", "xmark.circle"),
     ],
-    "mail.google.com": [],        # later (): Send, Archive, Reply
+    "mail.google.com": [],        # later: Send, Archive, Reply
     "www.notion.so": [],          # later
     "linear.app": [],             # later
 }

@@ -3,7 +3,7 @@ import Testing
 @testable import HUDCore
 import OISettings
 
-// W15: hold ⌥⌘ + glide + dwell = a Claude-enriched sub-ring marking menu.
+// hold ⌥⌘ + glide + dwell = a Claude-enriched sub-ring marking menu.
 
 private let optCmd: HeldModifiers = [.option, .command]
 private let summonSet: Set<TapModifier> = [.option, .cmd]
@@ -223,18 +223,18 @@ private func slot(_ k: Int, _ x: Double, _ y: Double, w: Double = 90) -> HUDSlot
     }
     @Test func theRingFansOutwardFromTheParent() {
         let top = cross()
-        let right = top.first { $0.key == 3 }!                     // W21: ⌥ = 3
+        let right = top.first { $0.key == 3 }!                     // ⌥ = 3
         let placed = SubRingLayout.place(parent: right, origin: (0, 0), keys: [1, 2], widths: [90, 90], height: 32,
                                          avoid: top + [centre], bounds: wide).compactMap { $0 }
         #expect(placed.allSatisfy { $0.x > right.x })             // the ⌥ (right) capsule's ring is on its right
-        let topSlot = top.first { $0.key == 2 }!                   // W21: ⌃ = 2
+        let topSlot = top.first { $0.key == 2 }!                   // ⌃ = 2
         let up = SubRingLayout.place(parent: topSlot, origin: (0, 0), keys: [1, 2], widths: [90, 90], height: 32,
                                      avoid: top + [centre], bounds: wide).compactMap { $0 }
         #expect(up.allSatisfy { $0.y < topSlot.y })               // the ⌃ (top) capsule's ring is above it
     }
     @Test func clampedToTheScreen() {
         let top = cross()
-        let right = top.first { $0.key == 3 }!                     // W21: ⌥ = 3
+        let right = top.first { $0.key == 3 }!                     // ⌥ = 3
         // the screen ends 60 px right of the ⌥ capsule's outer edge: the ring folds above / below, inside
         let edge = right.x + right.width / 2 + 60
         let tight = (minX: -600.0, minY: -300.0, maxX: edge, maxY: 300.0)
@@ -252,7 +252,7 @@ private func slot(_ k: Int, _ x: Double, _ y: Double, w: Double = 90) -> HUDSlot
     }
     @Test func deeperRingsAvoidTheirAncestors() {
         let top = cross()
-        let right = top.first { $0.key == 3 }!                     // W21: ⌥ = 3
+        let right = top.first { $0.key == 3 }!                     // ⌥ = 3
         let l1 = SubRingLayout.place(parent: right, origin: (0, 0), keys: [1, 2, 3], widths: [100, 100, 100], height: 32,
                                      avoid: top + [centre], bounds: wide).compactMap { $0 }
         let p = l1[0]
@@ -281,7 +281,7 @@ private func slot(_ k: Int, _ x: Double, _ y: Double, w: Double = 90) -> HUDSlot
         #expect(GlideTint.hex(base: "nope", depth: 1, index: 0) == nil)
         #expect(GlideTint.fraction(depth: 9, index: 9) == 0.75)
     }
-    // W23: each branch carries its root key's colour, lighter per depth (any sibling of a level is darker
+    // each branch carries its root key's colour, lighter per depth (any sibling of a level is darker
     // than every node one level deeper), in the same family.
     @Test func branchInheritsTheRootColourLighterPerDepth() {
         func sum(_ h: String) -> Double { let c = HUDColor.rgb(h)!; return c.r + c.g + c.b }

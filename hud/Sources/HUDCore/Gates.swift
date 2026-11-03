@@ -16,7 +16,7 @@ public struct RateLimiter: Sendable {
     }
 }
 
-/// The ttl timer never fires before this (W9: time to read and decide).
+/// The ttl timer never fires before this (time to read and decide).
 public let minTTL: TimeInterval = 1.5
 
 /// The ttl timer actually armed: the requested ttl, never shorter than `minTTL`.
@@ -25,7 +25,7 @@ public func effectiveTTL(ms: Int) -> TimeInterval { max(Double(ms) / 1000, minTT
 /// Trips when the pointer moves faster than `speedThreshold` px/s for at least `holdTime` s,
 /// never within `grace` s of the show (`reset(shownAt:)`).
 /// Fed with pointer samples (a 60 Hz timer while the HUD is visible).
-/// W9: 1200 px/s sustained 250 ms, nothing in the first 2 s
+/// 1200 px/s sustained 250 ms, nothing in the first 2 s
 /// (was 600 px/s for 100 ms from the first frame: the HUD vanished before he could decide).
 /// The values come from settings.json `gate` (OISettings.pointerHide).
 public struct VelocityGate: Sendable {

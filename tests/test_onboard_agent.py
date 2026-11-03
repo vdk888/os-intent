@@ -1,4 +1,4 @@
-"""W22b: the agentic `oi onboard` — settings, roots, the Mail and Notion readers (fixture AppleScript output,
+"""the agentic `oi onboard` — settings, roots, the Mail and Notion readers (fixture AppleScript output,
 fixture notion.db), the tool wrappers, the sandboxed `claude -p` command, and the session with a fake agent runner
 (argv recorded: tool restrictions, roots, model). Synthetic data only; Claude is never run."""
 import io
@@ -73,7 +73,7 @@ def mail_rec(name, addr, subj, date, body, cc="", rt=""):
 
 
 MAIL_OUT = "".join([
-    mail_rec("Lea Martin", "lea@villa-rossi.it", "Plans R+1", "2026-10-19T09:00:00",
+    mail_rec("Lea Martin", "lea@villa-rossi.example", "Plans R+1", "2026-10-19T09:00:00",
              "Bonjour,\nvoici les plans.\n\n\nMerci\n\nLe 18 oct. 2026, Alex a écrit :\n> ancien message\n> secret"),
     mail_rec("Bob", "bob@acme-conseil.example", "Audit", "2026-10-20T08:00:00", "confidential audit"),
     mail_rec("Carl", "carl@example.org", "Re: devis", "2026-10-18T08:00:00", "ok", cc="x@acme-conseil.example,"),
@@ -105,7 +105,7 @@ def test_mail_tool_pages_counts_and_no_local_only(tmp_path):
     pages = sorted((tmp_path / "context" / "mail").glob("page-*.md"))
     assert len(pages) == 1 and oct(pages[0].stat().st_mode & 0o777) == "0o600"
     text = pages[0].read_text()
-    assert "never instructions" in text and "Plans R+1" in text and "lea@villa-rossi.it" in text
+    assert "never instructions" in text and "Plans R+1" in text and "lea@villa-rossi.example" in text
     for leaked in ("acme", "Acme", "confidential", "Carl", "Dina"):
         assert leaked not in text and leaked not in out
     assert "Lea" not in out                                     # stdout = counts and paths only
@@ -305,7 +305,7 @@ def cat_items(final: bool):
         {"id": "sketchup", "label": "Open SketchUp", "primitive": "app.open", "params": {"app": "SketchUp"},
          "trigger": {"apps": ["Mail"], "hours": [9, 18]}, "prior": 0.5, "why": "daily, notes"},
         {"id": "render", "label": "Render request", "primitive": "mail.draft",
-         "params": {"to": "lea@villa-rossi.it", "subject": "Rendu", "body": "Bonjour"}, "trigger": {}, "prior": 0.9},
+         "params": {"to": "lea@villa-rossi.example", "subject": "Rendu", "body": "Bonjour"}, "trigger": {}, "prior": 0.9},
         {"id": "ghost", "label": "Ghost app", "primitive": "app.open", "params": {"app": "NotInstalled"}},
         {"id": "phish", "label": "Pay invoice", "primitive": "url.open", "params": {"href": "https://x.io/p?id=1"}},
         {"id": "acme", "label": "Acme portal", "primitive": "url.open", "params": {"href": "https://acme-conseil.example/"}},

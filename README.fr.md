@@ -75,7 +75,7 @@ Mail avec le contexte du fil, ou écrit un résumé de 3 lignes. Quand le mail p
 choisit un créneau libre de votre calendrier (lu en local, libre / pris seulement, jamais un titre). Le brouillon est enregistré **sur place** dans les
 Brouillons (Mail reste derrière, pas de changement de bureau) et affiché sur la carte ; *Open in Mail* l'ouvre à la
 demande. Les brouillons ne sont jamais envoyés. Claude
-tourne sans interface via votre CLI Claude Code connectée ; coupez-le, tout le reste fonctionne.
+tourne sans interface via votre CLI Claude Code connectée. Il est **coupé tant que vous ne l'activez pas** (barre des menus → *Settings* → *Claude*) ; tout le reste fonctionne sans lui.
 
 ### Indices proactifs : il remarque quand quelque chose change
 
@@ -120,12 +120,12 @@ valide ; Échap, un clic à côté, le délai ou l'absence de HUD annulent. Jama
 
 ## Confidentialité
 
-Tout tourne sur votre Mac, sauf les appels Claude : **ils sont ACTIVÉS par défaut** (première ligne ci-dessous) et
-vous pouvez les couper.
+Tout tourne sur votre Mac. Les appels Claude (première ligne ci-dessous) sont la seule partie qui envoie quelque
+chose au dehors, et **ils sont DÉSACTIVÉS par défaut** : activez-les dans barre des menus → *Settings* → *Claude*.
 
 | Capteur / partie | Ce qu'il lit | Ce qu'il ne lit jamais | Pour le couper |
 |---|---|---|---|
-| **Claude (`claude.enabled`, `claude.enrich` : tous deux ACTIVÉS par défaut)** | lors d'un appui long, d'un glissé (suites et résumés des cartes de niveau 3, préchargés à l'ouverture de la croix), de l'enrichissement des libellés, d'un événement proactif sur lequel vous restez, des actions sur une capture et d'un souhait non résolu en local, le contexte du HUD est envoyé à **votre propre `claude -p` (Anthropic, sur votre abonnement)** : appli au premier plan, site, le mail ou message concerné, pour un résumé de page le titre, l'URL et le texte de la page Safari, le texte OCR d'une capture, et le paquet de contexte (agents, actions récentes, notes correspondantes de la base) | tout ce qui relève de `claude.local_only_domains` (« détails masqués ») | barre des menus → *Settings* → *Claude* : décochez *Claude variant* et *Enrich options with Claude*, ou `"claude": {"enabled": false, "enrich": false}` dans settings.json |
+| **Claude (`claude.enabled`, `claude.enrich` : tous deux DÉSACTIVÉS par défaut, sur demande)** | lors d'un appui long, d'un glissé (suites et résumés des cartes de niveau 3, préchargés à l'ouverture de la croix), de l'enrichissement des libellés, d'un événement proactif sur lequel vous restez, des actions sur une capture et d'un souhait non résolu en local, le contexte du HUD est envoyé à **votre propre `claude -p` (Anthropic, sur votre abonnement)** : appli au premier plan, site, le mail ou message concerné, pour un résumé de page le titre, l'URL et le texte de la page Safari, le texte OCR d'une capture, et le paquet de contexte (agents, actions récentes, notes correspondantes de la base) | tout ce qui relève de `claude.local_only_domains` (« détails masqués ») | coupé tant que vous ne l'activez pas : barre des menus → *Settings* → *Claude* : cochez *Claude variant* et / ou *Enrich options with Claude*, ou `"claude": {"enabled": true, "enrich": true}` dans settings.json ; décochez pour le couper |
 | ActivityWatch | appli au premier plan, titre de fenêtre, inactivité | contenu, frappes | barre des menus → *Pause* ; liste d'exclusion |
 | oi-watcher | Spaces, raccourcis ⌘ (modificateur + touche, pas le texte), URL de l'onglet Safari, état des captures, libellé du bouton cliqué, noms et dates des nouveaux fichiers des dossiers choisis | texte tapé, texte du presse-papiers, pixels de l'écran, contenu des fichiers, fenêtres privées | *Pause* ; `shots.enabled` ; `proactive.sources.files` |
 | Mail | les 8 derniers messages de la boîte de réception : id, expéditeur, objet, date, lu / répondu (AppleScript, seulement si Mail est ouvert ; ne marque rien) | le corps (lu seulement pour une carte de niveau 3 que vous demandez) | Réglages → Proactive → Mail |
@@ -153,14 +153,14 @@ Prérequis : **macOS 14+** (Liquid Glass sur macOS 26+), la **chaîne Swift 6** 
 **[Laya](https://huggingface.co/convaiinnovations/laya)** (`OI_LAYA_DIR`), `gh` (connecté) pour les pull requests.
 
 ```sh
-git clone https://github.com/vdk888/os-intent.git && cd os-intent
+git clone https://github.com/Bubble-invest/os-intent.git && cd os-intent
 python3.12 -m venv .venv && .venv/bin/pip install -e '.[dev]'
 scripts/make-signing-identity.sh
 watchers/oi-watcher/install.sh && hud/install.sh && menubar/install.sh && live/install.sh
 (cd ocr && swift build -c release)                  # OCR local (optionnel)
 laya/install.sh                                     # optionnel, OI_LAYA_DIR d'abord
 export OI_WIKI_DIR=~/wiki && python3 tools/wiki/wiki_search.py --reindex   # optionnel
-.venv/bin/oi onboard && .venv/bin/oi health
+.venv/bin/oi onboard && .venv/bin/oi health        # Claude coupé (défaut) : il demande o/N, non = version locale
 ```
 
 Autorisez ensuite, quand macOS le demande : Surveillance de l'entrée, Accessibilité, Automatisation (Safari, Mail,

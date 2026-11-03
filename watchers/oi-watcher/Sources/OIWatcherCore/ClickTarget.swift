@@ -1,7 +1,7 @@
 import Foundation
 import OISettings
 
-/// W16: what a mouse-up in Safari clicked, from the AX element under the pointer and its ancestors.
+/// what a mouse-up in Safari clicked, from the AX element under the pointer and its ancestors.
 /// Logged as `{"host","role","label"}` (label = the SLUG of the button / link label: no page text, no field
 /// value), turned into `click:<host>/<role>:<label-slug>` by the normaliser.
 public enum ClickTarget {

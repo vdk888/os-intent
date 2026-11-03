@@ -2,7 +2,7 @@ import Foundation
 import Testing
 @testable import OISettings
 
-/// W26: a save from the menu bar keeps the keys OISettings does not know (top level and `hud`).
+/// a save from the menu bar keeps the keys OISettings does not know (top level and `hud`).
 @Suite struct W26UnknownKeysTests {
     private func object(_ d: Data) throws -> [String: Any] {
         try #require(JSONSerialization.jsonObject(with: d) as? [String: Any])

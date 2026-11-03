@@ -10,7 +10,7 @@ import OISettings
 public enum FileFolders {
     public static let maxFolders = 12            // config.py keeps the first 12
     public static let maxLive = 20               // sensors.FILES_LIVE: new files followed at once
-    public static let skipPrefixes = [".", "~$", "Screenshot", "Capture d’écran", "Capture d'écran"]   // W17 owns screenshots
+    public static let skipPrefixes = [".", "~$", "Screenshot", "Capture d’écran", "Capture d'écran"]   // the screenshot source owns them
     public static let partialExtensions = [".download", ".crdownload", ".part", ".partial", ".tmp"]
 
     /// sensors.FolderSensor.wanted: hidden files, Office lock files, screenshots and partial downloads are skipped.

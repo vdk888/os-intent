@@ -64,7 +64,7 @@ def test_stats_json(fake_aw, capsys):
 
 
 def test_settings_window_boundary_values_are_read_as_written():
-    """W26: the extremes the Settings window can write (SettingsForm ranges) are used as written, not defaulted."""
+    """the extremes the Settings window can write (SettingsForm ranges) are used as written, not defaulted."""
     from oi import claude_actions, shots
     for v in ({"auto_mode": "off", "hint_ttl_ms": 500, "hint_cooldown_s": 0, "ttl_ms": 1500, "fc": None},
               {"auto_mode": "full", "hint_ttl_ms": 10000, "hint_cooldown_s": 300, "ttl_ms": 60000, "fc": "a-b_9"}):

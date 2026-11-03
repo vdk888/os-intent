@@ -2,7 +2,7 @@ import AppKit
 import OIWatcherCore
 import OISettings
 
-/// W17: new screenshots → bucket `oi-watcher-shot_<host>` as {"kind": "shot", "src", "path"}.
+/// new screenshots → bucket `oi-watcher-shot_<host>` as {"kind": "shot", "src", "path"}.
 ///  - files: a DispatchSource on the screenshot folder (`defaults read com.apple.screencapture location`,
 ///    default ~/Desktop; $OI_SHOT_DIR overrides it for tests), plus a 10 s safety rescan; the folder is
 ///    re-resolved every 60 s (a location changed in the Screenshot app). Files present at start are never

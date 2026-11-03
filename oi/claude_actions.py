@@ -1,6 +1,5 @@
-"""W14: Claude in the app. Long-press = the Claude-assisted variant of a primitive, summaries, label
-enrichment. The user: "if i press 'respond to email' option, for longer, it also writes the response
-with context in mind".
+"""Claude in the app. Long-press = the Claude-assisted variant of a primitive, summaries, label
+enrichment. Goal: a longer press on "respond to email" also writes the response, with the context in mind.
 
 Runtime budget: Claude ONLY through your Claude subscription (never an API key), as a headless `claude -p` run:
   - auth: $CLAUDE_CODE_OAUTH_TOKEN, or a copied ~/.claude/.credentials.json, both in an ISOLATED
@@ -18,7 +17,7 @@ Actions (a long-press reply `pressed` with "mode": "claude"):
                    notes (+ the times the mail proposes, free / busy in the local calendars, read-only)
                    -> sonnet drafts the reply in the incoming mail's language -> a Mail reply window opens
                    pre-filled. NEVER sent.
-  mail.forward  -> same, a covering note; the recipient is left for the user. NEVER sent.
+  mail.forward -> same, a covering note; the recipient is left for the user. NEVER sent.
   url.open / app.open -> open first, then a 3-line haiku summary card (Safari: title + URL + page text when
                    Safari allows JavaScript from Apple Events, else title + URL; another app: its name + window
                    title).
@@ -84,8 +83,8 @@ FREE_MAIL = {"gmail.com", "googlemail.com", "hotmail.com", "hotmail.fr", "outloo
              "live.fr", "yahoo.com", "yahoo.fr", "icloud.com", "me.com", "mac.com", "orange.fr", "free.fr",
              "laposte.net", "sfr.fr", "wanadoo.fr", "proton.me", "protonmail.com", "gmx.fr", "gmx.com"}
 SEP = "\x1f"
-CLAUDE_DEFAULTS = {"enabled": True, "enrich": True, "local_only_domains": [], "debug": False,
-                   "orchestrator": True}   # W25: the orchestrator prompt + context pack on every runtime call
+CLAUDE_DEFAULTS = {"enabled": False, "enrich": False, "local_only_domains": [], "debug": False,
+                   "orchestrator": True}   # the orchestrator prompt + context pack on every runtime call
 
 
 def log(msg: str) -> None:
@@ -97,7 +96,7 @@ def log(msg: str) -> None:
 
 def claude_settings(path: Path | None = None) -> dict:
     """settings.json `claude` (every key optional, wrongly typed = default):
-    {"enabled": true, "enrich": true, "local_only_domains": ["client.example"], "debug": false, "orchestrator": true}."""
+    {"enabled": false, "enrich": false, "local_only_domains": ["client.example"], "debug": false, "orchestrator": true}."""
     out = {k: (list(v) if isinstance(v, list) else v) for k, v in CLAUDE_DEFAULTS.items()}
     try:
         raw = json.loads((path or paths.data_dir() / "settings.json").read_text(encoding="utf-8"))
@@ -258,7 +257,7 @@ _SLOT = re.compile(r"\{\{(\w+)\}\}")
 
 def render_prompt(name: str, values: dict, context: dict | None = None) -> str:
     """oi/prompts/<name>.md with {{slots}} filled in ONE pass (a value containing {{x}} stays literal).
-    W25: then wrapped by the orchestrator (system prompt + roster + skills + the context pack of
+    then wrapped by the orchestrator (system prompt + roster + skills + the context pack of
     `context`: app, host, space, mail, mail_gated, chain, agent, query); `check` stays bare."""
     text = (PROMPTS_DIR / f"{name}.md").read_text(encoding="utf-8")
     text = _SLOT.sub(lambda m: str(values.get(m.group(1), "")), text)
@@ -288,7 +287,7 @@ def mail_prompt(primitive: str, mail: dict, wiki_lines: list[str], calendar: str
         "calendar": calendar or "(none)",
     }
     return render_prompt("mail_reply" if primitive == "mail.reply" else "mail_forward", values,
-                         context={"app": "Mail", "mail": mail})      # W25: sender's people page, habits
+                         context={"app": "Mail", "mail": mail})      # sender's people page, habits
 
 
 def wiki_query(mail: dict) -> str:
@@ -299,7 +298,7 @@ def wiki_query(mail: dict) -> str:
 
 def wiki_snippets(query: str, repo_dir: str | None = None, *, timeout: float = WIKI_TIMEOUT_S) -> list[str]:
     """Top-3 local wiki notes ("title: description") for `query`; [] on any failure (the action goes on).
-    W25: the warm in-process index (oi.rag) first; the subprocess only when it is not available."""
+    the warm in-process index (oi.rag) first; the subprocess only when it is not available."""
     if not query:
         return []
     from . import rag
@@ -509,7 +508,7 @@ SHOW_DRAFT = r'''on run argv
 end run
 '''
 
-# W24: select (and show) the message with that Message-ID in the front viewer — read-only, nothing marked,
+# select (and show) the message with that Message-ID in the front viewer — read-only, nothing marked,
 # moved or sent. Used before a proactive mail's reply / draft / "Open the mail", so they act on THAT mail.
 SELECT_MAIL = r'''on run argv
 	set mid to item 1 of argv
@@ -613,7 +612,7 @@ def parse_mail(out: str) -> dict | None:
 
 
 def mail_local_only(mail: dict | None, cfg: dict) -> bool:
-    """W15: the mail never goes to Claude when its sender, any cc recipient or its reply-to address is in a
+    """the mail never goes to Claude when its sender, any cc recipient or its reply-to address is in a
     settings.claude.local_only_domains domain (a "Name <a@b>" reply-to is read for its address)."""
     if not mail:
         return False
@@ -691,7 +690,7 @@ def show_draft(draft: int, osa: Callable | None = None) -> bool:
 
 def plain_mail(primitive: str, osa: Callable | None = None, message_id: str = "") -> bool:
     """The plain (non-Claude) mail primitive: an empty reply / forward window (the user picked it: Mail comes to
-    the front). With `message_id` (W15 / W24) that mail, looked up by id (never selected first); nothing
+    the front). With `message_id` that mail, looked up by id (never selected first); nothing
     opens when it is neither in the inbox nor the current selection."""
     script, args = open_draft_script(primitive, message_id, "", window=True)
     rc, out = (osa or osascript)(script, args)
@@ -823,10 +822,10 @@ class ClaudeActions:
     def press(self, opt: dict | None, ctx: dict, key: int, plain: Callable[[], str | None],
               expect_mid: str | None = None) -> tuple[str | None, dict | None]:
         """Runs the Claude variant of `opt` (always answers the HUD). Returns (executed token, claude log meta).
-        `expect_mid` (W15): the mail a glide follow-up was built for; another selection = nothing is done."""
+        `expect_mid`: the mail a glide follow-up was built for; another selection = nothing is done."""
         prim = (opt or {}).get("primitive")
         cfg = self.settings_loader()
-        if not opt or not offers(prim, cfg) or opt.get("private"):   # W24: a gated proactive event never reaches Claude
+        if not opt or not offers(prim, cfg) or opt.get("private"):   # a gated proactive event never reaches Claude
             # no Claude variant (or Claude switched off): release the HUD, then the plain action
             return (plain() if self.respond(key, True, "") else None), None
         if prim in MAIL_PRIMITIVES:
@@ -901,7 +900,7 @@ class ClaudeActions:
             rc, title = self.osa(READ_WINDOW_TITLE, [app])
             what = "app"
             body = f"App: {app}\nWindow: {title if rc == 0 and title else '(unknown)'}"
-        sctx = {"app": app, "host": shost, "space": ctx.get("space")}          # W25: the pack's context
+        sctx = {"app": app, "host": shost, "space": ctx.get("space")}          # the pack's context
         out, meta = self.ask(prim, render_prompt("summary", {"what": what, "page": body}, context=sctx), cfg)
         lines = card_text((out or {}).get("lines"), limit=3)
         if not lines:
@@ -958,7 +957,7 @@ class ClaudeActions:
                         "actions": ", ".join(keys), "sender_name": mail.get("sender_name", ""),
                         "sender_address": mail.get("sender_address", ""), "subject": mail.get("subject", ""),
                         "body": (mail.get("body") or "")[:LABEL_BODY_MAX]},
-                        context={"app": "Mail", "mail": mail})        # W25: the pack
+                        context={"app": "Mail", "mail": mail})        # the pack
                     out, _ = self.ask("enrich", prompt, cfg)
                     raw = (out or {}).get("labels")
                     labels = {k: clean_label(v) for k, v in raw.items() if clean_label(v)} if isinstance(raw, dict) else {}

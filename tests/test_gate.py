@@ -352,5 +352,5 @@ def test_w24_ask_agent_is_gated_at_its_send_not_at_the_pick(gate_asks):
     ask = {"primitive": "agent.ask", "params": {"to": "orion"}, "token": "agent.ask:orion", "label": "Ask Orion",
            "evt": True, "outward": True}
     assert _proactive_press(lv, ask)["executed"] == "agent.ask:orion" and gate_asks.asked == []   # the panel opens
-    plain = {"primitive": "mail.reply", "params": {}, "token": "mail.reply", "label": "Reply"}   # not W24: a draft
+    plain = {"primitive": "mail.reply", "params": {}, "token": "mail.reply", "label": "Reply"}   # not a proactive draft
     assert _proactive_press(lv, plain)["executed"] == "mail.reply" and gate_asks.asked == []

@@ -1,7 +1,7 @@
 import Foundation
 import OISettings
 
-/// Fixed-slot layout (W10, replaces the W2-W9 radial arc): four places around the pointer,
+/// Fixed-slot layout (replaces an earlier radial arc): four places around the pointer,
 /// one per option modifier, never re-flowed. Offsets are y-down (SwiftUI), `radius` from the centre.
 public enum FixedSlots {
     public static func offset(_ p: SlotPosition, radius: Double) -> (x: Double, y: Double) {
@@ -13,7 +13,7 @@ public enum FixedSlots {
         }
     }
 
-    /// W11: the same four places with capsules of `capsuleWidth` — the left and right ones move
+    /// the same four places with capsules of `capsuleWidth` — the left and right ones move
     /// out so their inner edge stays `gap` px from the centre (the pointer spot stays empty); top and
     /// bottom stay at `radius`. W10's 168-px capsules sat exactly there (100 − 84 = 16 px), so for them
     /// nothing moves; W11's 252-px capsules sit at ±142.
@@ -33,7 +33,7 @@ public enum FixedSlots {
         (wishWidth / 2 + 8, radius + capsuleHeight + 16)
     }
 
-    /// W12: the permanent "Send a vocal to…" option, the mirror of the wish place, below-left
+    /// the permanent "Send a vocal to…" option, the mirror of the wish place, below-left
     /// (≈ 7:30): its right edge just left of centre.
     public static func vocalOffset(radius: Double, capsuleHeight: Double, vocalWidth: Double) -> (x: Double, y: Double) {
         (-(vocalWidth / 2 + 8), radius + capsuleHeight + 16)

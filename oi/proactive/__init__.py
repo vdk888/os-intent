@@ -1,8 +1,7 @@
-"""W24: proactive hints — state sensors -> relevance gate -> hint.
+"""proactive hints — state sensors -> relevance gate -> hint.
 
-The user: "je n'ai pas bougé la souris, mais l'état a changé (un mail reçu,
-un message d'un agent, le Drive, les marchés, une métrique qui a chuté, une panne dans le cockpit) … l'action la plus
-probable que je vais faire après, c'est X".
+Goal: the mouse did not move, but the state changed (a mail arrived, an agent's message, the Drive, the markets,
+a metric that dropped, an outage on the dashboard): propose the most likely next action.
 
   sensors.py    local, READ-ONLY STATE sensors, each opt-in (settings.json `proactive.sources`, all off by default):
                 each reports an appear row when a state starts and a gone row when it ends (context is state, not
@@ -22,7 +21,7 @@ probable que je vais faire après, c'est X".
                 stream, and `Live` (the events live now): Markov / Laya learn "after
                 event E the user usually does A" with the same training loop (an event is a moment and a history token,
                 never a label: moments.py).
-  relevance.py  the gate per event: gone / paused / HUD off / denylisted front app, quiet hours and Focus, hard
+  relevance.py the gate per event: gone / paused / HUD off / denylisted front app, quiet hours and Focus, hard
                 priorities (client mail, cockpit outage), the history probability of a follow-up (Markov counts at
                 the event token, blended with the W22 attention priors of profile.yaml while history is thin) >=
                 `min_p`, at most one proactive hint per `min_interval_min` (display; priorities skip it).
@@ -33,7 +32,7 @@ probable que je vais faire après, c'est X".
                 validation gate (engine.outward_gate marks them; oi.live asks oi/gate.py at the pick). Any other hint = the W19 dots with `"marker":"ring"` (oi-hud draws a thin ring = "something
                 changed"), withdrawn when the event's state ends; ⌥⌘ develops it into the event's own actions ("Reply to Sam", "Open the alert", "Ask
                 Orion"), the W15/W23 glide and the W14 long-press work on them (the event's mail is the mail).
-Privacy: local_only_domains (W14) + the W25 leaks gate are applied when the event is made: a gated event keeps no
+Privacy: local_only_domains + the W25 leaks gate are applied when the event is made: a gated event keeps no
 subject, is never enriched, never reaches Claude (its long-press is the plain action), and its pack line says
 "details withheld". Logs and tokens carry the source and class only, never a name, a subject or a path.
 """

@@ -25,7 +25,7 @@ final class WishPanelController: NSObject, NSTextFieldDelegate {
     private let field = NSTextField()
     private let mic = NSButton()
     private let hint = NSTextField(labelWithString: "Enter saves · Esc cancels")
-    // W18: wish -> action — the resolver link and the live preview ("→ Telegram") on the hint row
+    // wish -> action — the resolver link and the live preview ("→ Telegram") on the hint row
     let resolve = WishResolveController()
     private let preview = NSTextField(labelWithString: "")
     static let defaultHint = "Enter saves · Esc cancels"
@@ -59,12 +59,12 @@ final class WishPanelController: NSObject, NSTextFieldDelegate {
         panel.appearance = NSAppearance(named: .vibrantDark)
         panel.onCancel = { [weak self] in self?.input(.escape) }
         buildContent()
-        resolve.panel = self                                                   // W18
+        resolve.panel = self
         dictation.onPartial = { [weak self] text in
             guard let self, self.machine.state == .dictating else { return }
             self.field.stringValue = text
             self.dictated = true
-            self.resolve.textChanged(text)                                     // W18: dictation previews too
+            self.resolve.textChanged(text)                                     // dictation previews too
         }
         dictation.onEnd = { [weak self] hintText in
             guard let self else { return }
@@ -75,7 +75,7 @@ final class WishPanelController: NSObject, NSTextFieldDelegate {
 
     private func buildContent() {
         let size = WishPanelController.size
-        // W19: Liquid Glass on macOS 26+ (NSGlassEffectView), else the HUD material as before
+        // Liquid Glass on macOS 26+ (NSGlassEffectView), else the HUD material as before
         let bg: NSView
         if let g = glassPanelRoot(size: size, radius: 14) {
             panel.contentView = g.root; bg = g.content
@@ -118,7 +118,7 @@ final class WishPanelController: NSObject, NSTextFieldDelegate {
         hint.frame = NSRect(x: 18, y: 12, width: size.width - 36, height: 16)
         hint.lineBreakMode = .byTruncatingTail
         bg.addSubview(hint)
-        // W18: the resolution preview, right-aligned on the hint row
+        // the resolution preview, right-aligned on the hint row
         preview.font = .systemFont(ofSize: 12, weight: .semibold)
         preview.textColor = .controlAccentColor
         preview.alignment = .right
@@ -180,7 +180,7 @@ final class WishPanelController: NSObject, NSTextFieldDelegate {
     // NSTextFieldDelegate: Enter / Esc inside the field
     func control(_ control: NSControl, textView: NSTextView, doCommandBy sel: Selector) -> Bool {
         if sel == #selector(NSResponder.insertNewline(_:)) {
-            if resolve.enter(field.stringValue) { return true }               // W18: resolve, then do it
+            if resolve.enter(field.stringValue) { return true }               // resolve, then do it
             input(.enter); return true
         }
         if sel == #selector(NSResponder.cancelOperation(_:)) { input(.escape); return true }
@@ -195,7 +195,7 @@ final class WishPanelController: NSObject, NSTextFieldDelegate {
         field.placeholderString = WishPanelController.placeholder
         dictated = false
         setMic(active: false)
-        resolve.opened(context: ResolveContext(app: context.app, space: context.space))   // W18
+        resolve.opened(context: ResolveContext(app: context.app, space: context.space))
         setPreview(""); setHint(nil)
         placeAtPointer()
         let reduce = NSWorkspace.shared.accessibilityDisplayShouldReduceMotion
@@ -217,7 +217,7 @@ final class WishPanelController: NSObject, NSTextFieldDelegate {
 
     private func close() {
         stopOutsideWatch()
-        resolve.closed()                                                       // W18
+        resolve.closed()
         let reduce = NSWorkspace.shared.accessibilityDisplayShouldReduceMotion
         animate(show: false, reduceMotion: reduce)
         let seq = hideSeq

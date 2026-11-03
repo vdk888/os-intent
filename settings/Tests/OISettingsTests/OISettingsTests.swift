@@ -37,7 +37,7 @@ private func tmpDir() -> URL {
         #expect(OISettings.decode(try s.encoded()).wish.locale == "en-US")
     }
     @Test func liveGateKeptOnRoundTrip() throws {
-        // W8: oi-menubar must write back the python driver's `gate` / `live` sections unchanged
+        // oi-menubar must write back the python driver's `gate` / `live` sections unchanged
         let s = OISettings.decode(Data(#"{"paused":true,"gate":{"show_min_p":0.3,"max_show":2},"live":{"poll_s":5}}"#.utf8))
         #expect(s.gate?["show_min_p"] == 0.3 && s.gate?["max_show"] == 2 && s.live?["poll_s"] == 5)
         let back = OISettings.decode(try s.encoded())
@@ -48,7 +48,7 @@ private func tmpDir() -> URL {
     }
 
     @Test func laya_live_keys_round_trip() throws {
-        // W13: the Laya layer's live keys (bool, string, null) survive a menu-bar write
+        // the Laya layer's live keys (bool, string, null) survive a menu-bar write
         let json = #"{"live":{"poll_s":2,"laya_shadow":true,"predictor":"laya","laya_checkpoint":null,"laya_url":"http://127.0.0.1:8784"}}"#
         let s = OISettings.decode(Data(json.utf8))
         #expect(s.live?["laya_shadow"] == true && s.live?["predictor"] == "laya" && s.live?["poll_s"] == 2)
@@ -58,7 +58,7 @@ private func tmpDir() -> URL {
     }
     @Test func w9GateTTLAndPointerTravel() throws {
         let d = OISettings()
-        #expect(d.gateTTLms == 6000)   // W19 (was 15000)
+        #expect(d.gateTTLms == 6000)   // (was 15000)
         #expect(d.pointerHide == PointerHide(enabled: true, graceMs: 2000, fastPxS: 1200, fastMs: 250))
         let s = OISettings.decode(Data(#"{"gate":{"show_min_p":0.3,"ttl_ms":20000,"hide_on_pointer_travel":false,"pointer_grace_ms":3000,"pointer_fast_px_s":1500,"pointer_fast_ms":400}}"#.utf8))
         #expect(s.gateTTLms == 20000)
@@ -177,7 +177,7 @@ private func tmpDir() -> URL {
         h = .defaults
         h["dismiss"] = Hotkey([], "F1")
         #expect(h.problems().isEmpty)
-        #expect(h.option(4) == .tap(.cmd) && h.option(1) == .tap(.fn) && h.option(5) == nil)   // W21
+        #expect(h.option(4) == .tap(.cmd) && h.option(1) == .tap(.fn) && h.option(5) == nil)
     }
 }
 
@@ -186,7 +186,7 @@ private func tmpDir() -> URL {
 @Suite struct TapHotkeyTests {
     @Test func defaultsAreTheFourTaps() {
         let d = HotkeySet.defaults
-        #expect([d.option1, d.option2, d.option3, d.option4] == [.tap(.fn), .tap(.ctrl), .tap(.option), .tap(.cmd)])   // W21
+        #expect([d.option1, d.option2, d.option3, d.option4] == [.tap(.fn), .tap(.ctrl), .tap(.option), .tap(.cmd)])
         #expect(d.dismiss == Hotkey([], "Esc") && d.wish == Hotkey(["option"], "`"))
         #expect(d.problems().isEmpty)
         #expect([d.option1, d.option2, d.option3, d.option4].map(\.display) == ["fn", "⌃", "⌥", "⌘"])
@@ -194,7 +194,7 @@ private func tmpDir() -> URL {
     }
     @Test func tapJSONShapeAndRoundTrip() throws {
         let json = String(decoding: try OISettings().encoded(), as: UTF8.self)
-        #expect(json.contains("\"option_1\" : {\n      \"tap\" : \"fn\"\n    }"))   // W21
+        #expect(json.contains("\"option_1\" : {\n      \"tap\" : \"fn\"\n    }"))
         #expect(json.contains("\"v\" : 4"))
         #expect(OISettings.decode(try OISettings().encoded()).hotkeys == .defaults)
         var h = HotkeySet.defaults
@@ -216,7 +216,7 @@ private func tmpDir() -> URL {
         #expect(s.hotkeys.option4 == Hotkey(["control"], "j"))
     }
     @Test func legacyW5DefaultsMigrateToTaps() {
-        // what oi-menubar W5-W8 wrote on every save: ⌥1-⌥4 explicit, no "v"
+        // what older oi-menubar versions wrote on every save: ⌥1-⌥4 explicit, no "v"
         let legacy = #"{"hotkeys":{"option_1":{"modifiers":["option"],"key":"1"},"option_2":{"modifiers":["option"],"key":"2"},"option_3":{"modifiers":["option"],"key":"3"},"option_4":{"modifiers":["option"],"key":"4"},"dismiss":{"modifiers":[],"key":"Esc"},"wish":{"modifiers":["control","option"],"key":"w"}}}"#
         let s = OISettings.decode(Data(legacy.utf8))
         #expect(s.hotkeys.option1 == .tap(.fn) && s.hotkeys.option4 == .tap(.cmd))   // straight to the W21 taps
@@ -237,7 +237,7 @@ private func tmpDir() -> URL {
         #expect(h.problems().contains("Dismiss HUD: a modifier tap only works for options 1-4 and summon (use a combination)"))
         h = .defaults
         h.wish = .tap(.fn)
-        #expect(h.problems().count == 2)   // not an option + collides with option 1 (W21: fn = 1)
+        #expect(h.problems().count == 2)   // not an option + collides with option 1 (fn = 1)
         h = .defaults
         h.option1 = Hotkey(["option"], "1")                   // a chord next to taps is fine
         #expect(h.problems().isEmpty)
@@ -276,7 +276,7 @@ private func tmpDir() -> URL {
     }
     @Test func summonCollisions() {
         var h = HotkeySet.defaults
-        h.summon = .tap(.ctrl)                                  // same tap as option 2 (W21)
+        h.summon = .tap(.ctrl)                                  // same tap as option 2
         #expect(h.problems() == ["Summon HUD (show the options now) collides with Option 2 (⌃ tap)"])
         h = .defaults
         h.summon = Hotkey(["option"], "`")                     // same chord as wish
@@ -403,7 +403,7 @@ private func tmpDir() -> URL {
         let chord = OISettings.decode(Data(#"{"hotkeys":{"v":3,"wish_visible":{"modifiers":["option"],"key":"w"}}}"#.utf8))
         #expect(chord.hotkeys.wishVisible == .tap(.shift))                     // a chord is not accepted
         var h = HotkeySet.defaults
-        h.wishVisible = .tap(.ctrl)                                            // same tap as option 2 (W21)
+        h.wishVisible = .tap(.ctrl)                                            // same tap as option 2
         #expect(h.problems() == ["Wish while the HUD is up collides with Option 2 (⌃ tap)"])
         h = .defaults
         h.wishVisible = Hotkey(["option"], "w")
@@ -473,7 +473,7 @@ private func tmpDir() -> URL {
         let bad = OISettings.decode(Data(#"{"hud":{"slots":{"ctrl":"left"},"long_press_ms":900}}"#.utf8))
         #expect(bad.hud.slots == HUDSettings.defaultSlots && bad.hud.longPressMs == 900)
     }
-    @Test func dwellDefaultClampAndRoundTrip() throws {   // W15
+    @Test func dwellDefaultClampAndRoundTrip() throws {
         #expect(OISettings().hud.dwellMs == 500)
         #expect(OISettings.decode(Data(#"{"hud":{"dwell_ms":700}}"#.utf8)).hud.dwellMs == 700)
         #expect(OISettings.decode(Data(#"{"hud":{"dwell_ms":10}}"#.utf8)).hud.dwellMs == 250)
@@ -483,10 +483,9 @@ private func tmpDir() -> URL {
         let back = OISettings.decode(try s.encoded()).hud
         #expect(back.dwellMs == 650 && back.longPressMs == 600)
     }
-    // W19
     @Test func w19AutoModeAndHintTTL() throws {
         let d = OISettings().hud
-        #expect(d.autoMode == "hint" && d.hintTTLms == 4000)   // W20: 2500 -> 4000
+        #expect(d.autoMode == "hint" && d.hintTTLms == 4000)   // 2500 -> 4000
         #expect(OISettings.decode(Data(#"{"hud":{"auto_mode":"full"}}"#.utf8)).hud.autoMode == "full")
         #expect(OISettings.decode(Data(#"{"hud":{"auto_mode":"off"}}"#.utf8)).hud.autoMode == "off")
         #expect(OISettings.decode(Data(#"{"hud":{"auto_mode":"loud"}}"#.utf8)).hud.autoMode == "hint")
@@ -498,8 +497,7 @@ private func tmpDir() -> URL {
         let back = OISettings.decode(try s.encoded()).hud
         #expect(back.autoMode == "off" && back.hintTTLms == 4000 && back.dwellMs == 700)
     }
-    // end W19
-    // W20
+    // end
     @Test func w20HintDotSizeAndTTLDefaults() throws {
         let d = OISettings().hud
         #expect(d.hintDotSize == 10 && d.hintTTLms == 4000)

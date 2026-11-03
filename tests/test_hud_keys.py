@@ -1,4 +1,4 @@
-"""W21: the option number is the key (fn 1, ⌃ 2, ⌥ 3, ⌘ 4), filled in `hud.fill_order`, stable per context."""
+"""the option number is the key (fn 1, ⌃ 2, ⌥ 3, ⌘ 4), filled in `hud.fill_order`, stable per context."""
 import io
 import json
 import threading
@@ -144,7 +144,7 @@ def test_every_live_row_carries_the_key_numbering(data_dir):
 
 
 def test_improve_report_splits_rows_by_numbering(data_dir):
-    hud = [{"ts": "2026-10-19T09:00:00.000Z", "form": "A", "shown": True, "outcome": "pressed:1"},          # pre-W21
+    hud = [{"ts": "2026-10-19T09:00:00.000Z", "form": "A", "shown": True, "outcome": "pressed:1"},          # before key numbering
            {"ts": "2026-10-20T19:00:00.000Z", "form": "A", "shown": True, "outcome": "pressed:4", "numbering": 2}]
     r = improve.report(["2026-10-20"], reader=lambda d: [], hud_reader=lambda d: hud)
     assert r["forms"]["A"]["numbering"] == {"1": 1, "2": 1}

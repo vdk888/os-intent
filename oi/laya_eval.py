@@ -10,8 +10,8 @@ the live timeout comes from the SPACED p95. `suggested_timeout_ms` = warm p95 x 
 for settings `live.laya_timeout_ms`.
 
 `oi laya-report`: from the hud-log, every row with a Laya shadow result, against what the user actually did:
-  pick  = a HUD press (`pressed:<k>`): the token of the option he pressed (needs the shadow's key->token map);
-  next  = the next action within 120 s (moments.LABEL_WINDOW_S) in tokens/<day>, `nothing` when none came:
+  pick = a HUD press (`pressed:<k>`): the token of the option he pressed (needs the shadow's key->token map);
+  next = the next action within 120 s (moments.LABEL_WINDOW_S) in tokens/<day>, `nothing` when none came:
           every evaluated moment has one, so this reaches a decision far sooner than presses alone.
 For each: Laya and Markov top-1 / top-3 hit rates on the SAME menu (only rows where Laya answered), and how
 often they agree on the top option. `promotion` applies PROMOTION (below) and only says whether the bar is met:

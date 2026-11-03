@@ -1,7 +1,6 @@
-"""W25: "pass me to Atlas" — the armed dispatch target.
+""""pass me to Atlas" — the armed dispatch target.
 
-The user: "il dispatche ultra rapide, il peut me passer en direct à toi avec une touche, quand je vais envoyer un vocal
-il va partir à toi".
+Goal: dispatch is instant: one key hands the user over to an agent, and the next voice note goes to that agent.
 
 A glide follow-up `dispatch:<agent>` or a wish "passe-moi Atlas" ARMS that agent for DISPATCH_TTL_S: The user's next
 typed note (a wish that resolves to nothing else) is proposed to that agent (confirmed before it leaves, the W12

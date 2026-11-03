@@ -4,7 +4,7 @@ import Testing
 import OISettings
 
 @Suite struct LayoutTests {
-    // W10: fixed places keyed to the modifiers, clockwise from the left in keyboard order:
+    // fixed places keyed to the modifiers, clockwise from the left in keyboard order:
     // fn left, ⌃ top, ⌥ right, ⌘ bottom (option 1 = ⌃ top, 2 = ⌥ right, 3 = ⌘ bottom, 4 = fn left).
     let defaultPositions = FixedSlots.positions(hotkeys: .defaults, slots: HUDSettings.defaultSlots)
     func opts(_ keys: [Int]) -> [HUDOption] { keys.map { HUDOption(key: $0, label: "o\($0)") } }
@@ -14,14 +14,14 @@ import OISettings
     }
 
     @Test func defaultPlacesFollowTheModifiers() {
-        #expect(defaultPositions == [1: .left, 2: .top, 3: .right, 4: .bottom])   // W21: 1 fn, 2 ⌃, 3 ⌥, 4 ⌘ clockwise
+        #expect(defaultPositions == [1: .left, 2: .top, 3: .right, 4: .bottom])   // 1 fn, 2 ⌃, 3 ⌥, 4 ⌘ clockwise
         #expect(FixedSlots.offset(.left, radius: 100) == (-100, 0) && FixedSlots.offset(.top, radius: 100) == (0, -100))
         #expect(FixedSlots.offset(.right, radius: 100) == (100, 0) && FixedSlots.offset(.bottom, radius: 100) == (0, 100))
     }
     @Test func placesDoNotDependOnHowManyOptions() {
         #expect(place([2]) == [2: .top])
         #expect(place([2, 3]) == [2: .top, 3: .right])
-        #expect(place([2, 3, 4]) == [2: .top, 3: .right, 4: .bottom])          // W21: 3 options, fn's place empty
+        #expect(place([2, 3, 4]) == [2: .top, 3: .right, 4: .bottom])          // 3 options, fn's place empty
         #expect(place([1, 2, 3, 4]) == [1: .left, 2: .top, 3: .right, 4: .bottom])
     }
     @Test func missingOptionTwoLeavesTheRightEmpty() {
@@ -59,7 +59,7 @@ import OISettings
         let line = #"{"cmd":"show","options":[{"key":2,"label":"Mail","icon":"app:/System/Applications/Mail.app"},{"key":1,"label":"Back","icon":"sf:arrowshape.turn.up.left","confidence":0.41}]}"#
         let cmd = try decodeCommand(Data(line.utf8))
         guard case .show(let opts, let ttl) = cmd else { Issue.record("not show"); return }
-        #expect(ttl == 6000)    // W19: default 6 s (W9 was 15 s)
+        #expect(ttl == 6000)    // default 6 s (W9 was 15 s)
         #expect(opts.map(\.key) == [1, 2])
         #expect(opts[0].confidence == 0.41)
         #expect(HUDIcon(opts[1].icon) == .app(path: "/System/Applications/Mail.app"))
@@ -158,7 +158,7 @@ import OISettings
         let p = hotkeyPlan(optionKeys: [1, 3], hotkeys: .defaults)
         #expect(!p.fellBack)
         #expect(p.regs == [HotkeyRegistration(code: 0x35, mods: 0, id: dismissHotkeyID)])   // Esc only
-        #expect(p.taps == [.fn: 1, .option: 3, .shift: wishOptionKey])   // W21: 1 = fn, 3 = ⌥
+        #expect(p.taps == [.fn: 1, .option: 3, .shift: wishOptionKey])   // 1 = fn, 3 = ⌥
     }
     @Test func tapsFallBackToOptionDigitsWithoutTheEventTap() {
         let p = hotkeyPlan(optionKeys: [1, 3], hotkeys: .defaults, tapsAvailable: false)
@@ -180,7 +180,7 @@ import OISettings
         #expect(!p.fellBack)
         #expect(p.regs == [HotkeyRegistration(code: 0x26, mods: 0x1200, id: 1),   // ⌃⇧J
                            HotkeyRegistration(code: 0x0C, mods: 0x0800, id: dismissHotkeyID)])
-        #expect(p.taps == [.ctrl: 2, .shift: wishOptionKey])                                           // option 2 = default ⌃ tap (W21)
+        #expect(p.taps == [.ctrl: 2, .shift: wishOptionKey])                                           // option 2 = default ⌃ tap
         #expect(!p.regs.contains { $0.code == 0x32 })   // wish (⌥`) reserved, not registered
     }
     @Test func collisionFallsBackToDefaults() {
@@ -243,7 +243,7 @@ import OISettings
         _ = d.flagsChanged(ctrl, at: 1.0)
         _ = d.flagsChanged([.control, .option], at: 1.05)        // ⌃ then ⌥
         _ = d.flagsChanged(ctrl, at: 1.1)                        // ⌥ released first
-        #expect(d.flagsChanged([], at: 1.15) == [.ctrl, .option]) // W11: a SET, never option 1 or 2
+        #expect(d.flagsChanged([], at: 1.15) == [.ctrl, .option]) // a SET, never option 1 or 2
         _ = d.flagsChanged([.command, .shift], at: 2.0)          // pressed together
         #expect(d.flagsChanged([], at: 2.1) == nil)
         _ = d.flagsChanged([.shift, .control], at: 3.0)           // ⇧⌃ together: not a tap
@@ -611,7 +611,7 @@ private func tmpDataDir() -> URL {
     @Test func defaultColourPerKey() {
         let hud = HUDSettings()
         let c = (1...4).map { OptionColors.color(forOption: $0, positions: pos, hud: hud)?.dark }
-        #expect(c == ["#F5A9C8", "#9CC3FF", "#FFE08A", "#A6E3A1"])   // W21: 1 fn pink, 2 ⌃ blue, 3 ⌥ yellow, 4 ⌘ green
+        #expect(c == ["#F5A9C8", "#9CC3FF", "#FFE08A", "#A6E3A1"])   // 1 fn pink, 2 ⌃ blue, 3 ⌥ yellow, 4 ⌘ green
         #expect(OptionColors.color(forOption: wishOptionKey, positions: pos, hud: hud) == nil)
         // stable: the same key gets the same colour whatever else is shown
         let two = FixedSlots.positions(hotkeys: .defaults, slots: HUDSettings.defaultSlots)

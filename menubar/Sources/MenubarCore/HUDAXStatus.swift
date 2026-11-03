@@ -26,6 +26,6 @@ public enum HUDAXStatus {
         let tail = st == .granted ? "" : " (needed to offer page buttons)"
         return MenuEntry(id: "perm.hudax", title: "\(st.symbol) Page actions: Accessibility for oi-hud — \(st.detail)\(tail) · open pane…",
                          kind: .action(.openAccessibility), indent: 1,
-                         tooltip: "System Settings → Privacy & Security → Accessibility → enable oi-hud. W16: the HUD reads the Safari page's buttons (labels only) and presses the one you tap.")
+                         tooltip: "System Settings → Privacy & Security → Accessibility → enable oi-hud. The HUD reads the Safari page's buttons (labels only) and presses the one you tap.")
     }
 }

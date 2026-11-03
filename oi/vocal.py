@@ -1,4 +1,4 @@
-"""`oi vocal-send` (W12): deliver a "Send a vocal to…" transcript to ONE fleet agent's inbox.
+"""`oi vocal-send`: deliver a "Send a vocal to…" transcript to ONE fleet agent's inbox.
 
 oi-hud records the voice note (on-device dictation, audio kept in vocals/<ts>-<slug>.caf, 0600), writes the
 transcript next to it (.txt) and runs `oi vocal-send --to <slug> --text-file <f> [--audio <caf>] [--app A]
@@ -28,11 +28,11 @@ one becomes the token `vocal:<slug>` (oi.normalise).
 
 Long vocals:
 oi-hud records up to settings `vocal.max_s` (default 300 s, a countdown in the last 15 s). The transcript is
-on-device, already cut in recogniser segments by oi-hud (W20), so this side only sees text: `MAX_CHARS` fits a
+on-device, already cut in recogniser segments by oi-hud, so this side only sees text: `MAX_CHARS` fits a
 5-minute dictation. The line goes on the relay command's STDIN (never in argv, so no argument-length cap) or
 into the inject file in ONE write.
 
-Screenshot offer (same vocal, "ce serait bien que ça propose d'envoyer un screenshot"): `oi vocal-send` (the
+Screenshot offer (a voice note may carry a screenshot of the screen): `oi vocal-send` (the
 HUD's vocal:<slug> path, `offer_shot`) asks the outward gate with the option "Joindre une capture de l'écran",
 OFF by default, one key (C) or a click to include. It is offered only when a capture is safe now (`shot_offer_ok`:
 settings `vocal.shot_offer` and `shots.enabled` on, not paused, a fresh oi live context, the front app not
@@ -59,7 +59,7 @@ from zoneinfo import ZoneInfo
 from . import gate, paths, settings
 
 RELAY_CMD = os.path.expanduser(os.environ.get("OI_RELAY_CMD", "~/.local/bin/agent-send"))   # your relay command
-FROM = "atlas"
+FROM = "user"              # the sender name the relay command gets (--from): settings.json `vocal.from`
 SCRUB_ENV = ("TELEGRAM_STATE_DIR", "TELEGRAM_BOT_TOKEN", "GH_TOKEN", "GITHUB_TOKEN")
 TIMEOUT_S = 30
 MAX_CHARS = 16000          # a 5-minute French dictation is ~5000 chars (vocal.max_s up to 900 s)
@@ -80,17 +80,13 @@ def _remote(slug: str, name: str, host: str) -> dict:
     return {"name": name, "kind": "a2a", "script": RELAY_CMD, "to": host, "state_dir": f"/opt/agents/{slug}/inbox"}
 
 
-# EXAMPLE fleet: replace it with your own agents in settings.json `vocal_recipients` (a slug set to null removes one).
+# EXAMPLE agents (fictional): replace them with your own in settings.json `vocal_recipients` (a slug set to null
+# removes one). One on this Mac (an inject file), two on another host (the relay command). Keep in step with
+# settings/Sources/OISettings/VocalRecipients.swift (the HUD picker and the menu bar list them).
 DEFAULT_RECIPIENTS: dict[str, dict] = {
     "atlas": {"name": "Atlas", "kind": "inject", "path": os.path.expanduser("~/.claude/channels/atlas/inject")},
-    "juno": {"name": "Juno", "kind": "inject", "path": os.path.expanduser("~/.claude/channels/juno/inject")},
     "nova": _remote("nova", "Nova", "agent-host"),
     "orion": _remote("orion", "Orion", "agent-host"),
-    "lyra": _remote("lyra", "Lyra", "agent-host"),
-    "iris": _remote("iris", "Iris", "agent-host"),
-    "vega": _remote("vega", "Vega", "studio-host"),
-    "hera": _remote("hera", "Hera", "laptop-host"),
-    "echo": _remote("echo", "Echo", "laptop-host"),
 }
 
 
@@ -125,13 +121,22 @@ def recipients(raw_settings: dict | None = None) -> dict[str, dict]:
     return out
 
 
-def command(spec: dict, sender: str = FROM) -> list[str] | None:
+def sender(raw: dict | None = None) -> str:
+    """Who the vocals and screenshots come from, for the relay command's `--from`: settings.json `vocal.from` (a slug),
+    else FROM."""
+    v = ((raw if raw is not None else _raw_settings()).get("vocal") or {})
+    s = v.get("from") if isinstance(v, dict) else None
+    return s if isinstance(s, str) and _SLUG.match(s) else FROM
+
+
+def command(spec: dict, sender_name: str | None = None) -> list[str] | None:
     """argv of the relay command for an "a2a" recipient (the line goes on its stdin); None for "inject"."""
     if spec["kind"] != "a2a":
         return None
+    sender_name = sender_name or sender()
     script = spec["script"]
     head = ["python3", script] if script.endswith(".py") else [script]
-    return head + ["--to", spec["to"], "--state-dir", spec["state_dir"], "--from", sender]
+    return head + ["--to", spec["to"], "--state-dir", spec["state_dir"], "--from", sender_name]
 
 
 def clean(text: str | None) -> str | None:
@@ -168,7 +173,8 @@ def payload(text: str, *, app: str | None, host: str | None, desk: int | None, w
 
 def vocal_settings(raw: dict | None) -> dict:
     """settings.json `vocal`, python's keys (wrongly typed = default): {"shot_offer": true, "shot_safe_hosts":
-    ["host", ...]}. Its `max_s` (the recording limit, default 300, clamped 15-900) belongs to oi-hud
+    ["host", ...]}; `from` (the sender slug) is read by `sender()`.
+    Its `max_s` (the recording limit, default 300, clamped 15-900) belongs to oi-hud
     (OISettings.vocalMaxS)."""
     out = {k: (list(v) if isinstance(v, list) else v) for k, v in VOCAL_DEFAULTS.items()}
     v = (raw or {}).get("vocal")

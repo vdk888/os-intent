@@ -1,4 +1,4 @@
-"""W18: wish -> action. Tiers (local / Laya / Claude), FR+EN aliases, JSON validation, confirm gating,
+"""wish -> action. Tiers (local / Laya / Claude), FR+EN aliases, JSON validation, confirm gating,
 fallback, learning, the socket hook. Synthetic data only; no app is opened and nothing is sent."""
 from __future__ import annotations
 

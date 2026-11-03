@@ -3,7 +3,7 @@ import Testing
 @testable import MenubarCore
 import OISettings
 
-/// W24: the Settings window's Proactive section: settings.json `proactive` (python-owned), every source
+/// the Settings window's Proactive section: settings.json `proactive` (python-owned), every source
 /// off by default, only the edited keys written, the rest of `proactive` (folders, cockpit, feeds) kept.
 @Suite struct W24ProactiveSettingsTests {
     typealias F = SettingsForm

@@ -168,8 +168,7 @@ object per line in each direction. Keep the connection open: the reply to a `sho
 
 ## Wish (W6): "tell me what you wanted", at any moment
 
-The user: "always have the option to open dictation or writing to write what I would have liked, as a
-quick action option at any point".
+Goal: dictating or writing what you would have liked is always one quick action away.
 
 - **One key while the HUD is up (W11).** A bare ⇧ tap while the HUD is visible opens the wish panel
   (`hotkeys.wish_visible`, default `{"tap":"shift"}`; the wish capsule's badge shows ⇧). It is part of the
@@ -246,7 +245,7 @@ The caller decides what to show; `oi-hud` only shows it and reports the outcome.
 
 ## Send a vocal to… (W12)
 
-The user 20/10 15:45 Paris: "one always the same: send a vocal to, and when i press it i have to choose one of you guys".
+One slot is always the same: "send a vocal to…", which then asks which agent.
 
 - **Option.** Always drawn at 7:30 (below-left, the mirror of the wish at 4:30) while the HUD is up: mic icon + its
   key, neutral colour. Key = `hotkeys.vocal`, default **⌃ and ⌥ pressed together, then released** (the W11 set-tap
@@ -258,8 +257,8 @@ The user 20/10 15:45 Paris: "one always the same: send a vocal to, and when i pr
   the passive monitors deliberately never read a key code. It cannot be verified without a physical press either.
   So the default is the ⌃+⌥ set tap; a chord can be set in Hotkeys… (e.g. ⌃⌥V).
 - **Picker.** Press → the HUD turns into the agent picker in the SAME fixed places, each capsule = the agent's
-  initial (a disc in the key's colour) + first name: fn Atlas (left), ⌃ Nova (top), ⌥ Orion (right), ⌘ Lyra (bottom);
-  the vocal key again → Vega, Juno, Iris, Hera; again → Echo; again → page 1. A live show on screen is
+  initial (a disc in the key's colour) + first name, the first four recipients on fn (left), ⌃ (top), ⌥ (right),
+  ⌘ (bottom); the vocal key again → the next four; and so on, then page 1. A live show on screen is
   answered `dismissed: vocal`; new shows are `dropped: vocal` while the picker or the recording is up. Esc, ttl,
   typing or fast travel away cancel.
 - **Recording.** The agent's key (or a click) → a panel at the pointer: "To Nova" in the key's colour, the live
@@ -284,7 +283,7 @@ The user 20/10 15:45 Paris: "one always the same: send a vocal to, and when i pr
   only after Enter, when this panel is closed, so typing a c can never toggle it. A typed vocal is sent with
   `--typed`: the line then starts "[Message typed by the user, …]" (hud-log row `"typed": true`); `oi-hud state` shows
   `vocal: "typing:<slug>"`.
-- **Delivery.** oi-hud runs `<repo_dir>/projects/os-intent/.venv/bin/oi vocal-send --to <slug> --text-file <txt>
+- **Delivery.** oi-hud runs `<repo_dir>/.venv/bin/oi vocal-send --to <slug> --text-file <txt>
   --audio <caf> --app <front app> --desk <k>` off the main thread, with TELEGRAM_STATE_DIR / TELEGRAM_BOT_TOKEN /
   GH_TOKEN / GITHUB_TOKEN removed (`OI_VOCAL_BIN` overrides the binary, `OI_VOCAL_DRY_RUN=1` adds `--dry-run`).
 - **Screenshot offer**. The outward gate's panel of that vocal also shows "Joindre une capture
@@ -299,12 +298,9 @@ The user 20/10 15:45 Paris: "one always the same: send a vocal to, and when i pr
   | slug | inbox |
   |---|---|
   | atlas | local inject `~/.claude/channels/atlas/inject` |
-  | juno | local inject `~/.claude/channels/juno/inject` |
-  | nova, orion, lyra, iris | relay command: `<relay> --to agent-host --state-dir /opt/agents/<slug>/inbox --from atlas` |
-  | vega | relay command: `<relay> --to studio-host --state-dir /opt/agents/vega/inbox --from atlas` |
-  | hera, echo | relay command: `<relay> --to laptop-host --state-dir /opt/agents/<slug>/inbox --from atlas` |
+  | nova, orion | relay command: `<relay> --to agent-host --state-dir /opt/agents/<slug>/inbox --from <sender>` |
 
-  (example table.) `<relay>` is a command you provide (`script` per recipient, default `$OI_RELAY_CMD` or
+  (example table; `<sender>` = settings `vocal.from`, default "user".) `<relay>` is a command you provide (`script` per recipient, default `$OI_RELAY_CMD` or
   `~/.local/bin/agent-send`; a `.py` runs with python3): it receives the line on stdin and delivers it however you
   like (ssh to the host and append to the agent's inbox, a signed relay, a queue).
 
@@ -326,7 +322,7 @@ The user 20/10 15:45 Paris: "one always the same: send a vocal to, and when i pr
 
 ## Claude-assisted options (W14)
 
-The user: "if i press 'respond to email' option, for longer, it also writes the response with context in mind".
+Goal: a longer press on "respond to email" also writes the response, with the context in mind.
 - An option sent with `"claude": true` has a Claude-assisted variant: HOLD its modifier alone ≥ `hud.long_press_ms`
   (settings.json, default 600, clamped 400-3000) and release, or right-click / ⌥-click its capsule. A ring fills
   around the capsule while the modifier is held (drawn after 150 ms, so a normal tap never flashes it). A short tap
@@ -342,8 +338,8 @@ The user: "if i press 'respond to email' option, for longer, it also writes the 
 
 ## Glide: hold ⌥⌘, rest, chain, release (W15)
 
-The user: "when i hold option + cmd ... i can move the mouse pointer to an option, and if i stay it triggers
-context enrichment with claude, so i can chain clicks in relevant context, low distance". A marking menu:
+Goal: hold option + cmd, move the pointer to an option and stay on it: Claude enriches it with follow-ups, so
+clicks chain in context over a short distance. A marking menu:
 - TAP ⌥⌘ (released < 250 ms) = the W11 summon, unchanged. HOLD ⌥⌘ ≥ 250 ms (nothing else pressed before) = the
   glide: the summon is answered as usual but the cross stays FIXED at the press point (no leash), with no ttl and no
   pointer-travel hide while the keys are held. Only a set of two or more modifiers can be held (a ⇧ summon cannot).

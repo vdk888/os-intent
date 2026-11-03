@@ -4,7 +4,7 @@ import HUDCore
 import OISettings
 
 /// Bare modifier taps through a passive (listen-only) session event tap on flagsChanged, keyDown,
-/// mouse-down and scroll (W11), fed to a HUDCore.TapDetector. Two instances in oi-hud:
+/// mouse-down and scroll, fed to a HUDCore.TapDetector. Two instances in oi-hud:
 /// - W9 the OPTION taps (⌃ ⌥ ⌘ fn = options 1-4): exists ONLY while the HUD is on screen,
 ///   `start()` on show, `stop()` on every hide (invisible = inert, logged "taps OFF");
 /// - W10 the SUMMON tap (W11 default: the ⌥+⌘ set tap): created once when the daemon starts and kept while it
@@ -27,21 +27,21 @@ final class ModifierTapMonitor {
     private let offLine: String
     /// Delivered on the main queue, after the event callback has returned (W9 review fix).
     var onTap: ((Set<TapModifier>) -> Void)?
-    /// W14: the long-press detector (the option taps only; nil = off). Fed with the same events.
+    /// the long-press detector (the option taps only; nil = off). Fed with the same events.
     var longPress: LongPressDetector?
-    /// W14: a completed long press (one option modifier held alone ≥ hud.long_press_ms), on the main queue.
+    /// a completed long press (one option modifier held alone ≥ hud.long_press_ms), on the main queue.
     var onLongPress: ((TapModifier) -> Void)?
 
-    /// W15: the summon SET held ≥ 250 ms (the summon tap only; nil = off). Fed with the same events.
+    /// the summon SET held ≥ 250 ms (the summon tap only; nil = off). Fed with the same events.
     var hold: SetHoldDetector?
-    /// W15: a hold began (the set has been down 250 ms; its release will not be a tap), on the main queue.
+    /// a hold began (the set has been down 250 ms; its release will not be a tap), on the main queue.
     var onHoldStart: (() -> Void)?
-    /// W15: the hold ended (the set released); `downAt` = when the set went down (uptime).
+    /// the hold ended (the set released); `downAt` = when the set went down (uptime).
     var onHoldEnd: ((TimeInterval) -> Void)?
-    /// W15: a key went down during the hold (Esc, a chord): cancel the glide.
+    /// a key went down during the hold (Esc, a chord): cancel the glide.
     var onHoldInterrupt: (() -> Void)?
 
-    /// W14: the modifier held and the progress ring's fill, for the HUD's 60 Hz tick.
+    /// the modifier held and the progress ring's fill, for the HUD's 60 Hz tick.
     func longPressProgress(at t: TimeInterval) -> (mod: TapModifier, fill: Double)? { longPress?.progress(at: t) }
 
     /// `onLine`: logged when the tap is created; `offLine`: logged once when it cannot be.
@@ -52,7 +52,7 @@ final class ModifierTapMonitor {
     /// Creates the tap (idempotent). False = not permitted / not created (logged once per state change).
     func start() -> Bool {
         if port != nil { return true }
-        // W15: modifiers already down (⌥⌘ still held after a glide summon) never make a tap / long press / hold
+        // modifiers already down (⌥⌘ still held after a glide summon) never make a tap / long press / hold
         let now = HeldModifiers(cgEventFlags: UInt64(CGEventSource.flagsState(.combinedSessionState).rawValue))
         detector.prime(now)
         longPress?.prime(now)
@@ -67,7 +67,7 @@ final class ModifierTapMonitor {
             report(false, offLine + " (Input Monitoring not granted to oi-hud: System Settings → Privacy & Security → Input Monitoring)")
             return false
         }
-        let types: [UInt32] = [CGEventType.flagsChanged.rawValue] + TapDetector.spoilerEventTypes   // + scrollWheel (W11)
+        let types: [UInt32] = [CGEventType.flagsChanged.rawValue] + TapDetector.spoilerEventTypes   // + scrollWheel
         let mask = types.reduce(CGEventMask(0)) { $0 | (CGEventMask(1) << CGEventMask($1)) }
         guard let p = CGEvent.tapCreate(tap: .cgSessionEventTap, place: .headInsertEventTap, options: .listenOnly,
                                         eventsOfInterest: mask, callback: modifierTapCallback,
@@ -145,7 +145,7 @@ final class ModifierTapMonitor {
         }
     }
 
-    /// W15: the hold timer (main queue, as the tap callback): the set still down, nothing else → a hold.
+    /// the hold timer (main queue, as the tap callback): the set still down, nothing else → a hold.
     /// Its release is then not a tap (the summon tap is spoiled here).
     private func checkHold() {
         guard port != nil, hold?.fire(at: ProcessInfo.processInfo.systemUptime) == true else { return }

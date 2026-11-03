@@ -13,7 +13,7 @@ from datetime import date, datetime, timedelta, timezone
 from pathlib import Path
 
 from . import aw, page_actions, paths, settings
-from .proactive import store as evt_store   # W24
+from .proactive import store as evt_store
 from .vocab import TokenRow, iso_utc, parse_ts, slug, validate
 
 TITLE_APPS = frozenset({"Notion", "Mail", "Terminal", "Claude", "Telegram"})
@@ -32,8 +32,8 @@ SRC_PREFIXES = (
     ("oi-watcher-space", "oi-space"),
     ("oi-watcher-key", "oi-key"),
     ("oi-watcher-safari", "oi-safari"),
-    ("oi-watcher-click", "oi-click"),     # W16
-    ("oi-watcher-shot", "oi-shot"),          # W17
+    ("oi-watcher-click", "oi-click"),
+    ("oi-watcher-shot", "oi-shot"),
 )
 
 
@@ -195,7 +195,7 @@ def key_tokens(events: list[Ev], denylist=DENYLIST) -> list[TokenRow]:
 
 
 def click_tokens(events: list[Ev], denylist=DENYLIST) -> list[TokenRow]:
-    """W16: oi-watcher click rows {"host","role","label"} -> `click:<host>/<role>:<label-slug>`
+    """oi-watcher click rows {"host","role","label"} -> `click:<host>/<role>:<label-slug>`
     (app Safari, src oi-click). Safari denylisted -> nothing; a row that does not validate is dropped. A click on a
     destructive button (close, delete, cancel, supprimer, ...: page_actions.DESTRUCTIVE) is dropped too: it never
     becomes a moment, a label or a Markov catalogue entry, so it is never learnt (incident 2026-10-21)."""
@@ -209,7 +209,7 @@ def click_tokens(events: list[Ev], denylist=DENYLIST) -> list[TokenRow]:
             out.append(_row(e.ts, e.end, tok, "Safari", "oi-click", e.raw_id))
     return out
 def shot_tokens(events: list[Ev]) -> list[TokenRow]:
-    """W17: oi-watcher screenshot events ({"kind": "shot", "src", "path"}) -> `shot:new` (the path stays raw)."""
+    """oi-watcher screenshot events ({"kind": "shot", "src", "path"}) -> `shot:new` (the path stays raw)."""
     return [_row(e.ts, e.ts, "shot:new", None, "oi-shot", e.raw_id) for e in events if e.data.get("kind") == "shot"]
 
 
@@ -226,7 +226,7 @@ def wish_tokens(rows: list[dict]) -> list[TokenRow]:
         if not isinstance(text, str) or not text.strip():
             continue
         tok = f"wish:{slug(text) or 'untitled'}"
-        act = r.get("action") if isinstance(r.get("action"), dict) else None   # W18: a resolved wish = a strong
+        act = r.get("action") if isinstance(r.get("action"), dict) else None   # a resolved wish = a strong
         if act and isinstance(act.get("target"), str) and slug(act["target"]):   # label: its slug names the target
             tok = f"wish:{slug(act['target'])}"
         if not validate(tok):
@@ -242,8 +242,8 @@ def read_wishes(day: str) -> list[dict]:
     return _read_rows(paths.wishes_dir() / f"{day}.jsonl")
 
 
-# W21b: how a hud-log row numbers its options. 1 = by rank (rows before W21, written without the field),
-# 2 = by key (W21: fn 1, ⌃ 2, ⌥ 3, ⌘ 4; `pressed:<k>` and options[].key name the key).
+# how a hud-log row numbers its options. 1 = by rank (rows before W21, written without the field),
+# 2 = by key (fn 1, ⌃ 2, ⌥ 3, ⌘ 4; `pressed:<k>` and options[].key name the key).
 HUD_NUMBERING = 2
 
 
@@ -263,7 +263,7 @@ def hud_tokens(rows: list[dict]) -> list[TokenRow]:
     ts + latency_ms (src "oi-hud", dur 0), W15 + `hud:glide:<depth>` for a glide. Rows that were not shown (gate, dry run, HUD dropped) give nothing."""
     out: list[TokenRow] = []
     for r in rows:
-        if r.get("kind") == "vocal":                      # W12: a sent voice note -> vocal:<slug>
+        if r.get("kind") == "vocal":                      # a sent voice note -> vocal:<slug>
             out.extend(vocal_tokens([r]))
             continue
         if r.get("shown") is not True:
@@ -287,7 +287,7 @@ def hud_tokens(rows: list[dict]) -> list[TokenRow]:
             tok = "hud:dismissed"
         if tok and validate(tok):
             out.append(_row(t2, t2, tok, None, "oi-hud", None))
-        g = r.get("glide")                                 # W15: the glide's depth (training signal)
+        g = r.get("glide")                                 # the glide's depth (training signal)
         if isinstance(g, dict) and isinstance(g.get("depth"), int) and validate(f"hud:glide:{g['depth']}"):
             out.append(_row(t2, t2, f"hud:glide:{g['depth']}", None, "oi-hud", None))
     return out
@@ -385,8 +385,8 @@ BUILDERS = {
     "oi-safari": safari_tokens,
     "oi-space": space_tokens,
     "oi-key": key_tokens,
-    "oi-click": click_tokens,             # W16
-    "oi-shot": shot_tokens,                  # W17
+    "oi-click": click_tokens,
+    "oi-shot": shot_tokens,
 }
 
 
@@ -431,7 +431,7 @@ def build_day(day: str, title_apps=TITLE_APPS, denylist=None) -> tuple[Path, lis
         hud = read_hud_log(ctx.isoformat())
         rows.extend(hud_tokens(hud))
         presses |= page_press_times(hud)
-        rows.extend(evt_store.tokens(evt_store.read_day(ctx.isoformat())))   # W24: proactive events
+        rows.extend(evt_store.tokens(evt_store.read_day(ctx.isoformat())))   # proactive events
     rows.sort(key=lambda r: r["ts"])
     rows = drop_undone(rows, presses)                                         # regretted page presses: never learnt
     rows = [r for r in rows if r["ts"].startswith(day)]

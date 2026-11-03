@@ -2,7 +2,7 @@ import AppKit
 import HUDCore
 import QuartzCore
 
-/// W17: the screenshot note panel (Annotate / the tier-2 Claude note), the wish panel's look with a
+/// the screenshot note panel (Annotate / the tier-2 Claude note), the wish panel's look with a
 /// multi-line field: title ("→ Atlas · Claude note"), the note (editable, prefilled), "Enter sends · ⇧Enter new
 /// line · Esc cancels". Takes keyboard focus without activating oi-hud (same trick as the wish panel). The
 /// reply goes back on the connection that asked: `note` (Enter) or `dismissed`. The text is never logged.

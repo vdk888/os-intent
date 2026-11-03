@@ -1,13 +1,13 @@
-"""W22b: `oi onboard` is now an AGENTIC session — Claude reads the person's memory, wiki, mails and Notion; this module keeps the validators it relies on and the W22 deterministic path,
+"""`oi onboard` is now an AGENTIC session — Claude reads the person's memory, wiki, mails and Notion; this module keeps the validators it relies on and the W22 deterministic path,
 `oi onboard --offline`, described below.
 
-W22: `oi onboard --offline` — a short conversation with Claude that gathers the person's context (opt-in sources,
+`oi onboard --offline` — a short conversation with Claude that gathers the person's context (opt-in sources,
 read-only, summarised then discarded) and writes `profile.yaml` + `starter_catalogue.yaml` (oi/starter.py) so the
 HUD can propose useful actions before any history exists.
 
-The user: an onboarding at first launch so the tool is useful from day one and
-shareable — "Lena, architect → SketchUp, 3D render requests to her cloud; us → our agent team". The Q&A also asks what deserves attention vs noise → attention priors in profile.yaml (W24's
-relevance gate starts from them).
+Goal: an onboarding at first launch so the tool is useful from day one, for anyone (an architect → SketchUp and
+render requests; a team of agents → the roster). The Q&A also asks what deserves attention vs noise → attention
+priors in profile.yaml (the proactive relevance gate starts from them).
 
 Flow (each step skippable; Ctrl-C = nothing written):
   1. the privacy statement, then each SOURCE with its privacy line and an explicit y/N (installed apps: always);
@@ -335,7 +335,7 @@ def read_source(key: str, deny: list[str]) -> dict:
     return {"why": "no connector on this Mac (stub)"}
 
 
-# ---- privacy gate (W25) ------------------------------------------------------------------------------------
+# ---- privacy gate ------------------------------------------------------------------------------------
 
 def gate_sources(src: dict, cfg: dict) -> dict:
     """Drop every name / host naming a local-only domain or client (W25 pack.leaks)."""
@@ -591,7 +591,26 @@ def _strs(v, n: int = 30, m: int = 80) -> list[str]:
 
 _EMAIL = re.compile(r"^[^@\s]+@[^@\s]+\.[a-z]{2,}$", re.I)
 _SCHEME = re.compile(r"^[a-z][a-z0-9+.-]{1,30}://\S*$", re.I)
-_BAD_SCHEMES = ("file", "javascript", "data", "http", "https", "ssh", "x-apple.systempreferences")
+# A deeplink must open the app it is offered for: its scheme is the app's own name (letters and digits, lowercased:
+# "SketchUp" -> sketchup://) or one listed here for that app. Anything else (another app's handler, file:, smb:, a
+# browser URL...) is dropped: the catalogue comes from a Claude run that read untrusted mail / notes.
+APP_SCHEMES: dict[str, tuple[str, ...]] = {
+    "Visual Studio Code": ("vscode",), "Zoom": ("zoommtg", "zoomus"), "Microsoft Teams": ("msteams",),
+    "Things3": ("things",), "Things 3": ("things",), "Apple Music": ("music",),
+}
+# Never, even for their own app: built-in handlers that act (run a shortcut, place a call, open settings / files).
+DENIED_SCHEMES = frozenset({"shortcuts", "workflow", "facetime", "facetime-audio", "facetime-group", "tel", "sms",
+                            "x-apple.systempreferences", "file", "javascript", "data", "ssh", "smb", "afp", "ftp"})
+
+
+def deeplink_ok(app: str, deeplink: str) -> bool:
+    """`deeplink` is a custom-scheme URL that belongs to `app` (allowlist, see APP_SCHEMES)."""
+    if not _SCHEME.match(deeplink):
+        return False
+    scheme = deeplink.split(":", 1)[0].lower()
+    if scheme in DENIED_SCHEMES:
+        return False
+    return scheme == re.sub(r"[^a-z0-9]", "", app.lower()) or scheme in APP_SCHEMES.get(app, ())
 
 
 def validate_item(it, *, apps: set[str], agents: set[str], cfg: dict, terms: list[str]) -> dict | None:
@@ -610,7 +629,7 @@ def validate_item(it, *, apps: set[str], agents: set[str], cfg: dict, terms: lis
             return None
         params["app"] = app
         dl = _s(p.get("deeplink"), 200)
-        if dl and _SCHEME.match(dl) and dl.split(":", 1)[0].lower() not in _BAD_SCHEMES:
+        if dl and deeplink_ok(app, dl):
             params["deeplink"] = dl
     elif prim == "url.open":
         href = starter.safe_href(_s(p.get("href") or p.get("url"), 300))
@@ -901,7 +920,7 @@ def _source_count(k: str, v: dict) -> dict:
 def write(profile: dict, catalogue: dict, out_dir: Path | None = None) -> tuple[Path, Path]:
     d = out_dir or paths.data_dir()
     pp, cp = d / starter.PROFILE, d / starter.CATALOGUE
-    head = "# Written by `oi onboard` (W22). On this Mac only; no document content. Re-run to rebuild.\n"
+    head = "# Written by `oi onboard`. On this Mac only; no document content. Re-run to rebuild.\n"
     for p, data in ((pp, profile), (cp, catalogue)):
         if out_dir is None:
             starter._write_private(p, head + yaml.safe_dump(data, allow_unicode=True, sort_keys=False, width=120))
@@ -941,7 +960,7 @@ def converse(io: IO, *, preset: dict | None = None, use_claude: bool = True, ask
     roster_ok = has_roster if has_roster is not None else bool(_agents_for(True))
     team = preset.get("team")
     if team is None:
-        team = roster_ok and io.yes("Do you work with your agent team (the roster: Atlas, Nova, Orion, Lyra, …)?")
+        team = roster_ok and io.yes("Do you work with your agent team (the roster: Atlas, Nova, Orion, …)?")
     confirmed: set[tuple[str, str]] = set()
     if use_claude:
         cfg = ca.claude_settings()
@@ -972,18 +991,38 @@ def summary_lines(catalogue: dict) -> list[str]:
     return out
 
 
-def cmd_onboard(a: argparse.Namespace) -> int:
-    if not (a.offline or a.no_claude or a.sources_file):      # W22b: the agentic session (oi/onboard_agent)
+CLAUDE_OPT_IN = ("Claude is off (Settings → Claude). Turn it on so Claude reads the sources you choose and builds\n"
+                 "your starter actions? Your context then goes to your own `claude -p` (Anthropic). No = a shorter,\n"
+                 "local onboarding on this Mac only.")
+
+
+def claude_opt_in(io: IO) -> bool:
+    """Onboarding with Claude off: ask once (y/N). Yes = settings `claude.enabled` true; no (or no terminal) = False."""
+    if ca.claude_settings().get("enabled"):
+        return True
+    io.say(CLAUDE_OPT_IN)
+    if not io.yes("Turn Claude on?"):
+        io.say("Claude stays off: the local onboarding runs instead.\n")
+        return False
+    oi_settings.set_claude_enabled(True)
+    io.say("Claude is on (menu bar → Settings → Claude turns it off again).\n")
+    return True
+
+
+def cmd_onboard(a: argparse.Namespace, io: IO | None = None) -> int:
+    io = io or IO()
+    if not (a.offline or a.no_claude or a.sources_file) and not claude_opt_in(io):
+        a.offline = True                                    # Claude declined: the local builder, never a dead end
+    if not (a.offline or a.no_claude or a.sources_file):      # the agentic session (oi/onboard_agent)
         from .onboard_agent import agent
         preset = yaml.safe_load(Path(a.answers).read_text(encoding="utf-8")) or {} if a.answers else {}
-        return agent.session(IO(), model=a.model, dry_run=a.dry_run, preset=preset,
+        return agent.session(io, model=a.model, dry_run=a.dry_run, preset=preset,
                              out_dir=Path(a.out).expanduser() if a.out else None)
     cfg = ca.claude_settings()
     use_claude = bool(cfg.get("enabled")) and not a.no_claude
     preset = {}
     if a.answers:
         preset = yaml.safe_load(Path(a.answers).read_text(encoding="utf-8")) or {}
-    io = IO()
     if a.sources_file:      # a synthetic person: their source summaries instead of this Mac's
         sources = yaml.safe_load(Path(a.sources_file).read_text(encoding="utf-8")) or {}
         answers, team = dict(preset.get("answers") or {}), bool(preset.get("team"))
@@ -1014,10 +1053,10 @@ def cmd_onboard(a: argparse.Namespace) -> int:
 
 
 def register(sub) -> None:
-    so = sub.add_parser("onboard", help="W22b: Claude reads your memory, wiki, mail, Notion -> profile.yaml + "
-                                       "starter_catalogue.yaml (--offline: the W22 local conversation)")
+    so = sub.add_parser("onboard", help="Claude reads your memory, wiki, mail, Notion -> profile.yaml + "
+                                       "starter_catalogue.yaml (--offline: the local conversation)")
     so.add_argument("--offline", action="store_true",
-                    help="W22 deterministic path: questionnaire + names-only sources (+ one synthesis call unless "
+                    help="the deterministic path: questionnaire + names-only sources (+ one synthesis call unless "
                          "--no-claude); no agent")
     so.add_argument("--model", help="the agent's model (default: settings onboarding.model, else sonnet)")
     so.add_argument("--answers", help="YAML {answers: {job: …}, sources: [memory, wiki, mail, notion, activity, …], "
@@ -1031,7 +1070,7 @@ def register(sub) -> None:
     so.add_argument("--out", help="write the two files here instead of the data dir")
     so.add_argument("--dry-run", action="store_true", help="print the catalogue; write nothing")
     so.set_defaults(func=cmd_onboard)
-    sp = sub.add_parser("starter-preview", help="W22: what the starter catalogue proposes in a context (labels only)")
+    sp = sub.add_parser("starter-preview", help="what the starter catalogue proposes in a context (labels only)")
     sp.add_argument("--app")
     sp.add_argument("--host")
     sp.add_argument("--hour", type=int, help="local hour (default now)")

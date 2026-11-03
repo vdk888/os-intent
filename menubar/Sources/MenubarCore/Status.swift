@@ -144,7 +144,7 @@ public enum LoginState: Equatable, Sendable {
     case enabled
     case disabled
 
-    /// Launch at login = the LaunchAgent only (W9: the SMAppService login item is gone, one
+    /// Launch at login = the LaunchAgent only (the SMAppService login item is gone, one
     /// mechanism): ON when the plist is installed and not `launchctl disable`d.
     public static func resolve(agentInstalled: Bool, agentDisabled: Bool?) -> LoginState {
         guard agentInstalled else { return .notInstalled }
@@ -166,10 +166,10 @@ public struct Status: Equatable, Sendable {
     public var rebuilding: Bool
     public var lastRebuild: String?
     public var denylistCount: Int
-    public var live: LiveStatus? = nil    // W8: status/oi-live.json (LiveStatus.swift)
+    public var live: LiveStatus? = nil    // status/oi-live.json (LiveStatus.swift)
     public var liveNow: Date = Date()     // when `live` was read (staleness check)
-    public var hudAX: PermState = .unknown("HUD silent")   // W16: status/oi-hud.json (HUDAXStatus.swift)
-    public var onboarded: Bool = false    // W22: <data dir>/profile.yaml exists (Onboarding.swift)
+    public var hudAX: PermState = .unknown("HUD silent")   // status/oi-hud.json (HUDAXStatus.swift)
+    public var onboarded: Bool = false    // <data dir>/profile.yaml exists (Onboarding.swift)
     public var laya: LayaSwitchStatus? = nil   // `oi laya-switch status --json` (LayaSwitch.swift); nil = n/a
     public var layaBusy: Bool = false          // an `oi laya-switch on|off` is running
 

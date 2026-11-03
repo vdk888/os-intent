@@ -1,12 +1,12 @@
-"""W25: the context pack — what the runtime model knows about the moment (≤ 1.5k tokens).
+"""the context pack — what the runtime model knows about the moment (≤ 1.5k tokens).
 
 Sections, most important first (a section that does not fit the budget is cut, then dropped):
   Now          front app, page host, desk, Paris time (per call, never cached)
   Dispatch     the armed "pass me to" agent (oi.orchestrator.dispatch), when any
-  Talking to   the agent the moment is about (glide under an agent, a screenshot note), from the roster
+  Talking to the agent the moment is about (glide under an agent, a screenshot note), from the roster
   Path         the glide's path chain ("Mail > Forward to Nova")
-  Mail sender  the selected mail's sender + subject, and their wiki people / client page (excerpt)
-  Wiki notes   top-3 wiki snippets for the moment (oi.rag warm search: app, host, subject, path, wish)
+  Mail sender the selected mail's sender + subject, and their wiki people / client page (excerpt)
+  Wiki notes top-3 wiki snippets for the moment (oi.rag warm search: app, host, subject, path, wish)
   Habits       "from <context> the user usually goes next to …" (the last HABIT_DAYS days of tokens)
   After event  W24: "after a mail event (client) the user usually: …" (Markov counts at the proactive event token)
   Events       W24: the recent proactive events ("18:02 mail (client) from Sam: <subject>"; a gated one =
@@ -320,7 +320,7 @@ class Packer:
             out.append(("Wiki notes", "\n".join(notes)))
         if part.get("habits"):
             out.append(("Habits", part["habits"]))
-        if isinstance(g.get("event_habit"), str) and g["event_habit"]:         # W24
+        if isinstance(g.get("event_habit"), str) and g["event_habit"]:
             out.append(("After event", g["event_habit"]))
         ev_lines = [str(x)[:200] for x in (g.get("events") or []) if isinstance(x, str) and not leaks(x, cfg, terms)]
         if ev_lines:

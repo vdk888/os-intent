@@ -6,34 +6,57 @@ import OISettings
 // W12 "Send a vocal to…"
 
 @Suite struct VocalPickerTests {
+    /// a larger fictional team, to page through (the shipped default is three agents)
+    static let team = ["atlas:Atlas", "nova:Nova", "orion:Orion", "lyra:Lyra", "vega:Vega", "juno:Juno", "iris:Iris",
+                       "hera:Hera", "echo:Echo"].map { p -> VocalAgent in
+        let s = p.split(separator: ":"); return VocalAgent(String(s[0]), String(s[1])) }
+
+    @Test func defaultsAreTheSharedThreeAgentExample() {
+        #expect(VocalPicker.defaultAgents.map(\.slug) == ["atlas", "nova", "orion"])
+        #expect(VocalPicker.defaultAgents.map(\.slug) == VocalRecipients.defaults.map(\.slug))
+        #expect(VocalPicker.pageCount(VocalPicker.defaultAgents) == 1)
+        let p = VocalPicker.page(0, in: VocalPicker.defaultAgents)
+        #expect(p.count == 3 && p[.fn]?.slug == "atlas" && p[.ctrl]?.slug == "nova" && p[.option]?.slug == "orion")
+        #expect(VocalPicker.nextPage(0, in: VocalPicker.defaultAgents) == 0)
+    }
+
+    @Test func theSettingsListFeedsThePicker() {
+        var s = OISettings()
+        s.vocalRecipients = .object(["orion": .null, "sam": .object(["name": .string("Sam")])])
+        #expect(VocalPicker.fromSettings(s).map(\.slug) == ["atlas", "nova", "sam"])
+        #expect(VocalPicker.fromSettings(OISettings()) == VocalPicker.defaultAgents)
+    }
+
     @Test func pagesAndSlotMapping() {
-        #expect(VocalPicker.pageCount == 3)
-        let p1 = VocalPicker.page(0)
+        let t = Self.team
+        #expect(VocalPicker.pageCount(t) == 3)
+        let p1 = VocalPicker.page(0, in: t)
         #expect(p1[.fn]?.slug == "atlas" && p1[.ctrl]?.slug == "nova" && p1[.option]?.slug == "orion" && p1[.cmd]?.slug == "lyra")
-        let p2 = VocalPicker.page(1)
+        let p2 = VocalPicker.page(1, in: t)
         #expect(p2[.fn]?.slug == "vega" && p2[.ctrl]?.slug == "juno" && p2[.option]?.slug == "iris"
                 && p2[.cmd]?.name == "Hera")
-        let p3 = VocalPicker.page(2)
+        let p3 = VocalPicker.page(2, in: t)
         #expect(p3.count == 1 && p3[.fn]?.slug == "echo")
-        #expect(VocalPicker.nextPage(0) == 1 && VocalPicker.nextPage(1) == 2 && VocalPicker.nextPage(2) == 0)   // wraps
-        #expect(Set(VocalPicker.agents.map(\.slug)).count == 9)
+        #expect(VocalPicker.nextPage(0, in: t) == 1 && VocalPicker.nextPage(1, in: t) == 2
+                && VocalPicker.nextPage(2, in: t) == 0)   // wraps
     }
 
     @Test func optionsSitAtTheFixedPlacesOfTheirModifier() {
-        // defaults (W21): option 1 fn left, 2 ⌃ top, 3 ⌥ right, 4 ⌘ bottom
-        let o = VocalPicker.options(page: 0, hotkeys: .defaults)
+        // defaults: option 1 fn left, 2 ⌃ top, 3 ⌥ right, 4 ⌘ bottom
+        let t = Self.team
+        let o = VocalPicker.options(page: 0, hotkeys: .defaults, in: t)
         #expect(o.map(\.key) == [1, 2, 3, 4])
-        #expect(o.map(\.label) == ["Atlas", "Nova", "Orion", "Lyra"])            // W21: the page reads in key order
+        #expect(o.map(\.label) == ["Atlas", "Nova", "Orion", "Lyra"])            // the page reads in key order
         #expect(o.map(\.icon) == ["initial:A", "initial:N", "initial:O", "initial:L"])
         let pos = FixedSlots.positions(hotkeys: .defaults, slots: HUDSettings.defaultSlots)
         #expect(pos[o.first { $0.label == "Atlas" }!.key] == .left)       // fn left
         #expect(pos[o.first { $0.label == "Nova" }!.key] == .top)        // ⌃ top
         #expect(pos[o.first { $0.label == "Orion" }!.key] == .right)       // ⌥ right
         #expect(pos[o.first { $0.label == "Lyra" }!.key] == .bottom)     // ⌘ bottom
-        #expect(VocalPicker.options(page: 2, hotkeys: .defaults) == [HUDOption(key: 1, label: "Echo", icon: "initial:E")])
-        #expect(VocalPicker.agent(forOptionKey: 1, page: 0, hotkeys: .defaults)?.slug == "atlas")
-        #expect(VocalPicker.agent(forOptionKey: 2, page: 1, hotkeys: .defaults)?.slug == "juno")
-        #expect(VocalPicker.agent(forOptionKey: 2, page: 2, hotkeys: .defaults) == nil)
+        #expect(VocalPicker.options(page: 2, hotkeys: .defaults, in: t) == [HUDOption(key: 1, label: "Echo", icon: "initial:E")])
+        #expect(VocalPicker.agent(forOptionKey: 1, page: 0, hotkeys: .defaults, in: t)?.slug == "atlas")
+        #expect(VocalPicker.agent(forOptionKey: 2, page: 1, hotkeys: .defaults, in: t)?.slug == "juno")
+        #expect(VocalPicker.agent(forOptionKey: 2, page: 2, hotkeys: .defaults, in: t) == nil)
     }
 
     @Test func swappedOrChordOptionsFollowTheModifier() {
@@ -54,9 +77,7 @@ import OISettings
         var f = VocalFlow()
         #expect(f.handle(.enter).isEmpty && f.state == .idle)            // nothing while idle
         #expect(f.handle(.vocalKey) == [.showPicker(page: 0)] && f.stateName == "picking:1")
-        #expect(f.handle(.vocalKey) == [.showPicker(page: 1)])
-        #expect(f.handle(.vocalKey) == [.showPicker(page: 2)])
-        #expect(f.handle(.vocalKey) == [.showPicker(page: 0)])           // wraps to page 1
+        #expect(f.handle(.vocalKey) == [.showPicker(page: 0)])           // one page (three agents): wraps to page 1
         #expect(f.handle(.pick(nova)) == [.closePicker, .startRecording(nova)] && f.stateName == "recording:nova")
         #expect(f.handle(.pick(nova)).isEmpty)                            // no second pick while recording
         #expect(f.handle(.vocalKey) == [.send(nova)] && f.state == .idle)
@@ -149,7 +170,7 @@ import OISettings
         #expect(!hotkeyPlan(optionKeys: [1], hotkeys: .defaults).regs.contains { $0.id == vocalHotkeyID })
     }
 
-    @Test func vocalToCommand() throws {   // W22
+    @Test func vocalToCommand() throws {
         #expect(try decodeCommand(Data(#"{"cmd":"vocal_to","pick":"nova"}"#.utf8)) == .vocalTo(slug: "nova"))
         #expect(throws: CommandError.unknownAgent("bob")) { try decodeCommand(Data(#"{"cmd":"vocal_to","pick":"bob"}"#.utf8)) }
         #expect(throws: CommandError.unknownAgent("")) { try decodeCommand(Data(#"{"cmd":"vocal_to"}"#.utf8)) }
@@ -177,7 +198,7 @@ import OISettings
                          radius: 80, capsuleHeight: 32) { _ in 100 }
 
     @Test func hitTestPerCapsuleShape() {
-        #expect(capsuleHit((0, -80), slots: slots) == 2)              // ⌃ top (W21: 2)
+        #expect(capsuleHit((0, -80), slots: slots) == 2)              // ⌃ top (2)
         #expect(capsuleHit((80, 0), slots: slots) == 3)               // ⌥ right (side = max(80, 66))
         #expect(capsuleHit((0, 80), slots: slots) == 4)               // ⌘ bottom
         #expect(capsuleHit((-80, 0), slots: slots) == 1)              // fn left
@@ -208,7 +229,6 @@ import OISettings
     }
 }
 
-// W20
 @Suite struct DictationSegmentsTests {
     @Test func segmentsAreConcatenatedWithASpace() {
         var d = DictationSegments()
@@ -278,7 +298,7 @@ import OISettings
         #expect(a?.first?.initial == "A")
     }
 
-    @Test func invalidSpecsKeepTheFleetRoster() {
+    @Test func invalidSpecsKeepTheDefaultRoster() {
         for bad in [nil, "", "atlas", "Atlas:Atlas", "atlas:", "atlas:A,atlas:B", "a b:Atlas", "x:" + String(repeating: "n", count: 21),
                     (1...13).map { "a\($0):A" }.joined(separator: ","), "atlas:Atlas,"] {
             #expect(VocalPicker.parseAgents(bad) == nil)
@@ -289,6 +309,6 @@ import OISettings
     @Test func stateCarriesTheRosterNames() {
         let line = HUDEvent.state(HUDStateInfo(visible: false, options: [], hudEnabled: true, wishHotkey: "⌥`",
                                                wishRegistered: true, wishPanel: "closed")).jsonLine()
-        #expect(line.contains(#""agents":["Atlas","Nova","Orion","Lyra""#))
+        #expect(line.contains(#""agents":["Atlas","Nova","Orion"]"#))
     }
 }

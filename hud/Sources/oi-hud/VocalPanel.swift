@@ -3,7 +3,7 @@ import HUDCore
 import OISettings
 import QuartzCore
 
-/// W12: the recording panel of "Send a vocal to…". Takes keyboard focus (Enter sends, Esc
+/// the recording panel of "Send a vocal to…". Takes keyboard focus (Enter sends, Esc
 /// cancels) without activating oi-hud when it can, like the wish panel. Shows the agent (initial in its
 /// key's colour + "To Nova"), the live on-device transcript and the hint. Owns its own Dictation (the
 /// wish panel's class: on-device, fr-FR then en-US, here settings `vocal.max_s` (default 5 min) and the audio
@@ -35,7 +35,7 @@ final class VocalPanelController: NSObject, NSTextFieldDelegate {
     private let transcript = NSTextField(wrappingLabelWithString: "")   // made editable in build()
     private let hint = NSTextField(labelWithString: "")
     private let mic = NSImageView()
-    private let listening = NSTextField(labelWithString: "listening…")   // W20
+    private let listening = NSTextField(labelWithString: "listening…")
     private var hideSeq = 0
     private var activatedSelf = false
     private var tick: Timer?
@@ -121,7 +121,7 @@ final class VocalPanelController: NSObject, NSTextFieldDelegate {
 
     private func build() {
         let size = VocalPanelController.size
-        // W19: Liquid Glass on macOS 26+ (NSGlassEffectView), else the HUD material as before
+        // Liquid Glass on macOS 26+ (NSGlassEffectView), else the HUD material as before
         let bg: NSView
         if let g = glassPanelRoot(size: size, radius: 14) {
             panel.contentView = g.root; bg = g.content
@@ -153,7 +153,7 @@ final class VocalPanelController: NSObject, NSTextFieldDelegate {
         mic.frame = NSRect(x: size.width - 40, y: size.height - 36, width: 24, height: 24)
         bg.addSubview(mic)
 
-        // W20: a small "listening…" next to the mic, softly pulsing while the recording runs (static with Reduce Motion)
+        // a small "listening…" next to the mic, softly pulsing while the recording runs (static with Reduce Motion)
         listening.font = .systemFont(ofSize: 11, weight: .medium)
         listening.textColor = NSColor.systemRed.withAlphaComponent(0.9)
         listening.alignment = .right

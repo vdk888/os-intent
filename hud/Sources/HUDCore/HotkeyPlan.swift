@@ -11,7 +11,7 @@ public let dismissHotkeyID: UInt32 = 100
 
 /// What to arm for one `show`:
 /// - `regs`: Carbon hotkeys — the chord options (ids 1-4), dismiss (id 100) and, W12, a chord vocal key (id 400);
-/// - `taps`: bare modifier taps → option key (W9), served by the passive event tap; W11
+/// - `taps`: bare modifier taps → option key, served by the passive event tap; W11
 ///   also `wish_visible` (default ⇧) → `wishOptionKey`: the wish option by one key while visible.
 /// When `tapsAvailable` is false (the event tap could not be created: Input Monitoring missing)
 /// every tap slot n falls back to the Carbon chord ⌥n, unless ⌥n is already taken by another action.
@@ -41,7 +41,7 @@ public func hotkeyPlan(optionKeys: [Int], hotkeys: HotkeySet, tapsAvailable: Boo
         }
     }
     if tapsAvailable, let t = set.wishVisible.tap, taps[t] == nil { taps[t] = wishOptionKey }
-    // W12: the vocal key as a chord (a set tap is matched on the option-tap monitor's sets instead)
+    // the vocal key as a chord (a set tap is matched on the option-tap monitor's sets instead)
     if !set.vocal.isTap, let code = set.vocal.keyCode {
         regs.append(HotkeyRegistration(code: UInt32(code), mods: set.vocal.carbonModifiers, id: vocalHotkeyID))
     }

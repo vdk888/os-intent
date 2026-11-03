@@ -2,7 +2,7 @@ import Foundation
 import Testing
 @testable import MenubarCore
 
-/// W8: the "Live predictor" row read from status/oi-live.json.
+/// the "Live predictor" row read from status/oi-live.json.
 @Suite struct LiveStatusTests {
     let now = ISO8601DateFormatter().date(from: "2026-10-20T12:00:10Z")!
     let utc = TimeZone(identifier: "UTC")!

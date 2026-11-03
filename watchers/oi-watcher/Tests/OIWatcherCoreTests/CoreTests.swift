@@ -90,7 +90,7 @@ struct BucketTests {
     @Test func createBody() {
         #expect(Buckets.createBody(kind: .safari, hostname: "h") ==
                 ["client": "oi-watcher", "type": "web.tab.current", "hostname": "h"])
-        #expect(Set(BucketKind.allCases.map(\.awType)).count == 6)   // W16: + ui.click, W17: + shot, + file
+        #expect(Set(BucketKind.allCases.map(\.awType)).count == 6)   // + ui.click, + shot, + file
     }
 }
 

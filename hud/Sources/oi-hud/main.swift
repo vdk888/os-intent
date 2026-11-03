@@ -15,14 +15,14 @@ usage:
                                         with --pick + --text, pick that agent and send --text as the transcript
                                         (no microphone; serve with OI_VOCAL_DRY_RUN=1 to send nothing)
   oi-hud debug-press --key K [--claude] [--socket PATH]
-                                        W14: press option K as its key would (--claude = the long-press variant)
+                                        press option K as its key would (--claude = the long-press variant)
   oi-hud debug-glide --path 2,1 [--cancel] [--socket PATH]
-                                        W15: a ⌥⌘ glide without keys: hold, rest on 2 until its sub-ring opens,
+                                        a ⌥⌘ glide without keys: hold, rest on 2 until its sub-ring opens,
                                         then on 2.1, release (= execute it; --cancel: release on empty space)
-  oi-hud page [--socket PATH]           W16: the daemon's snapshot of Safari's front page (buttons/links, frames)
-  oi-hud page-local                     W16: the same read in this process (uses ITS Accessibility grant)
+  oi-hud page [--socket PATH]           the daemon's snapshot of Safari's front page (buttons/links, frames)
+  oi-hud page-local                     the same read in this process (uses ITS Accessibility grant)
   oi-hud ax-press --role button|link --label "…" [--host H] [--dry-run] [--socket PATH]
-                                        W16: re-find + AXPress through the daemon (needs a fresh tap on that option)
+                                        re-find + AXPress through the daemon (needs a fresh tap on that option)
   oi-hud demo [--socket PATH]
   oi-hud speech-check                   dictation availability + permission status (never prompts)
   oi-hud --debug-wish "<text>"          write one wish row without the panel (tests), then exit
@@ -67,8 +67,8 @@ case "serve":
     let server = SocketServer(path: socketPath) { result, conn in controller.handle(result, from: conn) }
     controller.onWishSaved = { n in server.broadcast(.wish(textLen: n)) }
     controller.onSummon = { ts in server.broadcast(.summon(ts: ts)) }
-    server.onPageCommand = { cmd, conn in controller.handlePage(cmd, from: conn) }   // W16
-    let hudStatus = HUDStatusWriter(); hudStatus.start()                            // W16: status/oi-hud.json
+    server.onPageCommand = { cmd, conn in controller.handlePage(cmd, from: conn) }
+    let hudStatus = HUDStatusWriter(); hudStatus.start()                            // status/oi-hud.json
     do { try server.start() } catch { log("\(error)"); exit(1) }
     for sig in [SIGINT, SIGTERM] {
         signal(sig, SIG_IGN)
@@ -113,14 +113,14 @@ case "debug-glide":
     let cancel = boolFlag("--cancel") ? ",\"cancel\":true" : ""
     exit(sendAndPrint("{\"cmd\":\"debug_glide\",\"path\":[\(path.map(String.init).joined(separator: ","))]\(cancel)}",
                       socket: socketPath, timeout: 5))
-case "page":            // W16: the page snapshot as the daemon sees it (labels + frames, never page text)
+case "page":            // the page snapshot as the daemon sees it (labels + frames, never page text)
     exit(sendAndPrint("{\"cmd\":\"page\"}", socket: socketPath, timeout: 5))
 
-case "page-local":      // W16: the same read in THIS process (its own Accessibility grant), no daemon
+case "page-local":      // the same read in THIS process (its own Accessibility grant), no daemon
     print(PageAX.read().snap.jsonLine(), terminator: "")
     exit(0)
 
-case "ax-press":        // W16: through the daemon; without --dry-run it needs a fresh tap ticket
+case "ax-press":        // through the daemon; without --dry-run it needs a fresh tap ticket
     guard let role = flag("--role"), let label = flag("--label") else { print(usage); exit(64) }
     var cmd: [String: Any] = ["cmd": "ax_press", "role": role, "slug": PageLabel.slug(label),
                               "dry_run": boolFlag("--dry-run")]

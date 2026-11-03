@@ -89,7 +89,7 @@ private func slot(_ k: Int, _ x: Double, _ y: Double, w: Double = 120, h: Double
     @Test func subringItemsCarryTheirOwnCardTolerantly() throws {
         let line = #"{"cmd":"subring","path":[1],"options":[{"key":1,"label":"Atlas · 8","action":"telegram.chat","#
             + #""card":{"key":1,"what":"Atlas t'attend · 8 messages","why":{"page":"atlas_rnd/hot.md"}}},"#
-            + #"{"key":2,"label":"Eric","action":"telegram.chat","card":{"key":2,"what":" "}}]}"#
+            + #"{"key":2,"label":"Robin","action":"telegram.chat","card":{"key":2,"what":" "}}]}"#
         guard case .subring(let path, let opts) = try decodeCommand(Data(line.utf8)) else { Issue.record("not subring"); return }
         #expect(path == [1] && opts.count == 2)
         #expect(opts[0].card?.what == "Atlas t'attend · 8 messages" && opts[0].card?.why?.pageName == "hot")
@@ -99,7 +99,7 @@ private func slot(_ k: Int, _ x: Double, _ y: Double, w: Double = 120, h: Double
     @Test func hoveredItemCardLevel() {
         let card = ContextCard(key: 1, what: "Atlas t'attend", why: ContextWhy(page: "p.md"))
         let ring = SubRing(parent: [1], options: [HUDOption(key: 1, label: "Atlas · 8", card: card),
-                                                  HUDOption(key: 2, label: "Eric")], slots: [])
+                                                  HUDOption(key: 2, label: "Robin")], slots: [])
         #expect(ContextCardLevel.item(hover: [1, 1], rings: [ring], dwelt: nil).map { [$0.path, [$0.level]] } == [[1, 1], [2]])
         #expect(ContextCardLevel.item(hover: [1, 1], rings: [ring], dwelt: [1, 1])?.level == 3)
         #expect(ContextCardLevel.item(hover: [1, 2], rings: [ring], dwelt: nil) == nil)   // no card: the direction's

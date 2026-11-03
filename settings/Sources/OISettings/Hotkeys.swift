@@ -1,6 +1,6 @@
 import Foundation
 
-/// A bare modifier TAP (W9): the modifier goes down and up within 350 ms with no other key,
+/// A bare modifier TAP: the modifier goes down and up within 350 ms with no other key,
 /// click, scroll or modifier in between. For the HUD options 1-4 (only while the HUD is visible: oi-hud
 /// listens with a passive event tap, created on show and removed on hide) and, W10, for the
 /// SUMMON key (a permanent passive tap). W11: the summon key is a modifier
@@ -44,18 +44,18 @@ public enum TapModifier: String, CaseIterable, Codable, Sendable {
 public struct Hotkey: Codable, Equatable, Hashable, Sendable {
     public var modifiers: [String]
     public var key: String
-    /// Non-empty = a bare modifier tap (then `modifiers` is empty and `key` is ""): one modifier (W9),
-    /// or a SET pressed together (W11, summon only). Kept in `TapModifier.allCases` order.
+    /// Non-empty = a bare modifier tap (then `modifiers` is empty and `key` is ""): one modifier,
+    /// or a SET pressed together (summon only). Kept in `TapModifier.allCases` order.
     public private(set) var tapSet: [TapModifier]
 
     public init(_ modifiers: [String], _ key: String) {
         self.modifiers = Hotkey.normalise(modifiers); self.key = key; self.tapSet = []
     }
 
-    /// A bare modifier tap (W9).
+    /// A bare modifier tap.
     public static func tap(_ m: TapModifier) -> Hotkey { tapSet([m]) }
 
-    /// A modifier set tap (W11): every modifier of the set down together, then all released.
+    /// A modifier set tap: every modifier of the set down together, then all released.
     public static func tapSet(_ ms: [TapModifier]) -> Hotkey {
         var h = Hotkey([], ""); h.tapSet = TapModifier.allCases.filter { Set(ms).contains($0) }; return h
     }
@@ -91,7 +91,7 @@ public struct Hotkey: Codable, Equatable, Hashable, Sendable {
         }
         let c = try decoder.container(keyedBy: CodingKeys.self)
         if c.contains(.tap) {
-            // "ctrl" (W9) or ["option", "cmd"] (W11 set tap)
+            // "ctrl" or ["option", "cmd"] (W11 set tap)
             let names: [String]
             if let list = try? c.decode([String].self, forKey: .tap) { names = list }
             else { names = [try c.decode(String.self, forKey: .tap)] }
@@ -190,22 +190,22 @@ public struct Hotkey: Codable, Equatable, Hashable, Sendable {
 }
 
 /// The HUD hotkeys (settings.json `hotkeys`). `wish` opens the "tell me what you wanted" panel
-/// (W6): oi-hud keeps it registered for as long as the daemon runs, even with `hud_enabled` false.
-/// `wish_visible` (W11; default a bare ⇧ tap): the same panel by ONE key while
+///: oi-hud keeps it registered for as long as the daemon runs, even with `hud_enabled` false.
+/// `wish_visible` (default a bare ⇧ tap): the same panel by ONE key while
 /// the HUD is visible (the wish option's badge); a single-modifier tap only, armed only while visible
 /// (the same listen-only tap as the option taps). A file without it gets the default.
-/// `summon` (W10; W11 default: the ⌥+⌘ SET tap) opens the HUD with the current best
+/// `summon` (W11 default: the ⌥+⌘ SET tap) opens the HUD with the current best
 /// options at any time; oi-hud keeps it armed while the daemon runs, and ignores it when `hud_enabled`
-/// is false or `paused` is true. A file without `summon` gets the default. `vocal` (W12; default
+/// is false or `paused` is true. A file without `summon` gets the default. `vocal` (default
 /// the ⌃+⌥ SET tap) opens the "Send a vocal to…" agent picker while the HUD is visible; a SET tap or a
-/// chord only (a single-modifier tap is read as the default). A file without it gets the default. `"v": 3` (W11): a file
+/// chord only (a single-modifier tap is read as the default). A file without it gets the default. `"v": 3`: a file
 /// below v3 whose summon is the W10 default ⇧ tap (oi-menubar wrote it out on every save) reads as the
 /// new ⌥+⌘ default.
-/// W21: the option NUMBER is the KEY, never the rank:
+/// the option NUMBER is the KEY, never the rank:
 /// option 1 = fn, 2 = ⌃, 3 = ⌥, 4 = ⌘ (keyboard order, bottom row). A file below v4 whose options are
 /// exactly the W9 defaults (1 ⌃, 2 ⌥, 3 ⌘, 4 fn) reads as the W21 defaults (migrated once: the next save
 /// writes v4). Which prediction goes on which key is the driver's choice (`hud.fill_order`, see HUDSettings).
-/// W9: options 1-4 default to bare modifier taps ctrl / option / cmd / fn. The file carries
+/// options 1-4 default to bare modifier taps ctrl / option / cmd / fn. The file carries
 /// `"v": 2`; a file without it whose options are exactly the W5 defaults ⌥1-⌥4 (oi-menubar wrote
 /// them out on every save) is read as the new tap defaults, so the upgrade needs no manual edit.
 public struct HotkeySet: Codable, Equatable, Sendable {
@@ -220,23 +220,23 @@ public struct HotkeySet: Codable, Equatable, Sendable {
     public var vocal: Hotkey
 
     public static let defaults = HotkeySet(
-        option1: .tap(.fn), option2: .tap(.ctrl), option3: .tap(.option), option4: .tap(.cmd),   // W21
+        option1: .tap(.fn), option2: .tap(.ctrl), option3: .tap(.option), option4: .tap(.cmd),
         dismiss: Hotkey([], "Esc"), wish: Hotkey(["option"], "`"), summon: HotkeySet.defaultSummon,
         wishVisible: HotkeySet.defaultWishVisible, vocal: HotkeySet.defaultVocal)
 
-    /// W12: the permanent "Send a vocal to…" option (7:30). ⌃ and ⌥ pressed together, then
+    /// the permanent "Send a vocal to…" option (7:30). ⌃ and ⌥ pressed together, then
     /// released (every single modifier is taken by options 1-4 / ⇧ wish; caps lock is not used: see
     /// hud/README.md "Send a vocal to…"). Armed while the HUD is visible and during the vocal flow
     /// (picker: next page; recording: send). A chord works too.
     public static let defaultVocal = Hotkey.tapSet([.ctrl, .option])
 
-    /// W11: ⇧ tapped while the HUD is up opens the wish panel (⇧ is free since summon is ⌥+⌘).
+    /// ⇧ tapped while the HUD is up opens the wish panel (⇧ is free since summon is ⌥+⌘).
     public static let defaultWishVisible = Hotkey.tap(.shift)
 
-    /// W11: ⌥+⌘ pressed together, then released. A single ⌥ or ⌘ tap stays
+    /// ⌥+⌘ pressed together, then released. A single ⌥ or ⌘ tap stays
     /// an option selector (3, 4 since W21) while the HUD is visible; ⇧ is free again.
     public static let defaultSummon = Hotkey.tapSet([.option, .cmd])
-    /// W9-W20 option taps (option 1-4 = ⌃ ⌥ ⌘ fn), read as the W21 defaults from a file below v4.
+    /// The older option taps (option 1-4 = ⌃ ⌥ ⌘ fn), read as the defaults from a file below v4.
     public static let w9Options: [Hotkey] = [.tap(.ctrl), .tap(.option), .tap(.cmd), .tap(.fn)]
     /// The W10 default, read as `defaultSummon` from a file below v3.
     public static let w10Summon = Hotkey.tap(.shift)
@@ -248,7 +248,7 @@ public struct HotkeySet: Codable, Equatable, Sendable {
         return []
     }
 
-    /// The tap segments the Hotkeys window shows for an action (W11): options 1-4 the four single taps;
+    /// The tap segments the Hotkeys window shows for an action: options 1-4 the four single taps;
     /// summon ⌥⌘ (the default set) and ⇧, plus a "record tap" segment that captures any modifier set
     /// pressed together (`capturesTapSet`). Empty = chord only.
     public static func tapPresets(_ action: String) -> [Hotkey] {
@@ -269,7 +269,7 @@ public struct HotkeySet: Codable, Equatable, Sendable {
     public static let setTapActions: Set<String> = ["summon", "vocal"]
 
     /// Whether `h` (a tap) is allowed on `action`: options 1-4 take one of ⌃ ⌥ ⌘ fn; summon takes any
-    /// single tap or a SET of 2-3 modifiers (W11); vocal (W12) a SET of 2-3 modifiers only; dismiss and
+    /// single tap or a SET of 2-3 modifiers; vocal a SET of 2-3 modifiers only; dismiss and
     /// wish take no tap.
     public static func allowsTap(_ action: String, _ h: Hotkey) -> Bool {
         if h.isSetTap { return setTapActions.contains(action) && h.tapSet.count <= 3 }
@@ -284,12 +284,12 @@ public struct HotkeySet: Codable, Equatable, Sendable {
         return legacyChord(Int(action.dropFirst("option_".count)) ?? 1)
     }
 
-    /// The W5-W8 option defaults (⌥1-⌥4); also the Carbon fallback for a tap slot when the
+    /// The oldest option defaults (⌥1-⌥4); also the Carbon fallback for a tap slot when the
     /// event tap cannot be created (Input Monitoring missing).
     public static func legacyChord(_ n: Int) -> Hotkey { Hotkey(["option"], "\(n)") }
 
     /// Schema version written in `hotkeys.v`.
-    public static let version = 4   // W21: option numbers = keys (fn 1, ⌃ 2, ⌥ 3, ⌘ 4)
+    public static let version = 4   // option numbers = keys (fn 1, ⌃ 2, ⌥ 3, ⌘ 4)
 
     public init(option1: Hotkey, option2: Hotkey, option3: Hotkey, option4: Hotkey, dismiss: Hotkey, wish: Hotkey,
                 summon: Hotkey = HotkeySet.defaultSummon, wishVisible: Hotkey = HotkeySet.defaultWishVisible,
@@ -314,9 +314,9 @@ public struct HotkeySet: Codable, Equatable, Sendable {
         ("vocal", "Send a vocal to… (HUD up)"),
     ]
 
-    // W19: the Hotkeys… window names the
+    // the Hotkeys… window names the
     // options with their default modifier spelled out, "Option 2 (⌃ control)"; the other rows as `actions`.
-    public static let optionModifierNames: [Int: String] = [1: "fn", 2: "⌃ control", 3: "⌥ option", 4: "⌘ command"]   // W21
+    public static let optionModifierNames: [Int: String] = [1: "fn", 2: "⌃ control", 3: "⌥ option", 4: "⌘ command"]
     public static func windowLabel(_ action: String) -> String {
         let label = actions.first { $0.key == action }?.label ?? action
         guard action.hasPrefix("option_"), let n = Int(action.dropFirst(7)), let m = optionModifierNames[n] else { return label }
@@ -342,10 +342,10 @@ public struct HotkeySet: Codable, Equatable, Sendable {
         if v == nil, (1...4).allSatisfy({ option($0) == HotkeySet.legacyChord($0) }) {
             option1 = d.option1; option2 = d.option2; option3 = d.option3; option4 = d.option4
         }
-        if (v ?? 0) < 4, (1...4).allSatisfy({ option($0) == HotkeySet.w9Options[$0 - 1] }) {   // W21: renumber once
+        if (v ?? 0) < 4, (1...4).allSatisfy({ option($0) == HotkeySet.w9Options[$0 - 1] }) {   // renumber once
             option1 = d.option1; option2 = d.option2; option3 = d.option3; option4 = d.option4
         }
-        if (v ?? 0) < 3, summon == HotkeySet.w10Summon { summon = d.summon }   // W10 ⇧ default -> ⌥+⌘
+        if (v ?? 0) < 3, summon == HotkeySet.w10Summon { summon = d.summon }   // ⇧ default -> ⌥+⌘
     }
 
     public func encode(to encoder: Encoder) throws {

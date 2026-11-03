@@ -42,7 +42,7 @@ public struct LongPressDetector: Sendable {
 
     public mutating func reset() { held = []; holding = nil }
 
-    /// W15: started while modifiers are down: none of them is a long press.
+    /// started while modifiers are down: none of them is a long press.
     public mutating func prime(_ now: HeldModifiers) { held = now; holding = nil }
 
     /// The modifier being held and the ring's fill (0...1), nil when nothing is held or the ring is not due yet.

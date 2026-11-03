@@ -3,7 +3,7 @@ import Testing
 @testable import HUDCore
 import OISettings
 
-// W21: the option NUMBER is the KEY, never the rank — fn 1, ⌃ 2, ⌥ 3, ⌘ 4,
+// the option NUMBER is the KEY, never the rank — fn 1, ⌃ 2, ⌥ 3, ⌘ 4,
 // clockwise from the left. Everything that names an option by number follows the key.
 
 @Suite struct W21KeyNumberTests {

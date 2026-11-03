@@ -1,4 +1,4 @@
-"""W12: `oi vocal-send` — recipients, command construction, payload, empty guard, dry run, hud-log
+"""`oi vocal-send` — recipients, command construction, payload, empty guard, dry run, hud-log
 row and the `vocal:<slug>` token. NOTHING is ever sent: every test uses a fake runner / fake inject, and
 the real `_run` is replaced by a tripwire."""
 import os
@@ -38,13 +38,13 @@ def _send(slug, text="Bonjour Nova, peux-tu regarder la PR", runner=None, inject
 
 
 @pytest.mark.parametrize("slug,argv", [
-    ("nova", [RELAY, "--to", "agent-host", "--state-dir", "/opt/agents/nova/inbox", "--from", "atlas"]),
-    ("orion", [RELAY, "--to", "agent-host", "--state-dir", "/opt/agents/orion/inbox", "--from", "atlas"]),
-    ("lyra", [RELAY, "--to", "agent-host", "--state-dir", "/opt/agents/lyra/inbox", "--from", "atlas"]),
-    ("iris", [RELAY, "--to", "agent-host", "--state-dir", "/opt/agents/iris/inbox", "--from", "atlas"]),
-    ("vega", [RELAY, "--to", "studio-host", "--state-dir", "/opt/agents/vega/inbox", "--from", "atlas"]),
-    ("hera", [RELAY, "--to", "laptop-host", "--state-dir", "/opt/agents/hera/inbox", "--from", "atlas"]),
-    ("echo", [RELAY, "--to", "laptop-host", "--state-dir", "/opt/agents/echo/inbox", "--from", "atlas"]),
+    ("nova", [RELAY, "--to", "agent-host", "--state-dir", "/opt/agents/nova/inbox", "--from", "user"]),
+    ("orion", [RELAY, "--to", "agent-host", "--state-dir", "/opt/agents/orion/inbox", "--from", "user"]),
+    ("lyra", [RELAY, "--to", "agent-host", "--state-dir", "/opt/agents/lyra/inbox", "--from", "user"]),
+    ("iris", [RELAY, "--to", "agent-host", "--state-dir", "/opt/agents/iris/inbox", "--from", "user"]),
+    ("vega", [RELAY, "--to", "studio-host", "--state-dir", "/opt/agents/vega/inbox", "--from", "user"]),
+    ("hera", [RELAY, "--to", "laptop-host", "--state-dir", "/opt/agents/hera/inbox", "--from", "user"]),
+    ("echo", [RELAY, "--to", "laptop-host", "--state-dir", "/opt/agents/echo/inbox", "--from", "user"]),
 ])
 def test_a2a_command_per_recipient_text_on_stdin_only(slug, argv):
     f = Fake()
@@ -69,7 +69,16 @@ def test_local_recipients_use_the_inject_file(slug, path):
 
 def test_every_picker_agent_has_a_recipient():
     assert set(vocal.DEFAULT_RECIPIENTS) == {"atlas", "nova", "orion", "lyra", "vega", "juno", "iris",
-                                             "hera", "echo"}
+                                             "hera", "echo"}                  # the test team (conftest)
+
+
+def test_shipped_recipients_are_a_small_example_and_the_sender_is_a_setting():
+    from conftest import SHIPPED_CONTACT_MAP, SHIPPED_RECIPIENTS
+    assert set(SHIPPED_RECIPIENTS) == {"atlas", "nova", "orion"}
+    assert set(SHIPPED_CONTACT_MAP.values()) <= set(SHIPPED_RECIPIENTS)
+    assert vocal.FROM == "user" and vocal.sender({}) == "user"
+    assert vocal.sender({"vocal": {"from": "sam"}}) == "sam" and vocal.sender({"vocal": {"from": "Bad Name"}}) == "user"
+    assert vocal.command(vocal.DEFAULT_RECIPIENTS["nova"], "sam")[-2:] == ["--from", "sam"]
 
 
 def test_payload_format_paris_time_and_context():
@@ -159,7 +168,7 @@ def test_settings_override_recipients():
     }})
     assert t["nova"] == {"name": "Nova", "kind": "inject", "path": "/tmp/nova-inject"}
     assert "echo" not in t and t["orion"] == vocal.DEFAULT_RECIPIENTS["orion"]
-    assert vocal.command(t["nina"]) == ["/opt/send.sh", "--to", "m1", "--state-dir", "/n", "--from", "atlas"]
+    assert vocal.command(t["nina"]) == ["/opt/send.sh", "--to", "m1", "--state-dir", "/n", "--from", "user"]
     assert "Bad Slug" not in t
 
 
@@ -186,7 +195,7 @@ def test_dry_run_cli_prints_the_exact_command(tmp_path, capsys):
     rc = cli.main(["vocal-send", "--to", "nova", "--text-file", str(f), "--dry-run", "--app", "Mail", "--desk", "2"])
     assert rc == 0
     plan, result = [json.loads(l) for l in capsys.readouterr().out.strip().splitlines()]
-    assert plan["argv"] == [RELAY, "--to", "agent-host", "--state-dir", "/opt/agents/nova/inbox", "--from", "atlas"]
+    assert plan["argv"] == [RELAY, "--to", "agent-host", "--state-dir", "/opt/agents/nova/inbox", "--from", "user"]
     assert plan["env_unset"] == ["TELEGRAM_STATE_DIR", "TELEGRAM_BOT_TOKEN", "GH_TOKEN", "GITHUB_TOKEN"]
     assert plan["stdin"].endswith("context: Mail · desk 2] Salut Nova")
     assert result == {"ok": True, "to": "nova", "name": "Nova", "dry_run": True}

@@ -1,11 +1,11 @@
 import Foundation
 
-/// W10: the HUD options sit at FIXED places around the pointer,
+/// the HUD options sit at FIXED places around the pointer,
 /// keyed to the modifier that picks them, so the position is learned by muscle memory, not read.
 /// Clockwise from the left in keyboard order (bottom row fn ⌃ ⌥ ⌘; the user 15:45): fn left (9 o'clock),
 /// ⌃ top (12), ⌥ right (3), ⌘ bottom (6). An absent option leaves its place empty. Two more fixed
 /// places outside this map: the wish option at 4:30 (below-right) and, RESERVED for the upcoming
-/// permanent "Send a vocal to…" option (W12), 7:30 (below-left) — kept free, not configurable here.
+/// permanent "Send a vocal to…" option, 7:30 (below-left) — kept free, not configurable here.
 public enum SlotPosition: String, CaseIterable, Codable, Sendable {
     case left, top, right, bottom
 }
@@ -14,7 +14,7 @@ public enum SlotPosition: String, CaseIterable, Codable, Sendable {
 /// "colors": {"ctrl": {"light": "#4F86E8", "dark": "#9CC3FF"}, ...}}`.
 /// `slots`: the map must give the four option modifiers four different places; anything else (missing
 /// key, unknown name, two modifiers on one place) gives the defaults as a whole.
-/// `colors` (W11): one colour per option modifier (the colour = the key, stable across shows);
+/// `colors`: one colour per option modifier (the colour = the key, stable across shows);
 /// tolerant per entry (a missing or bad entry keeps that key's default; see `HUDColors`).
 public struct HUDSettings: Codable, Equatable, Sendable {
     public static let defaultSlots: [TapModifier: SlotPosition] = [.fn: .left, .ctrl: .top, .option: .right, .cmd: .bottom]
@@ -30,14 +30,14 @@ public struct HUDSettings: Codable, Equatable, Sendable {
     public var dwellMs: Int
     public static let defaultDwellMs = 500
     public static func clampDwell(_ v: Int) -> Int { min(max(v, 250), 2000) }
-    // W19: `auto_mode` = how `oi live` sends its automatic (gated) shows: "hint" (default: coloured
+    // `auto_mode` = how `oi live` sends its automatic (gated) shows: "hint" (default: coloured
     // dots, ⌥⌘ develops them), "full" (the cross, as before W19) or "off" (nothing; ⌥⌘ still summons).
     // `hint_ttl_ms` = how long the dots stay (default 4000 since W20, was 2500; clamped 500-10000). Read by the python driver;
     // kept here so a menu toggle writes them back unchanged.
     public static let autoModes = ["hint", "full", "off"]
     public static let defaultAutoMode = "hint"
     public var autoMode: String
-    public static let defaultHintTTLms = 4000      // W20: 2500 -> 4000 (the user: the dots were never seen)
+    public static let defaultHintTTLms = 4000      // 2500 -> 4000 (the user: the dots were never seen)
     public static func clampHintTTL(_ v: Int) -> Int { min(max(v, 500), 10_000) }
     public var hintTTLms: Int
     // end W19
@@ -52,7 +52,7 @@ public struct HUDSettings: Codable, Equatable, Sendable {
     /// so a menu save writes it back. Anything but a permutation of the four option modifiers gives the default.
     public static let defaultFillOrder: [TapModifier] = [.ctrl, .option, .cmd, .fn]
     public var fillOrder: [TapModifier]
-    /// W26: `hud` keys this struct does not know, kept as read and written back unchanged.
+    /// `hud` keys this struct does not know, kept as read and written back unchanged.
     public var extra: [String: JSONValue] = [:]
     /// The option key numbers in fill order ([2, 3, 4, 1] by default): the modifier's option number in
     /// `HotkeySet.defaults` (the number is the key).
@@ -70,10 +70,10 @@ public struct HUDSettings: Codable, Equatable, Sendable {
         self.colors = colors
         self.longPressMs = HUDSettings.clampLongPress(longPressMs)
         self.dwellMs = HUDSettings.clampDwell(dwellMs)
-        self.autoMode = HUDSettings.autoModes.contains(autoMode) ? autoMode : HUDSettings.defaultAutoMode   // W19
-        self.hintTTLms = HUDSettings.clampHintTTL(hintTTLms)                                                  // W19
-        self.hintDotSize = HUDSettings.clampHintDotSize(hintDotSize)                                          // W20
-        self.fillOrder = HUDSettings.validFillOrder(fillOrder) ? fillOrder : HUDSettings.defaultFillOrder      // W21
+        self.autoMode = HUDSettings.autoModes.contains(autoMode) ? autoMode : HUDSettings.defaultAutoMode
+        self.hintTTLms = HUDSettings.clampHintTTL(hintTTLms)
+        self.hintDotSize = HUDSettings.clampHintDotSize(hintDotSize)
+        self.fillOrder = HUDSettings.validFillOrder(fillOrder) ? fillOrder : HUDSettings.defaultFillOrder
     }
 
     public static func valid(_ m: [TapModifier: SlotPosition]) -> Bool {
@@ -81,9 +81,9 @@ public struct HUDSettings: Codable, Equatable, Sendable {
     }
 
     enum CodingKeys: String, CodingKey, CaseIterable { case slots, colors, longPressMs = "long_press_ms", dwellMs = "dwell_ms"
-        case autoMode = "auto_mode", hintTTLms = "hint_ttl_ms"   // W19
-        case hintDotSize = "hint_dot_size"                       // W20
-        case fillOrder = "fill_order" }                          // W21
+        case autoMode = "auto_mode", hintTTLms = "hint_ttl_ms"
+        case hintDotSize = "hint_dot_size"
+        case fillOrder = "fill_order" }
 
     public init(from decoder: Decoder) throws {
         let c = try decoder.container(keyedBy: CodingKeys.self)
@@ -96,10 +96,10 @@ public struct HUDSettings: Codable, Equatable, Sendable {
         let colors = (try? c.decodeIfPresent(HUDColors.self, forKey: .colors)) ?? nil
         let lp = (try? c.decodeIfPresent(Double.self, forKey: .longPressMs)) ?? nil
         let dw = (try? c.decodeIfPresent(Double.self, forKey: .dwellMs)) ?? nil
-        let am = (try? c.decodeIfPresent(String.self, forKey: .autoMode)) ?? nil      // W19
-        let ht = (try? c.decodeIfPresent(Double.self, forKey: .hintTTLms)) ?? nil     // W19
-        let ds = (try? c.decodeIfPresent(Double.self, forKey: .hintDotSize)) ?? nil   // W20
-        let fo = ((try? c.decodeIfPresent([String].self, forKey: .fillOrder)) ?? nil).map { $0.compactMap(TapModifier.init(name:)) }   // W21
+        let am = (try? c.decodeIfPresent(String.self, forKey: .autoMode)) ?? nil
+        let ht = (try? c.decodeIfPresent(Double.self, forKey: .hintTTLms)) ?? nil
+        let ds = (try? c.decodeIfPresent(Double.self, forKey: .hintDotSize)) ?? nil
+        let fo = ((try? c.decodeIfPresent([String].self, forKey: .fillOrder)) ?? nil).map { $0.compactMap(TapModifier.init(name:)) }
         self.init(slots: m, colors: colors ?? HUDColors(),
                   longPressMs: lp.map { $0.isFinite ? Int($0) : HUDSettings.defaultLongPressMs } ?? HUDSettings.defaultLongPressMs,
                   dwellMs: dw.map { $0.isFinite ? Int($0) : HUDSettings.defaultDwellMs } ?? HUDSettings.defaultDwellMs,
@@ -107,7 +107,7 @@ public struct HUDSettings: Codable, Equatable, Sendable {
                   hintTTLms: ht.map { $0.isFinite ? Int($0) : HUDSettings.defaultHintTTLms } ?? HUDSettings.defaultHintTTLms,
                   hintDotSize: ds.map { $0.isFinite ? Int($0) : HUDSettings.defaultHintDotSize } ?? HUDSettings.defaultHintDotSize,
                   fillOrder: fo ?? HUDSettings.defaultFillOrder)
-        extra = JSONValue.unknownKeys(decoder, known: Set(CodingKeys.allCases.map(\.rawValue)))   // W26
+        extra = JSONValue.unknownKeys(decoder, known: Set(CodingKeys.allCases.map(\.rawValue)))
     }
 
     public func encode(to encoder: Encoder) throws {
@@ -116,11 +116,11 @@ public struct HUDSettings: Codable, Equatable, Sendable {
         try c.encode(colors, forKey: .colors)
         try c.encode(longPressMs, forKey: .longPressMs)
         try c.encode(dwellMs, forKey: .dwellMs)
-        try c.encode(autoMode, forKey: .autoMode)      // W19
-        try c.encode(hintTTLms, forKey: .hintTTLms)    // W19
-        try c.encode(hintDotSize, forKey: .hintDotSize)  // W20
-        try c.encode(fillOrder.map(\.rawValue), forKey: .fillOrder)   // W21
-        try JSONValue.encodeExtra(extra, to: encoder)   // W26
+        try c.encode(autoMode, forKey: .autoMode)
+        try c.encode(hintTTLms, forKey: .hintTTLms)
+        try c.encode(hintDotSize, forKey: .hintDotSize)
+        try c.encode(fillOrder.map(\.rawValue), forKey: .fillOrder)
+        try JSONValue.encodeExtra(extra, to: encoder)
     }
 }
 
@@ -165,7 +165,7 @@ public struct HUDColor: Codable, Equatable, Sendable {
     }
 }
 
-/// settings.json `hud.colors` (W11, the user 2026-10-20 13:39Z: "a colour per key"): option modifier →
+/// settings.json `hud.colors` (a colour per key): option modifier →
 /// colour. Defaults are pastels: ⌃ blue, ⌥ yellow, ⌘ green, fn pink. Tolerant: each entry is read on its
 /// own; an unknown key name is ignored, a bad value keeps that key's default. Always written in full.
 public struct HUDColors: Codable, Equatable, Sendable {

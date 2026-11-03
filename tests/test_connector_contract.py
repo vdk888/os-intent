@@ -61,7 +61,7 @@ def test_mail_closed_is_unknown_state_and_health_info():
 def test_agents_connector():
     w = {"state": "off"}
     dock = {"off": 0, "on": 2, "broken": None}
-    s = sensors.AgentSensor(unread=lambda: {"Atlas - R&D": 2, "Nova - CEO": 0}, dock_badge=lambda: dock[w["state"]],
+    s = sensors.AgentSensor(unread=lambda: {"Atlas - Tools": 2, "Nova - Planning": 0}, dock_badge=lambda: dock[w["state"]],
                             running=lambda: True, outbound=None, names=lambda: NAMES)
     ev = check_connector(s, _cfg({}), lambda st: w.update(state=st), now=NOW)
     assert store.token(ev) == "evt:agent:atlas"
@@ -434,3 +434,56 @@ def test_decisions_sujet_label_that_leaks_falls_back_to_the_slug(monkeypatch):
     assert not ev["private"] and ev["ref"]["sujet"]["label"] == "partenariat-z"
     assert "zorbec" not in str(glide.event_card(ev)).lower()
     assert sensors.sujet_ref({"slug": "zorbec-deal"}, {}, lambda: WIKI) is None          # a leaking slug: no sujet
+
+
+# ---- dashboard bearer: https only, never forwarded to another origin ------------------------------------------
+
+def _serve(handler_cls):
+    import threading
+    from http.server import ThreadingHTTPServer
+    srv = ThreadingHTTPServer(("127.0.0.1", 0), handler_cls)
+    threading.Thread(target=srv.serve_forever, daemon=True).start()
+    return srv
+
+
+def test_http_json_refuses_a_plain_http_url_off_loopback():
+    assert sensors.http_json("http://dashboard.example/a.json", "tok", timeout=1) == (None, None)
+    assert sensors.bearer_url_ok("https://dashboard.example/a.json") and sensors.bearer_url_ok("http://127.0.0.1:9/x")
+    assert not sensors.bearer_url_ok("ftp://dashboard.example/x") and not sensors.bearer_url_ok("http://10.0.0.2/x")
+
+
+def test_http_json_drops_the_bearer_on_a_cross_origin_redirect():
+    from http.server import BaseHTTPRequestHandler
+    seen: list = []
+
+    class Target(BaseHTTPRequestHandler):
+        def do_GET(self):
+            seen.append((self.path, self.headers.get("Authorization")))
+            body = b'{"ok": true}'
+            self.send_response(200); self.send_header("Content-Length", str(len(body))); self.end_headers()
+            self.wfile.write(body)
+
+        def log_message(self, *a):
+            pass
+
+    target = _serve(Target)
+    tport = target.server_address[1]
+
+    class Redirector(BaseHTTPRequestHandler):
+        def do_GET(self):
+            loc = {"/same": f"http://127.0.0.1:{tport}/x",               # another port = another origin
+                   "/away": "http://dashboard.example/steal"}[self.path]
+            self.send_response(302); self.send_header("Location", loc); self.end_headers()
+
+        def log_message(self, *a):
+            pass
+
+    red = _serve(Redirector)
+    try:
+        base = f"http://127.0.0.1:{red.server_address[1]}"
+        assert sensors.http_json(base + "/same", "tok", timeout=5) == (200, {"ok": True})
+        assert seen == [("/x", None)]                                    # followed, without the bearer
+        code, body = sensors.http_json(base + "/away", "tok", timeout=5)
+        assert code == 302 and body is None and len(seen) == 1           # a non-https redirect is refused
+    finally:
+        red.shutdown(); target.shutdown()

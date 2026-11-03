@@ -83,7 +83,7 @@ Input Monitoring = `key_tap` (event tap active), Accessibility = `ax`, Automatio
 
 ## Onboarding… (W22)
 "Onboarding… (not done yet)" / "(redo)" (done = `<data>/profile.yaml` exists) writes `<data>/onboard.command` (0700:
-`OI_DATA_DIR=… <repo>/projects/os-intent/.venv/bin/oi onboard`) and opens it in Terminal. At the first launch with no
+`OI_DATA_DIR=… <repo>/.venv/bin/oi onboard`) and opens it in Terminal. At the first launch with no
 profile, an alert offers it once (`status/onboarding-offered` keeps it from coming back). Logic: `MenubarCore/Onboarding.swift`.
 
 ## settings.json

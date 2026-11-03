@@ -3,7 +3,7 @@ import Testing
 @testable import HUDCore
 import OISettings
 
-// W19: automatic shows become hints (dots); the summon key develops them into the full cross.
+// automatic shows become hints (dots); the summon key develops them into the full cross.
 
 private func opts(_ keys: [Int]) -> [HUDOption] { keys.map { HUDOption(key: $0, label: "o\($0)", icon: "sf:app") } }
 
@@ -94,7 +94,7 @@ private func opts(_ keys: [Int]) -> [HUDOption] { keys.map { HUDOption(key: $0, 
         }
         #expect(HintDotLayout.dotSize == 10 && HintDotLayout.radius == 22)       // W20 (was 6 pt at 16 pt)
     }
-    // W20: noticeable yet calm
+    // noticeable yet calm
     @Test func w20DotStyleContrastAndMotion() {
         let normal = HintDotLayout.style(increaseContrast: false)
         #expect(abs(normal.alpha - 0.85) < 0.001 && normal.whiteRing > 0 && normal.blackRing > 0)
@@ -113,10 +113,10 @@ private func opts(_ keys: [Int]) -> [HUDOption] { keys.map { HUDOption(key: $0, 
     }
 }
 
-@Suite struct OptionBadgeTests {   // W19: number first
+@Suite struct OptionBadgeTests {   // number first
     @Test func numberThenSymbol() {
         let d = HotkeySet.defaults
-        #expect(optionBadge(key: 1, symbol: d.option1.display) == "1 fn")   // W21: the number is the key
+        #expect(optionBadge(key: 1, symbol: d.option1.display) == "1 fn")   // the number is the key
         #expect(optionBadge(key: 2, symbol: d.option2.display) == "2 ⌃")
         #expect(optionBadge(key: 3, symbol: d.option3.display) == "3 ⌥")
         #expect(optionBadge(key: 4, symbol: d.option4.display) == "4 ⌘")
@@ -133,7 +133,7 @@ private func opts(_ keys: [Int]) -> [HUDOption] { keys.map { HUDOption(key: $0, 
         #expect(splitOptionBadge("⇧") == nil && splitOptionBadge("⌥2") == nil && splitOptionBadge("9 x") == nil)
     }
     @Test func hotkeysWindowLabels() {
-        #expect(HotkeySet.windowLabel("option_1") == "Option 1 (fn)")              // W21
+        #expect(HotkeySet.windowLabel("option_1") == "Option 1 (fn)")
         #expect(HotkeySet.windowLabel("option_2") == "Option 2 (⌃ control)")
         #expect(HotkeySet.windowLabel("option_3") == "Option 3 (⌥ option)")
         #expect(HotkeySet.windowLabel("option_4") == "Option 4 (⌘ command)")

@@ -27,7 +27,7 @@ def test_validator_catches_errors():
 
 def test_router_picks_C_in_safari_B_in_mail_and_A_otherwise():
     assert forms.route({"app": "Safari"})["form_id"] == "safari.next_page"
-    assert forms.route({"app": "Mail"})["form_id"] == "mail.next_action"     # W14
+    assert forms.route({"app": "Mail"})["form_id"] == "mail.next_action"
     for app in ["Code", None, "Chrome"]:
         assert forms.route({"app": app})["form_id"] == "generic.next_action"
 

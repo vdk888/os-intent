@@ -1,6 +1,6 @@
 import AppKit
 import HUDCore
-import OISettings   // W16: PageLabel
+import OISettings   // PageLabel
 
 /// W18 wish → action, the AppKit side: owns the resolver connection (`oi live` registers with
 /// `{"cmd":"resolver"}`), debounces the live preview (150 ms), sends `resolve` requests to that connection ONLY
@@ -18,7 +18,7 @@ final class WishResolveController {
     private var pendingAction: WishAction?
     private var shiftMonitor: Any?
     private var shiftTap = TapDetector()
-    /// W16: the page element of the action awaiting confirmation; the user's confirm issues its press ticket.
+    /// the page element of the action awaiting confirmation; the user's confirm issues its press ticket.
     private var pendingPress: String?
     var onConfirmPress: ((String) -> Void)?
     /// W18 follow-up: a cancelled confirm (Esc while "Working…") revokes the press ticket it issued.
@@ -36,7 +36,7 @@ final class WishResolveController {
             log("wish resolver registered")
         case .resolution(let r):
             let effects = machine.receive(r)
-            if r.state == .confirm, machine.isConfirming { pendingPress = PageLabel.target(r.press) != nil ? r.press : nil }   // W16
+            if r.state == .confirm, machine.isConfirming { pendingPress = PageLabel.target(r.press) != nil ? r.press : nil }
             apply(effects)
         case .debugWish(let text, let app, let enter, let confirm):
             conn.send(.ok)
@@ -109,7 +109,7 @@ final class WishResolveController {
             switch e {
             case .send(let req):
                 guard let r = resolver, !r.isClosed else { continue }
-                if req.confirmed, let p = pendingPress {                                         // W16: ticket first
+                if req.confirmed, let p = pendingPress {                                         // ticket first
                     pendingPress = nil; onConfirmPress?(p); issuedPress = (p, req.id)            // W18 follow-up
                 }
                 r.send(.resolve(req))

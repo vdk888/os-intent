@@ -1,7 +1,7 @@
 import Foundation
 import OISettings
 
-/// W26: the Settings… window's model. Pure (no AppKit): `init(_:)` reads the exposed keys out of
+/// the Settings… window's model. Pure (no AppKit): `init(_:)` reads the exposed keys out of
 /// settings.json, `apply(to:)` writes ONLY those keys back (everything else, unknown keys included, stays as
 /// read), `problems()` is the live validation (a form with problems is never written), `reset(_:)` puts one
 /// section back to its defaults. Keys and ranges are the ones the daemons read:
@@ -10,7 +10,7 @@ import OISettings
 ///   pointer_fast_px_s (oi-hud) · claude.enabled / enrich / local_only_domains (oi/claude_actions.py)
 ///   shots.enabled / clipboard (oi-watcher) / fallback_contact (oi/shots.py) · paused (all) · denylist_apps (watcher)
 ///   gate.outward (oi/gate.py: the outward gate; an object {"vocal": …} reads as on, a save of the toggle writes a bool)
-///   W24: proactive.sources.* / min_p / min_interval_min / quiet_hours / respect_focus (oi/proactive/config.py).
+///   proactive.sources.* / min_p / min_interval_min / quiet_hours / respect_focus (oi/proactive/config.py).
 public struct SettingsForm: Equatable, Sendable {
     public enum Section: String, CaseIterable, Sendable, Identifiable {
         case hud, timings, pointer, colors, fillOrder, keys, claude, screenshots, proactive, vocal, laya, privacy
@@ -19,7 +19,7 @@ public struct SettingsForm: Equatable, Sendable {
             switch self {
             case .hud: "HUD"; case .timings: "Timings"; case .pointer: "Pointer"; case .colors: "Colours"
             case .fillOrder: "Fill order"; case .keys: "Keys"; case .claude: "Claude"; case .screenshots: "Screenshots"
-            case .proactive: "Proactive"   // W24
+            case .proactive: "Proactive"
             case .vocal: "Vocal recipients"; case .laya: "Laya"; case .privacy: "Privacy"
             }
         }
@@ -45,7 +45,7 @@ public struct SettingsForm: Equatable, Sendable {
     public static let defaultHintCooldownS = 8                        // oi.settings GATE_DEFAULTS
     public static let claudeModel = "Sonnet"                          // runtime calls (commit c8ad0b0), read-only
     public static let defaultFallbackContact = "atlas"                 // oi.shots SHOT_DEFAULTS
-    // W24: oi/proactive/config.py DEFAULTS and RANGES
+    // oi/proactive/config.py DEFAULTS and RANGES
     public static let proactiveSources = ["mail", "agents", "files", "cockpit", "metrics", "markets", "decisions", "calendar", "prs"]
     public static let proactiveMinPctRange = 0...100                  // min_p × 100
     public static let proactiveIntervalRange = 0...240                // min_interval_min
@@ -80,7 +80,7 @@ public struct SettingsForm: Equatable, Sendable {
     public var paused: Bool
     public var denylistApps: [String]
     public var outwardGate: Bool            // gate.outward: ask before anything leaves the Mac (default on)
-    // Proactive (W24): every source off by default; quiet hours "" + "" = none (written as null)
+    // Proactive: every source off by default; quiet hours "" + "" = none (written as null)
     public var proactiveSources: [String: Bool]
     public var proactiveMinPct: Int
     public var proactiveIntervalMin: Int
@@ -100,8 +100,8 @@ public struct SettingsForm: Equatable, Sendable {
         colors = s.hud.colors.byModifier
         fillOrder = s.hud.fillOrder
         let c = SettingsForm.object(s.claude)
-        claudeEnabled = c["enabled"]?.boolValue ?? true
-        claudeEnrich = c["enrich"]?.boolValue ?? true
+        claudeEnabled = c["enabled"]?.boolValue ?? false   // opt-in: oi.claude_actions CLAUDE_DEFAULTS
+        claudeEnrich = c["enrich"]?.boolValue ?? false
         localOnlyDomains = SettingsForm.cleanDomains(c["local_only_domains"]?.stringsValue ?? []).domains
         shotsEnabled = s.shotFlags.files
         shotsClipboard = SettingsForm.object(s.shots)["clipboard"]?.boolValue ?? true
@@ -112,7 +112,7 @@ public struct SettingsForm: Equatable, Sendable {
         paused = s.paused
         denylistApps = s.denylistApps
         if case .bool(let b)? = s.gate?["outward"] { outwardGate = b } else { outwardGate = true }   // python: else on
-        // W24: `proactive` is python-owned (kept in OISettings.extra); wrongly typed = the reader's default
+        // `proactive` is python-owned (kept in OISettings.extra); wrongly typed = the reader's default
         let pr = SettingsForm.object(s.extra["proactive"])
         let src = SettingsForm.object(pr["sources"])
         proactiveSources = Dictionary(uniqueKeysWithValues: SettingsForm.proactiveSources.map { ($0, src[$0]?.boolValue ?? false) })
@@ -181,7 +181,7 @@ public struct SettingsForm: Equatable, Sendable {
         if s.shots != nil || !sh.isEmpty { s.shots = .object(sh) }
         if changed(\.paused) { s.paused = paused }
         if changed(\.denylistApps) { s.denylistApps = OISettings.cleanDenylist(denylistApps) }
-        // W24: proactive — per source, then the gate keys; the other keys of `proactive` stay as they are
+        // proactive — per source, then the gate keys; the other keys of `proactive` stay as they are
         var pr = SettingsForm.object(s.extra["proactive"])
         if changed(\.proactiveSources) {
             var src = SettingsForm.object(pr["sources"])
@@ -231,7 +231,7 @@ public struct SettingsForm: Equatable, Sendable {
         if !fc.isEmpty, fc.range(of: #"^[a-z][a-z0-9_-]{0,31}$"#, options: .regularExpression) == nil {
             p[.screenshots, default: []].append("Default contact must be an agent slug (e.g. atlas) or none.")
         }
-        range(proactiveMinPct, Self.proactiveMinPctRange, "Hint threshold", "%", .proactive)          // W24
+        range(proactiveMinPct, Self.proactiveMinPctRange, "Hint threshold", "%", .proactive)
         range(proactiveIntervalMin, Self.proactiveIntervalRange, "At most one hint every", "min", .proactive)
         let qs = quietStart.trimmingCharacters(in: .whitespaces), qe = quietEnd.trimmingCharacters(in: .whitespaces)
         if !(qs.isEmpty && qe.isEmpty) && !(Self.isHHMM(qs) && Self.isHHMM(qe)) {
@@ -305,21 +305,9 @@ public struct SettingsForm: Equatable, Sendable {
 
     /// The vocal recipients oi vocal-send knows: the defaults (oi/vocal.py DEFAULT_RECIPIENTS, the HUD picker
     /// order), overridden per slug by settings `vocal_recipients` (null removes, a new slug is appended).
-    public static let defaultRecipients: [(slug: String, name: String)] = [
-        ("atlas", "Atlas"), ("nova", "Nova"), ("orion", "Orion"), ("lyra", "Lyra"), ("vega", "Vega"),
-        ("juno", "Juno"), ("iris", "Iris"), ("hera", "Hera"), ("echo", "Echo"),
-    ]
-    public static func recipients(_ s: OISettings) -> [(slug: String, name: String)] {
-        var out = defaultRecipients
-        for (slug, spec) in object(s.vocalRecipients).sorted(by: { $0.key < $1.key }) {
-            if case .null = spec { out.removeAll { $0.slug == slug }; continue }
-            guard case .object(let o) = spec else { continue }
-            let name: String? = { if case .string(let n)? = o["name"], !n.isEmpty { return n }; return nil }()
-            if let i = out.firstIndex(where: { $0.slug == slug }) { if let name { out[i].name = name } }
-            else { out.append((slug, name ?? slug.capitalized)) }
-        }
-        return out
-    }
+    /// oi.vocal DEFAULT_RECIPIENTS (a fictional example; yours come from settings.json `vocal_recipients`).
+    public static var defaultRecipients: [(slug: String, name: String)] { VocalRecipients.defaults }
+    public static func recipients(_ s: OISettings) -> [(slug: String, name: String)] { VocalRecipients.list(s) }
 
     /// Laya: `live.predictor` (markov | laya | blend, set only by `oi laya-promote`), the promoted checkpoint,
     /// and the last training (`model_trained_at` from status/oi-live.json).

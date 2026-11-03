@@ -684,7 +684,7 @@ def find_hud_bin(explicit: str | None) -> Path:
     for c in (explicit, os.environ.get("OI_DEMO_HUD_BIN"), str(PKG / "hud" / ".build" / "release" / "oi-hud")):
         if c and Path(c).is_file() and os.access(c, os.X_OK):
             return Path(c)
-    raise DemoError("no oi-hud build: cd projects/os-intent/hud && swift build -c release "
+    raise DemoError("no oi-hud build: cd hud && swift build -c release "
                     "(or --hud-bin PATH). The installed live bundle is never used.")
 
 

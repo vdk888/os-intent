@@ -5,9 +5,9 @@ public enum MenuAction: String, Sendable, CaseIterable {
     case togglePause, toggleHUD, toggleLogin, restartWatcher, restartHUD, rebuildTokens
     case editDenylist, editHotkeys, openData, openLogs, quit
     case openInputMonitoring, openAccessibility, openAutomation, openRegrantGuide
-    case restartLive    // W8: LiveStatus.swift
-    case openSettings   // W26: SettingsWindow.swift
-    case openOnboarding // W22: Onboarding.swift
+    case restartLive    // LiveStatus.swift
+    case openSettings   // SettingsWindow.swift
+    case openOnboarding // Onboarding.swift
     case toggleLaya     // 2026-10-21: LayaSwitch.swift
 }
 
@@ -43,7 +43,7 @@ Click to open the pane; the watcher picks up a new grant within 30 s.
 
 /// The README section that walks through re-granting the watcher ().
 public let regrantGuideURL =
-    "https://github.com/vdk888/os-intent/blob/main/watchers/oi-watcher/README.md#re-grant-permissions"
+    "https://github.com/Bubble-invest/os-intent/blob/main/watchers/oi-watcher/README.md#re-grant-permissions"
 
 public enum MenuModel {
     public static func watcherText(_ s: Status) -> String {
@@ -74,7 +74,7 @@ public enum MenuModel {
         e.append(.init(id: "aw", title: s.awVersion.map { "ActivityWatch: reachable (\($0))" } ?? "ActivityWatch: UNREACHABLE at 127.0.0.1:5600",
                        kind: .info, enabled: false))
         e.append(.init(id: "hud", title: hudText(s), kind: .info, enabled: false))
-        e += liveEntries(s)   // W8: LiveStatus.swift
+        e += liveEntries(s)   // LiveStatus.swift
         switch s.tokens {
         case .stats(let t):
             e.append(.init(id: "tokens", title: "Today: \(t.tokens) tokens, \(t.distinct) distinct", kind: .info, enabled: false))
@@ -95,7 +95,7 @@ public enum MenuModel {
             e.append(.init(id: id, title: "\(st.symbol) \(name) — \(st.detail) · open pane…", kind: .action(act),
                            indent: 1, tooltip: watcherPermsTooltip))
         }
-        e.append(HUDAXStatus.entry(s.hudAX))      // W16: oi-hud's Accessibility (page actions)
+        e.append(HUDAXStatus.entry(s.hudAX))      // oi-hud's Accessibility (page actions)
         e.append(.init(id: "perm.guide", title: "Re-grant guide…", kind: .action(.openRegrantGuide), indent: 1))
 
         e.append(.init(id: "sep.2", title: "", kind: .separator))
@@ -117,8 +117,8 @@ public enum MenuModel {
         if let r = s.lastRebuild {
             e.append(.init(id: "rebuild.last", title: r, kind: .info, enabled: false, indent: 1))
         }
-        e.append(.init(id: "settings", title: "Settings…", kind: .action(.openSettings)))   // W26
-        e.append(Onboarding.entry(onboarded: s.onboarded))                                   // W22
+        e.append(.init(id: "settings", title: "Settings…", kind: .action(.openSettings)))
+        e.append(Onboarding.entry(onboarded: s.onboarded))
         e.append(.init(id: "denylist", title: "Denylist… (\(s.denylistCount) apps)", kind: .action(.editDenylist)))
         e.append(.init(id: "hotkeys", title: "Hotkeys…", kind: .action(.editHotkeys)))
         e.append(.init(id: "data", title: "Open data folder", kind: .action(.openData)))

@@ -1,13 +1,12 @@
 """The outward gate: ONE validation before every action that leaves the Mac.
 
-The user: "il manque une gate de validation pour toutes les actions extérieures de OS-intent : si
-j'envoie un mail ou un Telegram il faut que j'aie quand même une petite fenêtre qui me dit : vous allez envoyer ce
-message à ce destinataire, validé ou pas ?" ("Ask Atlas" sent on release is gated too).
+Goal: every action of OS-intent that leaves the Mac (a mail, a message) first shows a small window: "you are
+about to send this message to this recipient: confirm?" ("Ask Atlas" sent on release is gated too).
 
 `outward(cls, to, name, preview)` is called by every sender right before it sends, dry runs included:
   "vocal" oi.vocal.send   (HUD voice note, glide "Ask Atlas" / a send, W25 hand-over, wish "send to X")
   "shot"  oi.shots.deliver (W17 screenshot to an agent, every tier, `oi shot-send`)
-  "page"  oi.live ui.press of a page button / link that is not KNOWN read-only (`page_outward`, fail-safe: merge,
+  "page" oi.live ui.press of a page button / link that is not KNOWN read-only (`page_outward`, fail-safe: merge,
           approve, an unknown learned label … all ask; navigation / open / expand / copy … do not), from a HUD
           press or a wish
   "reply" oi.live: a W24 proactive option marked `"outward": true` (reply / forward / draft to the event's sender,
@@ -20,8 +19,7 @@ It asks oi-hud (`{"cmd":"confirm_outward",…}` on hud.sock): a small Liquid Gla
 Only `{"event":"outward","id":<same id>,"decision":"validated"}` lets the action run: no HUD, no reply, a socket
 error, a timeout or anything else = cancelled (never an auto-send).
 
-Not outward (no gate): opening a draft the user sends himself in Mail (mail.reply / mail.forward / mail.draft, W14
-/ W22: there is no `send` in this code) unless it is a W24 `outward` option, opening apps / pages / folders / files /
+Not outward (no gate): opening a draft the user sends himself in Mail (mail.reply / mail.forward / mail.draft, there is no `send` in this code) unless it is a `outward` option, opening apps / pages / folders / files /
 a Telegram chat, music, desk moves, arming a dispatch ("pass me to X" sends nothing), a read-only page press.
 
 settings.json `gate.outward`: true (default) | false (every class off) | {"vocal": bool, "shot": bool, "page":

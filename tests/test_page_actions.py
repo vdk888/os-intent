@@ -1,4 +1,4 @@
-"""W16: page actions — detection table, label matching, click tokens, live wiring, press via oi-hud.
+"""page actions — detection table, label matching, click tokens, live wiring, press via oi-hud.
 Synthetic pages only; no real Safari, no real oi-hud (fake page client, fake unix socket)."""
 import io
 import json

@@ -1,7 +1,7 @@
 import Foundation
 import OISettings
 
-// W12: the permanent "Send a vocal to…" option. Pure parts only:
+// the permanent "Send a vocal to…" option. Pure parts only:
 // the option itself, the agent picker (pages + slot mapping), the flow state machine, the transcript
 // guard and the on-disk names; the AppKit/Speech side lives in oi-hud (VocalPanel.swift), the delivery
 // in python (`oi vocal-send`, oi/vocal.py).
@@ -44,17 +44,21 @@ public struct VocalAgent: Equatable, Hashable, Sendable {
 
 /// The agent picker: the HUD turns into up to four agents at the SAME fixed places as the options, each
 /// bound to a modifier (fn ⌃ ⌥ ⌘, so fn = left, ⌃ = top, ⌥ = right, ⌘ = bottom by default); the vocal
-/// key again shows the next page (wrapping). Page 1: Atlas Nova Orion Lyra; 2: Vega Juno Iris
-/// Hera; 3: Echo.
+/// key again shows the next page (wrapping), four agents a page.
 public enum VocalPicker {
-    public static let defaultAgents: [VocalAgent] = [
-        VocalAgent("atlas", "Atlas"), VocalAgent("nova", "Nova"), VocalAgent("orion", "Orion"), VocalAgent("lyra", "Lyra"),
-        VocalAgent("vega", "Vega"), VocalAgent("juno", "Juno"), VocalAgent("iris", "Iris"),
-        VocalAgent("hera", "Hera"), VocalAgent("echo", "Echo"),
-    ]
+    /// The example recipients, shared with oi-menubar (OISettings.VocalRecipients = oi.vocal.DEFAULT_RECIPIENTS).
+    public static let defaultAgents: [VocalAgent] = VocalRecipients.defaults.map { VocalAgent($0.slug, $0.name) }
     /// Demo mode (`oi demo`): `OI_HUD_AGENTS="atlas:Atlas,nova:Nova,…"` replaces the roster, so a screen recording
-    /// shows fictional agents only. Absent or invalid = the fleet roster above.
-    public static let agents: [VocalAgent] = parseAgents(ProcessInfo.processInfo.environment["OI_HUD_AGENTS"]) ?? defaultAgents
+    /// shows fictional agents only. Absent or invalid = the defaults, which oi-hud replaces at launch with the
+    /// settings.json `vocal_recipients` list (`fromSettings`), so every picker entry is a recipient `oi vocal-send` knows.
+    public static let demoAgents: [VocalAgent]? = parseAgents(ProcessInfo.processInfo.environment["OI_HUD_AGENTS"])
+    public static var agents: [VocalAgent] = demoAgents ?? defaultAgents
+
+    /// The recipients of `settings` (defaults + `vocal_recipients`), at most 12 (three pages).
+    public static func fromSettings(_ settings: OISettings) -> [VocalAgent] {
+        let list = VocalRecipients.list(settings).prefix(12).map { VocalAgent($0.slug, String($0.name.prefix(20))) }
+        return list.isEmpty ? defaultAgents : Array(list)
+    }
 
     /// `slug:Name` pairs, comma-separated: slug [a-z0-9-], name 1-20 characters, 1-12 agents, unique slugs.
     public static func parseAgents(_ spec: String?) -> [VocalAgent]? {
@@ -71,15 +75,17 @@ public enum VocalPicker {
     }
     /// Agent order inside a page → modifier.
     public static let slotOrder: [TapModifier] = [.fn, .ctrl, .option, .cmd]
-    public static var pageCount: Int { (agents.count + slotOrder.count - 1) / slotOrder.count }
+    public static var pageCount: Int { pageCount(agents) }
+    public static func pageCount(_ list: [VocalAgent]) -> Int { max(1, (list.count + slotOrder.count - 1) / slotOrder.count) }
 
-    public static func nextPage(_ p: Int) -> Int { (p + 1) % pageCount }
+    public static func nextPage(_ p: Int, in list: [VocalAgent] = agents) -> Int { (p + 1) % pageCount(list) }
 
     /// Page `p` (0-based): modifier → agent.
-    public static func page(_ p: Int) -> [TapModifier: VocalAgent] {
-        let start = (((p % pageCount) + pageCount) % pageCount) * slotOrder.count
+    public static func page(_ p: Int, in list: [VocalAgent] = agents) -> [TapModifier: VocalAgent] {
+        let n = pageCount(list)
+        let start = (((p % n) + n) % n) * slotOrder.count
         var out: [TapModifier: VocalAgent] = [:]
-        for (i, m) in slotOrder.enumerated() where start + i < agents.count { out[m] = agents[start + i] }
+        for (i, m) in slotOrder.enumerated() where start + i < list.count { out[m] = list[start + i] }
         return out
     }
 
@@ -93,8 +99,8 @@ public enum VocalPicker {
 
     /// The picker as HUD options: key = the option key of the agent's modifier, label = the first name,
     /// icon = the initial (`initial:T`). Sorted by key.
-    public static func options(page p: Int, hotkeys: HotkeySet) -> [HUDOption] {
-        page(p).compactMap { m, a in
+    public static func options(page p: Int, hotkeys: HotkeySet, in list: [VocalAgent] = agents) -> [HUDOption] {
+        page(p, in: list).compactMap { m, a in
             optionKey(for: m, hotkeys: hotkeys).map { HUDOption(key: $0, label: a.name, icon: "initial:\(a.initial)") }
         }.sorted { $0.key < $1.key }
     }
@@ -107,8 +113,9 @@ public enum VocalPicker {
     public static func agent(slug: String) -> VocalAgent? { agents.first { $0.slug == slug } }
 
     /// The agent an option key picks on page `p`.
-    public static func agent(forOptionKey k: Int, page p: Int, hotkeys: HotkeySet) -> VocalAgent? {
-        page(p).first { m, _ in optionKey(for: m, hotkeys: hotkeys) == k }?.value
+    public static func agent(forOptionKey k: Int, page p: Int, hotkeys: HotkeySet,
+                             in list: [VocalAgent] = agents) -> VocalAgent? {
+        page(p, in: list).first { m, _ in optionKey(for: m, hotkeys: hotkeys) == k }?.value
     }
 }
 
@@ -127,7 +134,7 @@ public enum VocalInput: Equatable, Sendable {
     case pick(VocalAgent)
     case enter
     case cancel            // Esc, click outside, the picker HUD dismissed (ttl, pointer, typing)
-    case dictationEnded    // time limit (W20: never a recogniser final / error)
+    case dictationEnded    // time limit (never a recogniser final / error)
     /// The user 2026-10-21 16:32Z: a text key in the recording panel (VocalKeyRule `.startTyping`). The microphone
     /// stops, the words already transcribed stay, the panel becomes a text field ("Saisie").
     case typed
@@ -191,8 +198,8 @@ public struct VocalFlow: Sendable {
     }
 }
 
-/// What a key pressed in the recording panel does (the user 2026-10-21 16:32Z: « si je commence à taper à la main ça
-/// arrête d'écouter »). The rule, the same in both modes for the panel's own keys:
+/// What a key pressed in the recording panel does (typing stops the listening). The
+/// rule, the same in both modes for the panel's own keys:
 /// - Return / keypad Enter sends, Esc cancels (listening AND typing);
 /// - listening: a key that writes something (a printable character, a dead key such as ^, Delete / forward Delete,
 ///   an arrow) switches to typing and is then given to the field; a ⌘ or ⌃ chord, Tab or a key that writes nothing
@@ -346,7 +353,7 @@ public enum VocalArm: Equatable, Sendable {
     }
 }
 
-/// Capsule width that follows its content (the user 20/10 16:40 Paris, "less text, more symbols"):
+/// Capsule width that follows its content (less text, more symbols):
 /// padding 6 + icon + (spacing 6 + label) + spacing 6 + badge (+ its 10 px padding) + padding 6,
 /// clamped to `capsuleMinWidth`...`capsuleMaxWidth`. `labelWidth` 0 = no label (wish / vocal: icon + key).
 public let capsuleMinWidth: Double = 72
@@ -357,7 +364,7 @@ public func capsuleWidth(iconSize: Double, labelWidth: Double, badgeWidth: Doubl
     return min(max(w.rounded(.up), capsuleMinWidth), capsuleMaxWidth)
 }
 
-/// The options the HUD draws: the predicted ones (≤ 4), the permanent wish option and (W12) the
+/// The options the HUD draws: the predicted ones (≤ 4), the permanent wish option and the
 /// permanent vocal option.
 public func optionsWithWishAndVocal(_ predicted: [HUDOption]) -> [HUDOption] {
     optionsWithWish(predicted.filter { $0.key != vocalOptionKey })

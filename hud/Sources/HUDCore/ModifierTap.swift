@@ -9,7 +9,7 @@ public struct HeldModifiers: OptionSet, Sendable, Hashable {
     public static let option = HeldModifiers(rawValue: 1 << 1)
     public static let command = HeldModifiers(rawValue: 1 << 2)
     public static let fn = HeldModifiers(rawValue: 1 << 3)
-    public static let shift = HeldModifiers(rawValue: 1 << 4)   // a tap for summon only (W10)
+    public static let shift = HeldModifiers(rawValue: 1 << 4)   // a tap for summon only
 
     /// From raw CGEventFlags bits (maskControl 0x40000, maskAlternate 0x80000, maskCommand 0x100000,
     /// maskSecondaryFn 0x800000, maskShift 0x20000). Caps Lock and the numeric-pad bit are ignored.
@@ -23,7 +23,7 @@ public struct HeldModifiers: OptionSet, Sendable, Hashable {
         self = m
     }
 
-    /// The tap modifiers held, as a set (W11: a SET tap returns all of them).
+    /// The tap modifiers held, as a set (a SET tap returns all of them).
     public var tapModifiers: Set<TapModifier> {
         var out = Set<TapModifier>()
         if contains(.control) { out.insert(.ctrl) }
@@ -38,7 +38,7 @@ public struct HeldModifiers: OptionSet, Sendable, Hashable {
     var single: TapModifier? { rawValue.nonzeroBitCount == 1 ? tapModifiers.first : nil }
 }
 
-/// Detects a bare modifier TAP (W9, shared by W10, sets W11). One episode runs from the
+/// Detects a bare modifier TAP (shared by W10, sets W11). One episode runs from the
 /// first modifier down to the moment none is held. It is a tap when no keyDown, click or scroll happened
 /// in between and it was short: ≤ `maxDuration` (350 ms) for ONE modifier, ≤ `maxSetDuration` (500 ms,
 /// first down → last up) for a SET (e.g. ⌥+⌘ pressed together, the W11 summon). The result is the set of
@@ -93,7 +93,7 @@ public struct TapDetector: Sendable {
 
     public mutating func reset() { held = []; episode = nil; spoiled = false }
 
-    /// W15: the tap (re)starts while modifiers are already down (e.g. ⌥⌘ still held after a glide summon): the
+    /// the tap (re)starts while modifiers are already down (e.g. ⌥⌘ still held after a glide summon): the
     /// release of those is never a tap.
     public mutating func prime(_ now: HeldModifiers) { held = now; episode = nil; spoiled = !now.isEmpty }
 }

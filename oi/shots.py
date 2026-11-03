@@ -1,7 +1,7 @@
-"""W17: screenshot -> "send it to who I'm talking with".
+"""screenshot -> "send it to who I'm talking with".
 
-The user: "when i screenshot that, i would have expected an action to send it to you via telegram because we
-are currently talking. that would need some quality context so maybe a tier 2 action?"
+Goal: after a screenshot, offer to send it to the agent you are currently talking with, with enough context
+(a tier-2 action when a note is useful).
 
 1. oi-watcher posts every new screenshot (a file in the screenshot location, or a png/tiff image put on the
    clipboard) to the bucket `oi-watcher-shot_<host>` as {"kind": "shot", "src": "file"|"clipboard", "path"};
@@ -20,7 +20,7 @@ are currently talking. that would need some quality context so maybe a tier 2 ac
    front app is denylisted (the screenshot may hold a secret).
 3. The options: "→ <Agent>" (the current contact: oi.contact, else settings `shots.fallback_contact`), "→ other"
    (an agent picker, 3 per page + "More"), "Annotate" (the note panel, empty).
-     tap "→ <Agent>"   = tier 1: the image + a context line (app, host, desk, Paris time);
+     tap "→ <Agent>" = tier 1: the image + a context line (app, host, desk, Paris time);
      long-press it     = tier 2: on-device OCR (`oi-ocr`, Vision; the text never leaves this process except in
                          the prompt, never logged) + the context + the last actions -> haiku on the Team
                          subscription (oi.claude_actions.run_claude) writes a 3-5 line note ("what this shows /
@@ -47,7 +47,7 @@ are currently talking. that would need some quality context so maybe a tier 2 ac
    subject / body, calendar title / location, labels; not read on the screenshot) go through orch_pack.leaks after
    Claude answers: flagged = blanked, or the action dropped when that text is its point (scrub). settings
    `shots.actions` (default true). Every send these options lead to (→ <Agent>, → other, Annotate, agent.send)
-   passes the outward gate (oi/gate.py, class "shot") in deliver(), right before delivery: the one confirmation.
+   passes the outward gate (oi/gate.py, class "shot") in deliver, right before delivery: the one confirmation.
 
 hud-log rows {"kind": "shot"}: per press {"event": "press", "src", "to", "via", "outcome", "action", "picked": kind,
 "tier", "ok", "dry_run", "error", "note_len", "ocr_ms", "claude": {model, latency_ms, ok}, "content": {type, slot},
@@ -214,7 +214,7 @@ def recent_actions(rows: list[dict], now: float, keep: int = ACTIONS_KEEP, windo
 
 
 def note_prompt(agent: str, ctx: dict, when: datetime, actions: list[str], ocr_text: str, slug: str | None = None) -> str:
-    pack_ctx = {"app": ctx.get("app"), "host": ctx.get("host"), "agent": slug,     # W25: the orchestrator's pack
+    pack_ctx = {"app": ctx.get("app"), "host": ctx.get("host"), "agent": slug,     # the orchestrator's pack
                 "space": ctx.get("desk") if isinstance(ctx.get("desk"), int) else None}
     return claude_actions.render_prompt("shot_note", {
         "agent": agent, "time": when.astimezone(vocal.PARIS).strftime("%H:%M"),
@@ -429,7 +429,7 @@ def ocr_bin(raw: dict | None = None) -> str | None:
 
 
 def warm_rag() -> None:
-    """W25: load the orchestrator's warm wiki index (~1 s) and Ollama's embedding model at `oi live` start,
+    """load the orchestrator's warm wiki index (~1 s) and Ollama's embedding model at `oi live` start,
     so the first context pack is not the slow one."""
     from . import rag
     try:
@@ -634,7 +634,7 @@ class Shots:
 
     @property
     def dry_run(self) -> bool:
-        return (bool(getattr(self.live, "dry_run", False)) or bool(getattr(self.live, "exec_dry_run", False))   # W15 --dry-exec
+        return (bool(getattr(self.live, "dry_run", False)) or bool(getattr(self.live, "exec_dry_run", False))   # --dry-exec
                 or os.environ.get("OI_SHOT_DRY_RUN") == "1")
 
     # -- the bucket ----------------------------------------------------------------------------------------
@@ -674,7 +674,7 @@ class Shots:
     def start(self) -> threading.Thread:
         self.prime()
         threading.Thread(target=lambda: warm_ocr(ocr_bin(self.raw_settings())), daemon=True, name="oi-ocr-warm").start()
-        threading.Thread(target=warm_rag, daemon=True, name="oi-rag-warm").start()     # W25
+        threading.Thread(target=warm_rag, daemon=True, name="oi-rag-warm").start()
 
         def work():
             while True:
@@ -845,7 +845,7 @@ class Shots:
         return (m or {}).get("context") or {}
 
     def contact_for(self, raw: dict, table: dict, cfg: dict, now: float) -> dict | None:
-        armed = dispatch.armed(now)                  # W25: "pass me to X" names the next screenshot's agent
+        armed = dispatch.armed(now)                  # "pass me to X" names the next screenshot's agent
         if armed in table:
             return {"slug": armed, "via": "dispatch", "ts": None}
         rows = list(getattr(self.live, "rows", []) or [])

@@ -2,9 +2,9 @@ import AppKit
 import SwiftUI
 import HUDCore
 
-// W19: the hint dots, and Liquid Glass (macOS 26+ SDK: SwiftUI `glassEffect` / `GlassEffectContainer` /
+// the hint dots, and Liquid Glass (macOS 26+ SDK: SwiftUI `glassEffect` / `GlassEffectContainer` /
 // `glassEffectID`, AppKit `NSGlassEffectView`) for the HUD capsules, the dots and the wish / vocal panels.
-// Fallback to the pre-W19 NSVisualEffectView material on macOS < 26 and whenever Increase Contrast or Reduce
+// Fallback to the older NSVisualEffectView material on macOS < 26 and whenever Increase Contrast or Reduce
 // Transparency is on.
 
 /// Glass is used when the system has it and the user did not ask for contrast / less transparency.
@@ -17,7 +17,7 @@ func liquidGlassAvailable() -> Bool {
 
 /// The hint: one dot per hinted option, in its key's colour, close to the HUD centre in the direction of the
 /// option's fixed place. Never clickable (the panel ignores the mouse while a hint is drawn).
-/// W20: `dotSize` pt (settings `hud.hint_dot_size`), a thin white ring inside a black hairline (readable on
+/// `dotSize` pt (settings `hud.hint_dot_size`), a thin white ring inside a black hairline (readable on
 /// any background; thicker and opaque with Increase Contrast), a gentle 2-cycle pulse on appear (Reduce Motion: none).
 struct HintDotsView: View {
     let dots: [(key: Int, x: Double, y: Double)]
@@ -26,7 +26,7 @@ struct HintDotsView: View {
     let ns: Namespace.ID
     var dotSize: Double = HintDotLayout.dotSize
     var pulsed = false
-    var ring = false                       // W24: proactive hint = a thin ring around the dots ("something changed")
+    var ring = false                       // proactive hint = a thin ring around the dots ("something changed")
 
     var body: some View {
         let c = CGPoint(x: Metrics.panelSize.width / 2, y: Metrics.panelSize.height / 2)
@@ -50,7 +50,7 @@ struct HintDotsView: View {
     }
 }
 
-/// W20: one dot: the colour fill, a white ring, a black hairline outside it; `pulsed` = the appear pulse's
+/// one dot: the colour fill, a white ring, a black hairline outside it; `pulsed` = the appear pulse's
 /// big phase (driven by the controller, HUDModel.dotPulse).
 private struct HintDot: View {
     let color: Color
@@ -113,7 +113,7 @@ func glassPanelRoot(size: NSSize, radius: CGFloat) -> (root: NSView, content: NS
     return nil
 }
 
-/// W19: an option badge "2 ⌃": the number bold, the key symbol smaller and secondary; any other badge as one text.
+/// an option badge "2 ⌃": the number bold, the key symbol smaller and secondary; any other badge as one text.
 struct BadgeLabel: View {
     let badge: String
     var body: some View {

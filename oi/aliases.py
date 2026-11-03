@@ -1,4 +1,4 @@
-"""W18: the words of a wish, FR + EN — text normalisation, verbs, built-in app aliases and the learned
+"""the words of a wish, FR + EN — text normalisation, verbs, built-in app aliases and the learned
 alias table (<data dir>/aliases.json, grown only from CONFIRMED resolutions: executed, and confirmed when the
 action needed it).
 

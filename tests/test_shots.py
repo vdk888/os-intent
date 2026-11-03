@@ -1,4 +1,4 @@
-"""W17: screenshot -> send to the current contact. Synthetic data only: fake HUD socket (a request
+"""screenshot -> send to the current contact. Synthetic data only: fake HUD socket (a request
 function), fake OCR, fake claude, dry-run / temp-dir delivery. Nothing is ever sent to a real agent."""
 import io
 import json
@@ -47,26 +47,26 @@ def test_shot_token_in_grammar_and_built_from_the_bucket():
 
 def test_contact_map_defaults_and_overrides():
     m = contact.contact_map({})
-    assert m["atlas-r-d"] == "atlas" and m["nova-ceo"] == "nova" and m["juno-ext-r-d"] == "juno"
-    m = contact.contact_map({"contact_map": {"Atlas - R&D": None, "Sky…": "echo", "Bad": "Not A Slug", 3: "x"}})
-    assert "atlas-r-d" not in m and m["sky"] == "echo" and "bad" not in m
+    assert m["atlas-tools"] == "atlas" and m["nova-planning"] == "nova" and m["juno-support"] == "juno"
+    m = contact.contact_map({"contact_map": {"Atlas - Tools": None, "Sky…": "echo", "Bad": "Not A Slug", 3: "x"}})
+    assert "atlas-tools" not in m and m["sky"] == "echo" and "bad" not in m
 
 
 def test_resolver_telegram_title_vocal_window_and_unknown():
-    rows = [row(600, "title:Telegram/atlas-r-d"), row(300, "activate:Safari")]
+    rows = [row(600, "title:Telegram/atlas-tools"), row(300, "activate:Safari")]
     assert contact.resolve(rows, NOW)["slug"] == "atlas"
     assert contact.resolve(rows, NOW)["via"] == "telegram"
     # newest wins: a vocal to Nova after the Atlas chat
     rows2 = rows + [row(100, "vocal:nova")]
     assert contact.resolve(rows2, NOW) == {"slug": "nova", "via": "vocal", "ts": rows2[-1]["ts"]}
-    # truncated / suffixed titles match as a prefix ("Nova - CEO…", unread counts)
-    assert contact.resolve([row(60, "title:Telegram/nova-ceo-acme-3")], NOW)["slug"] == "nova"
+    # truncated / suffixed titles match as a prefix ("Nova - Planning…", unread counts)
+    assert contact.resolve([row(60, "title:Telegram/nova-planning-acme-3")], NOW)["slug"] == "nova"
     # older than 15 min: nobody
-    assert contact.resolve([row(16 * 60, "title:Telegram/atlas-r-d")], NOW) is None
+    assert contact.resolve([row(16 * 60, "title:Telegram/atlas-tools")], NOW) is None
     # the generic window title "Telegram" or a non-agent chat: nobody
     assert contact.resolve([row(60, "title:Telegram/telegram"), row(30, "title:Telegram/mum")], NOW) is None
     # not Telegram
-    assert contact.resolve([row(60, "title:Notion/atlas-r-d")], NOW) is None
+    assert contact.resolve([row(60, "title:Notion/atlas-tools")], NOW) is None
     # a slug that cannot be delivered to is skipped
     assert contact.resolve([row(60, "vocal:ghost")], NOW, known=set(TABLE)) is None
 
@@ -104,7 +104,7 @@ def test_picker_pages_exclude_and_wrap():
     assert shots.picker_options(TABLE, 3, exclude="atlas")[1] == shots.picker_options(TABLE, 0, exclude="atlas")[1]
     small = {k: TABLE[k] for k in ("atlas", "nova")}
     opts, keys = shots.picker_options(small, 0)
-    assert keys == {2: "atlas", 3: "nova"} and opts[0]["icon"] == "initial:A"   # W21: no "More": fn empty
+    assert keys == {2: "atlas", 3: "nova"} and opts[0]["icon"] == "initial:A"   # no "More": fn empty
 
 
 # ---- tier 1 payload ---------------------------------------------------------------------------------------
@@ -278,7 +278,7 @@ def rows_of(kind="shot", event=None):
 
 
 def test_a_screenshot_is_in_the_context_exactly_while_its_thumbnail_is_up(png, data_dir):
-    so, _, _ = make(rows=[row(120, "title:Telegram/atlas-r-d")])
+    so, _, _ = make(rows=[row(120, "title:Telegram/atlas-tools")])
     assert so.live_set() == set() and so.options() == []
     so.apply(state_ev("live"))
     assert so.live_set() == {"shot"} and so.options() == []          # live, its image not landed yet: no option
@@ -346,7 +346,7 @@ def test_the_thumbnail_seen_after_the_file_binds_the_shot_to_it(png, data_dir):
 
 
 def test_tap_is_tier1_to_the_current_contact(png, data_dir):
-    so, delivered, fc = make(rows=[row(120, "title:Telegram/atlas-r-d")])
+    so, delivered, fc = make(rows=[row(120, "title:Telegram/atlas-tools")])
     live_shot(so, png)
     assert press(so, "→ Atlas") == "shot.send:atlas"
     assert delivered == [{"to": "atlas", "note": None, "dry_run": False}] and not fc.prompts
@@ -440,12 +440,12 @@ def test_a_send_keeps_its_shot_when_none_newer_is_live(png, data_dir):
 
 def test_other_opens_the_picker_with_paging(png, data_dir):
     hud = FakeHUD({"event": "pressed", "key": 1}, {"event": "pressed", "key": 3})
-    so, delivered, _ = make(hud, rows=[row(60, "title:Telegram/atlas-r-d")])
+    so, delivered, _ = make(hud, rows=[row(60, "title:Telegram/atlas-tools")])
     live_shot(so, png)
     press(so, "→ other")
     page2 = shots.picker_options(TABLE, 1, exclude="atlas")[1]
     assert [p["cmd"] for p in hud.sent] == ["shot_show"] * 2
-    assert delivered == [{"to": page2[3], "note": None, "dry_run": False}]   # W21: ⌥ = 3, the 2nd agent
+    assert delivered == [{"to": page2[3], "note": None, "dry_run": False}]   # ⌥ = 3, the 2nd agent
     assert rows_of(event="press")[-1]["via"] == "picked"
 
 
@@ -485,7 +485,7 @@ def test_env_dry_run_reaches_delivery(png, data_dir, monkeypatch):
 def test_a_sent_shot_makes_the_next_contact(png, data_dir):
     vocal.log_row({"ts": vocab.iso_utc(datetime.fromtimestamp(NOW - 30, timezone.utc)), "kind": "shot", "to": "lyra",
                    "ok": True, "dry_run": False})
-    so, delivered, _ = make(rows=[row(120, "title:Telegram/atlas-r-d")])
+    so, delivered, _ = make(rows=[row(120, "title:Telegram/atlas-tools")])
     live_shot(so, png)
     assert so.options()[0]["label"] == "→ Lyra"
     press(so, "→ Lyra")
@@ -637,7 +637,7 @@ def test_clean_actions_only_keeps_what_is_on_the_screen(tmp_path, monkeypatch):
         {"type": "agent.send", "to": "atlas", "message": "hi"},                                # already the send slot
         {"type": "agent.send", "to": "nobody", "message": "hi"},                              # unknown agent
         {"type": "calendar.event", "title": "Demo", "start": "next thursday"},                # bad date
-        {"type": "mail.draft", "to": "ghost@nowhere.io", "subject": "Re"},                    # address not on screen
+        {"type": "mail.draft", "to": "ghost@nowhere.example", "subject": "Re"},                    # address not on screen
         {"type": "shell.run", "cmd": "rm -rf ~"},                                              # unknown type
         {"type": "file.open", "label": "Open deck", "path": "~/Documents/deck-q3.pdf"},
         {"type": "mail.draft", "label": "Reply to Paul, a very long label", "to": "paul.martin@example.com",

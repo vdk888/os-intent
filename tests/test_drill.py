@@ -1,4 +1,4 @@
-"""W23: drill-down glide. Every provider runs on fakes (no Spotlight, AX, AppleScript or chat is touched)."""
+"""drill-down glide. Every provider runs on fakes (no Spotlight, AX, AppleScript or chat is touched)."""
 from __future__ import annotations
 
 import json
@@ -58,7 +58,8 @@ def test_launchables_are_never_opened_only_revealed(tmp_path, monkeypatch):
     monkeypatch.setenv("HOME", str(home))
     dl = home / "Downloads"
     names = ["run.command", "x.sh", "y.zsh", "z.tool", "a.pkg", "b.dmg", "c.terminal", "d.scpt", "e.applescript",
-             "f.workflow", "G.DMG"]
+             "f.workflow", "G.DMG", "site.webloc", "h.inetloc", "i.fileloc", "j.jar", "K.prefPane", "l.mobileconfig",
+             "m.saver", "n.scptd", "o.action", "p.afploc", "q.ftploc", "r.shortcut"]
     for n in names:
         (dl / n).write_text("never run")
     (dl / "Tool.app").mkdir()
@@ -110,9 +111,9 @@ def test_music_host_mail_space_items():
 def test_providers_cache_per_target_with_ttl():
     t = [0.0]
     calls = []
-    p = drill.Providers(telegram_titles=lambda: calls.append(1) or ["Eric"], music_playlists=lambda: ["Focus"],
+    p = drill.Providers(telegram_titles=lambda: calls.append(1) or ["Robin"], music_playlists=lambda: ["Focus"],
                         music_tracks=lambda pl: calls.append(pl) or ["A"], mdfind=lambda: "", clock=lambda: t[0], ttl=45)
-    assert [n["label"] for n in p.items({"kind": "telegram"}, {})] == ["Eric"]
+    assert [n["label"] for n in p.items({"kind": "telegram"}, {})] == ["Robin"]
     p.items({"kind": "telegram"}, {})
     assert calls == [1]
     p.items({"kind": "playlist", "playlist": "Jazz"}, {}), p.items({"kind": "playlist", "playlist": "Rock"}, {})
@@ -146,7 +147,7 @@ def test_scope_rejector_drops_generic_switches_but_keeps_back():
 
     def under(parent, action, label="x", items=None):
         return glide.scoped({"label": label, "action": action}, parent, env, drill.scope_of(parent), items or {})
-    # The user's complaint: "after Finder: send Eric, open Claude"
+    # the bug this guards: unrelated options (send to an agent, open Claude) offered under Finder
     assert under(finder, "app.open:Claude") is None and under(finder, "vocal:nova:hi") is None
     assert under(finder, "ask:open Claude") is None and under(finder, "launch.rocket") is None
     assert under(telegram, "url.open:github.com") is None and under(telegram, "summarise") is None
@@ -190,7 +191,7 @@ def test_pairs_are_logged_as_ids_only_and_read_back(data_dir):
     row = drill.log_pair("activate:Telegram", ["activate:Telegram"], chat["id"], "Safari", ts="2026-10-20T19:00:00Z")
     p = data_dir / "glide-pairs" / "2026-10-20.jsonl"
     assert oct(p.stat().st_mode & 0o777) == "0o600" and oct(p.parent.stat().st_mode & 0o777) == "0o700"
-    assert "Eric" not in p.read_text() and row["depth"] == 1
+    assert "Robin" not in p.read_text() and row["depth"] == 1
     got = drill.read_pairs(now=datetime(2026, 10, 21, tzinfo=timezone.utc))
     assert got == [row]
 
@@ -290,3 +291,15 @@ def test_glide_env_carries_pages_history_and_titles(data_dir):
     assert e["pages"] == {"notion.so": ["notion.so/prr", "notion.so/road-map"]}
     assert e["title_tokens"] == ["title:Telegram/eric-martin"] and len(e["history"]) == 4
     assert json.dumps(e["history"])                                            # plain (ts, token) pairs
+
+
+def test_file_open_opens_the_resolved_path_it_checked(tmp_path, monkeypatch):
+    home = tree(tmp_path)
+    monkeypatch.setenv("HOME", str(home))
+    (home / "Documents").mkdir(exist_ok=True)
+    (home / "Documents" / "quote.pdf").symlink_to(home / "Downloads" / "devis.pdf")
+    runs = []
+    ex = live.Executor(lambda argv: (runs.append(argv), (0, ""))[1])
+    f = drill.path_node(f"{home}/Documents/quote.pdf")
+    assert ex.run(f, {}, str) == f["token"]
+    assert runs[-1] == ["open", os.path.realpath(f"{home}/Downloads/devis.pdf")]

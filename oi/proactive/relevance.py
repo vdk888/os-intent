@@ -1,4 +1,4 @@
-"""W24: the relevance gate — does this event deserve a proactive hint NOW?
+"""the relevance gate — does this event deserve a proactive hint NOW?
 
 Checks, in order (the first failing one is the row's reason):
   gone (its state already ended: context is state, not timers — no age limit) · paused · hud_disabled ·
@@ -41,7 +41,7 @@ _PROFILE: dict = {"mtime": None, "data": {}}
 
 
 def load_profile(path: Path | None = None) -> dict:
-    """profile.yaml (W22), cached on its mtime; {} when missing or unreadable."""
+    """profile.yaml, cached on its mtime; {} when missing or unreadable."""
     from ..starter import profile_path
     p = path or profile_path()
     try:

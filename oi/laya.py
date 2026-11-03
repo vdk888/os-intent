@@ -1,4 +1,4 @@
-"""The Laya layer (W13): client to the local Laya server + a memory-safe server supervisor.
+"""The Laya layer: client to the local Laya server + a memory-safe server supervisor.
 
 Client. One `choice` question per moment, built from the routed form (design §0/§2): instructions = the form's
 `question.instructions`, criteria = the candidate menu (`candidates.as_question`, criteria <= 8 words, <= 16
@@ -23,7 +23,7 @@ Silicon, unlike RSS) every 2 s and kills it above the cap (4 GB). State in statu
 checkpoint, current and peak MB, warm_ms). The checkpoint is loaded at start (LAYA_PRELOAD=1); once /health
 answers, the supervisor sends ONE warm-up prediction (`warm_up`) so the first forward pass (the slow, cold one:
 ~1.2 s measured vs ~150 ms warm) is never a user's call. A refusal for memory names the top memory users
-(`top_memory`) so whoever reads the log can act. `ensure_server()` starts that supervisor detached when the server is down
+(`top_memory`) so whoever reads the log can act. `ensure_server` starts that supervisor detached when the server is down
 and memory allows (rate-limited by the caller); it never waits.
 """
 from __future__ import annotations

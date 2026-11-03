@@ -2,7 +2,7 @@ import Foundation
 import CoreGraphics
 import OISettings
 
-// W11: a colour per option key, and the target of each option pulses
+// a colour per option key, and the target of each option pulses
 // subtly in that colour while the HUD is visible. Pure logic here; the drawing is oi-hud HintOverlay.
 
 // MARK: - colour per key
@@ -28,7 +28,7 @@ public enum OptionColors {
 
 // MARK: - label fitting
 
-/// The longest label a capsule shows (W11: "Switch to Telegram", "Open notion.so/…" fit whole).
+/// The longest label a capsule shows ("Switch to Telegram", "Open notion.so/…" fit whole).
 public let maxLabelChars = 22
 
 /// Fit a label in `max` characters without cutting a word in the middle, keeping the app or host name:
@@ -112,7 +112,7 @@ public func cocoaRect(fromCG r: CGRect, mainScreenHeight h: Double) -> CGRect {
 /// icon in the HUD, or as a bar on a screen edge.
 public enum HintDrawing: String, Equatable, Sendable {
     case window, dock, halo, edge
-    case element      // W16: an outline around the page button itself
+    case element      // an outline around the page button itself
 }
 
 public struct DrawnHint: Equatable, Sendable {
@@ -127,7 +127,7 @@ public func resolveDrawing(_ hint: HUDHint, windowFound: Bool, dockFound: Bool) 
     switch hint {
     case .edge: return .edge
     case .window: return windowFound ? .window : (dockFound ? .dock : .halo)
-    case .element: return windowFound ? .element : .halo     // W16: windowFound = the rect is on a screen
+    case .element: return windowFound ? .element : .halo     // windowFound = the rect is on a screen
     }
 }
 
@@ -141,7 +141,7 @@ public func hintedOptions(_ options: [HUDOption]) -> [(key: Int, hint: HUDHint)]
 
 // MARK: - overlay lifecycle
 
-/// The hint overlay's lifecycle (W11): drawn only while the HUD is visible. `show` (a new show or an
+/// The hint overlay's lifecycle: drawn only while the HUD is visible. `show` (a new show or an
 /// in-place replacement) draws the current hints, replacing the previous ones; `finish` (the single
 /// exit of the HUD) tears everything down. Invariant: `drawn` is empty whenever `visible` is false,
 /// so nothing is on screen and nothing animates (no CPU) while the HUD is hidden.

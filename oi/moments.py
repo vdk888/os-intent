@@ -7,16 +7,16 @@ LABEL_WINDOW_S seconds (and is not an afk edge), else `nothing`. Its context is 
 what was knowable at token i's timestamp: durations of earlier tokens are clipped to
 the moment time, the current token's own duration is never shown (it is the future).
 
-`wish:` tokens (W6) are feedback, not actions: they are taken out of the stream before the
+`wish:` tokens are feedback, not actions: they are taken out of the stream before the
 moments are built, so a wish is never a moment, never a label and never in a history. Each wish
 is attached to the moment that precedes it (the last moment with ts <= the wish's ts) as
 `wish` = the wished-for action slug; when several wishes follow the same moment the last wins.
 A wish before the first moment of the stream is dropped.
 
-`evt:` tokens (W24) are CONTEXT: a moment is taken at an event (its history[0] is the event) but an event is never
+`evt:` tokens are CONTEXT: a moment is taken at an event (its history[0] is the event) but an event is never
 a label: the label of any moment is the next non-event token within LABEL_WINDOW_S ("after event E the user does A").
 
-`hud:` tokens (W8) are feedback too: taken out of the stream the same way. A `hud:pressed:<k>` sets
+`hud:` tokens are feedback too: taken out of the stream the same way. A `hud:pressed:<k>` sets
 `hud_pressed` = k (int) on the preceding moment (same rule as the wish); shown/dismissed attach nothing.
 
 Moment dict (JSON-serialisable, the `render --moment` input):
@@ -40,7 +40,7 @@ NOTHING = "nothing"
 HISTORY_KEEP = 20
 DAY_SUMMARY_TOP = 5
 FEEDBACK_PREFIXES = ("wish:", "hud:", "vocal:")  # never moments, labels or history (see module doc)
-EVENT_PREFIX = "evt:"   # W24: context tokens (a moment, never a label)
+EVENT_PREFIX = "evt:"   # context tokens (a moment, never a label)
 WEEKDAYS = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"]
 
 
@@ -128,7 +128,7 @@ def build_moments(rows: list[dict], tz: ZoneInfo | None = None,
         # label
         label = NOTHING
         j = i + 1
-        while j < len(rows) and rows[j]["token"].startswith(EVENT_PREFIX):   # W24: an event is never a label
+        while j < len(rows) and rows[j]["token"].startswith(EVENT_PREFIX):   # an event is never a label
             j += 1
         if j < len(rows):
             nxt = rows[j]["token"]

@@ -82,7 +82,7 @@ Long-press an option's key: a ring fills, and Claude drafts the reply or forward
 writes a 3-line summary card. When the mail proposes times, the reply picks one that is free in your calendar
 (read locally, busy / free only, never a title). The draft is saved to Mail's Drafts **in place** (Mail stays behind, no desktop
 switch) and shown on the card; *Open in Mail* on the card brings it up when you want it. Drafts are never sent. Claude runs headless through your logged-in
-Claude Code CLI; turn it off and everything else still works.
+Claude Code CLI. It is **off until you turn it on** (menu bar → *Settings* → *Claude*); everything else works without it.
 
 ### Proactive hints: it notices when something changes
 
@@ -128,7 +128,7 @@ outside, a timeout or no HUD cancel. Never an auto-send.
 
 ### Orchestrator
 
-An example roster of agents with topics (`oi/orchestrator/roster.yaml`, fictional: Atlas, Nova, Orion, Lyra…).
+An example roster of agents with topics (`oi/orchestrator/roster.yaml`, a fictional example of three: Atlas, Nova, Orion).
 "Ask someone for the Q4 numbers" routes to the agent who owns the topic, always through the outward gate.
 
 ### Laya switch and health
@@ -140,12 +140,12 @@ An example roster of agents with topics (`oi/orchestrator/roster.yaml`, fictiona
 
 ## Privacy
 
-Everything runs on your Mac, except the Claude calls: **they are ON by default** (first row below) and you can turn
-them off.
+Everything runs on your Mac. The Claude calls (first row below) are the only part that sends anything out, and
+**they are OFF by default**: turn them on in menu bar → *Settings* → *Claude*.
 
 | Sensor / part | What it reads | What it never reads | Turn it off |
 |---|---|---|---|
-| **Claude (`claude.enabled`, `claude.enrich`: both default ON)** | on a long-press, a glide (follow-ups and level-3 card summaries, prefetched when you summon), label enrichment, proactive events you hold on, a screenshot's content actions and a wish not resolved locally, the HUD context is sent to **your own `claude -p` (Anthropic, on your subscription)**: front app, page host, the mail or message being acted on, for a page summary the Safari page's title, URL and text, a screenshot's OCR text, and the context pack (roster, recent actions, matching knowledge-base notes) | anything from `claude.local_only_domains` (those events show "details withheld") | menu bar → *Settings* → *Claude*: untick *Claude variant* and *Enrich options with Claude*, or set `"claude": {"enabled": false, "enrich": false}` in settings.json |
+| **Claude (`claude.enabled`, `claude.enrich`: both default OFF, opt-in)** | on a long-press, a glide (follow-ups and level-3 card summaries, prefetched when you summon), label enrichment, proactive events you hold on, a screenshot's content actions and a wish not resolved locally, the HUD context is sent to **your own `claude -p` (Anthropic, on your subscription)**: front app, page host, the mail or message being acted on, for a page summary the Safari page's title, URL and text, a screenshot's OCR text, and the context pack (roster, recent actions, matching knowledge-base notes) | anything from `claude.local_only_domains` (those events show "details withheld") | off unless you opt in: menu bar → *Settings* → *Claude*: tick *Claude variant* and / or *Enrich options with Claude*, or set `"claude": {"enabled": true, "enrich": true}` in settings.json; untick to turn it off again |
 | ActivityWatch (window + afk watchers) | front app, window title, idle state | content, keystrokes | menu bar → *Pause logging*; denylist apps |
 | oi-watcher | Spaces, ⌘-chords (modifier + key, not text), the front Safari tab's URL, screenshot files / clipboard image state, the label of the page button you click, names + dates of new files in folders you chose | typed text, clipboard text, screen pixels, file content, private windows | menu bar → *Pause*; settings `shots.enabled`; `proactive.sources.files` |
 | Mail sensor | the newest 8 inbox messages: id, sender, subject, date, read / replied flags (AppleScript, only while Mail runs; never launches it, never marks anything) | the body (read only for a level-3 card you asked for) | Settings → Proactive → Mail |
@@ -178,7 +178,7 @@ knowledge-base search; a local **[Laya](https://huggingface.co/convaiinnovations
 for the shadow model; `gh` (logged in) for the pull-request sensor.
 
 ```sh
-git clone https://github.com/vdk888/os-intent.git && cd os-intent
+git clone https://github.com/Bubble-invest/os-intent.git && cd os-intent
 
 # 1. the python side (predictions, live driver, sensors, actions)
 python3.12 -m venv .venv && .venv/bin/pip install -e '.[dev]'
@@ -200,7 +200,8 @@ export OI_WIKI_DIR=~/wiki                           # a folder of markdown pages
 python3 tools/wiki/wiki_search.py --reindex
 
 # 5. first run
-.venv/bin/oi onboard                                # or menu bar → Onboarding…
+.venv/bin/oi onboard                                # or menu bar → Onboarding…; with Claude off (the default)
+                                                    # it asks y/N to turn Claude on, no = the local onboarding
 .venv/bin/oi health
 ```
 

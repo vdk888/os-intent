@@ -17,7 +17,7 @@ let package = Package(
         // Pure logic (no permissions, no AppKit): chord formatting, event JSON,
         // bucket naming, URL/title handling, space index/delta. Unit-tested.
         .target(name: "OIWatcherCore",
-                dependencies: [.product(name: "OISettings", package: "settings")]),   // W16: PageLabel (click tokens)
+                dependencies: [.product(name: "OISettings", package: "settings")]),   // PageLabel (click tokens)
         // The daemon: NSWorkspace observers, CGEvent tap, NSAppleScript, REST client.
         .executableTarget(
             name: "oi-watcher",

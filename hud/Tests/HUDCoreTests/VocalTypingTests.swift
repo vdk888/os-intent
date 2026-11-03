@@ -2,8 +2,7 @@ import Foundation
 import Testing
 @testable import HUDCore
 
-// The user 2026-10-21 16:32Z (vocal): « Quand j'envoie un vocal en sélectionnant l'agent, ce serait bien de pouvoir
-// taper à la main : si je commence à taper à la main ça arrête d'écouter, comme ça c'est l'un ou l'autre. »
+// A voice note to an agent can also be typed: typing stops the listening, so it is one or the other.
 // The flow (listening -> typing, one way), the key rule of the recording panel, and its texts.
 
 @Suite struct VocalTypingFlowTests {

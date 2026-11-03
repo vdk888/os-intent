@@ -1,4 +1,4 @@
-"""W15: hold ⌥⌘ + glide + dwell = Claude sub-rings. Synthetic context only; Claude is a fake runner."""
+"""hold ⌥⌘ + glide + dwell = Claude sub-rings. Synthetic context only; Claude is a fake runner."""
 from __future__ import annotations
 
 import json
@@ -79,7 +79,7 @@ def test_prefetch_is_one_batched_haiku_call_and_the_cache_serves_expand():
     s.prefetch()
     assert len(r.prompts) == 1 and r.prompts[0][1] == "sonnet"
     prompt = r.prompts[0][0]
-    # W23: only the generative scopes go to Claude (the mail); Telegram, the site and the desk move are local
+    # only the generative scopes go to Claude (the mail); Telegram, the site and the desk move are local
     assert "2. Path: reply to the selected mail" in prompt
     assert "1. Path" not in prompt and "3. Path" not in prompt and "4. Path" not in prompt
     assert "Sam Martin" in prompt and "draft:mail.reply" in prompt and "nova (Nova)" in prompt
@@ -143,7 +143,7 @@ def test_claude_off_or_unavailable_gives_a_leaf():
     s = r.session()
     s.prefetch()
     assert s.expand([2])["options"] == [] and r.prompts == [] and r.mail_reads == 0
-    assert [o["label"] for o in s.expand([1])["options"]] == CHATS        # W23: local providers need no Claude
+    assert [o["label"] for o in s.expand([1])["options"]] == CHATS        # local providers need no Claude
     r = Rig(fail="timeout")
     s = r.session()
     s.prefetch()
@@ -320,7 +320,7 @@ def test_live_glide_prefetch_expand_execute_and_log(data_dir):
            "executed": None, "latency_ms": None, "summoned": True}
     lv.dispatch(shown, row, {"app": "Safari", "url": "notion.so/prr", "space": 2}, {"ttl_ms": 15000}, time.time())
     lv.wait_replies(5)
-    assert rig.prompts == []                                  # W23: a desk move and Telegram are local scopes
+    assert rig.prompts == []                                  # a desk move and Telegram are local scopes
     sub = [p for p in rig.sent if p["cmd"] == "subring"]
     assert sub[0]["path"] == [3] and [o["label"] for o in sub[0]["options"]] == CHATS
     assert len(runs) == 1 and runs[0][:4] == ["osascript", "-l", "JavaScript", "-e"] and runs[0][-1] == "Pat Lee"
@@ -331,7 +331,7 @@ def test_live_glide_prefetch_expand_execute_and_log(data_dir):
     assert g["visited"] == [{"path": "3", "ms": 640}, {"path": "3.1", "ms": 210}] and g["final"] == "3.1"
     assert g["depth"] == 1 and g["action"] == "telegram.chat" and g["expanded"] == 1
     assert {e["path"] for e in g["expansions"]} == {"*", "3"}
-    assert "Eric" not in hl and "secret plan" not in hl                 # no chat title / text logged
+    assert "Robin" not in hl and "secret plan" not in hl                 # no chat title / text logged
     assert rig.logged and rig.logged[-1][0] == "activate:Telegram" and rig.logged[-1][2] == out["executed"]
     toks = [t["token"] for t in normalise.hud_tokens([out])]
     assert toks == ["hud:shown", "hud:pressed:3", "hud:glide:1"]
@@ -627,7 +627,7 @@ def test_read_mail_body_is_read_only_and_tolerant():
 
 
 AGENT_EV = {"source": "agent", "class": "atlas", "who": "Atlas",
-            "ref": {"chat": "Atlas - R&D", "slug": "atlas", "n": 2, "since": "2026-10-21T12:05:00Z"}}
+            "ref": {"chat": "Atlas - Tools", "slug": "atlas", "n": 2, "since": "2026-10-21T12:05:00Z"}}
 AGENT_CARD = {"summary": ["Atlas asks to merge PR #12", "Decision needed: yes", "No deadline"],
               "excerpt": "need your go on the deploy"}
 
@@ -644,7 +644,7 @@ def test_agent_event_level3_summary_reads_the_agents_messages_once_at_hold():
     r = Rig(answer=dict(ANSWER, context=AGENT_CARD))
     reads = []
     r.engine.agent_reader = lambda slug: (reads.append(slug), "Atlas: PR #12 ready, merge?\n\nSecond: need your go on the deploy")[1]
-    evt = {2: {"key": "evt_1", "primitive": "telegram.chat", "params": {"chat": "Atlas - R&D"}, "token": "telegram.chat:atlas",
+    evt = {2: {"key": "evt_1", "primitive": "telegram.chat", "params": {"chat": "Atlas - Tools"}, "token": "telegram.chat:atlas",
                "label": "Ouvrir Telegram — Atlas", "evt": True}}
     s = r.session(keymap=evt, ctx={"app": "Safari", "url": "notion.so/prr", "space": 2}, event_card=glide.event_card(AGENT_EV))
     s.prefetch()
@@ -657,7 +657,7 @@ def test_agent_event_level3_summary_reads_the_agents_messages_once_at_hold():
 
 
 def test_agent_event_level3_gates():
-    evt = {2: {"key": "evt_1", "primitive": "telegram.chat", "params": {"chat": "Atlas - R&D"}, "token": "t", "evt": True}}
+    evt = {2: {"key": "evt_1", "primitive": "telegram.chat", "params": {"chat": "Atlas - Tools"}, "token": "t", "evt": True}}
     no_read = lambda slug: (_ for _ in ()).throw(AssertionError("no read"))  # noqa: E731
     # a private event: no read, level 2 only
     r = Rig(answer=dict(ANSWER, context=AGENT_CARD))

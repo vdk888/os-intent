@@ -4,7 +4,7 @@ import QuartzCore
 import HUDCore
 import OISettings
 
-/// A transparent, click-through, non-activating panel covering one screen (W11).
+/// A transparent, click-through, non-activating panel covering one screen.
 final class OverlayPanel: NSPanel {
     override var canBecomeKey: Bool { false }
     override var canBecomeMain: Bool { false }
@@ -53,7 +53,7 @@ final class HintOverlay {
                 let screen = NSScreen.screens.first { NSMouseInRect(p, $0.frame, false) } ?? NSScreen.main
                 guard let f = screen?.frame else { continue }
                 plan.append(PlannedHint(key: key, drawing: .edge, rect: f, edge: dir, color: color))
-            case .element(let rect):    // W16: the page button itself, when it is on a screen
+            case .element(let rect):    // the page button itself, when it is on a screen
                 let r = cocoaRect(fromCG: rect, mainScreenHeight: mainH)
                 let onScreen = NSScreen.screens.contains { $0.frame.intersects(r) }
                 if resolveDrawing(hint, windowFound: onScreen, dockFound: false) == .element {
@@ -175,7 +175,7 @@ final class HintOverlay {
         let r = local.insetBy(dx: isDock ? -3 : -2, dy: isDock ? -3 : -2)
         let shape = CAShapeLayer()
         shape.frame = CGRect(origin: .zero, size: sf.size)
-        let corner: CGFloat = isDock ? min(r.width, r.height) * 0.24 : (h.drawing == .element ? 8 : 11)   // W16
+        let corner: CGFloat = isDock ? min(r.width, r.height) * 0.24 : (h.drawing == .element ? 8 : 11)
         shape.path = CGPath(roundedRect: r, cornerWidth: corner, cornerHeight: corner, transform: nil)
         shape.fillColor = isDock ? h.color.withAlphaComponent(0.18).cgColor : nil
         shape.strokeColor = h.color.cgColor

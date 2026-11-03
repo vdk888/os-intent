@@ -23,7 +23,7 @@ if args.contains("--print-menu") {
     exit(0)
 }
 
-// W26: the Settings window alone (no status item, so it may run next to the LaunchAgent copy).
+// the Settings window alone (no status item, so it may run next to the LaunchAgent copy).
 if args.contains("--settings") {
     let app = NSApplication.shared
     app.setActivationPolicy(.regular)

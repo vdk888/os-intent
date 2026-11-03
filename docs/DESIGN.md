@@ -92,7 +92,7 @@ One file, `~/.local/share/os-intent/settings.json` (or `$OI_DATA_DIR/settings.js
 - `hud_enabled` — `oi-hud serve` answers every show with `{"event":"dropped","reason":"disabled"}` while false.
 - `denylist_apps` — `oi/normalise.py` merges it with its built-in list: a denylisted app yields `activate:<App>`
   only (no title, url or ⌘-chord tokens); "Safari" in the list drops url tokens. Applied at the next `oi tokens`.
-- `repo_dir` — where oi-menubar finds `projects/os-intent/.venv/bin/oi`.
+- `repo_dir` — where oi-menubar finds `<repo_dir>/.venv/bin/oi`.
 - `hotkeys` — HUD keys. W9: an option (1-4 only) can be a bare modifier TAP `{"tap": "ctrl|option|cmd|fn"}`
   (the default: ⌃ ⌥ ⌘ fn = options 1-4, one key; detected by a listen-only event tap that exists only while the HUD
   is visible, needs Input Monitoring for oi-hud.app, else ⌥n fallback; see hud/README.md). `"v": 2` marks the W9
@@ -138,19 +138,18 @@ One file, `~/.local/share/os-intent/settings.json` (or `$OI_DATA_DIR/settings.js
   Accessibility) then a halo on the capsule icon; see hud/README.md "Colours and target hints").
 - `wish.locale` — on-device dictation language for the wish panel (default `fr-FR`, fallback `en-US`); also used
   by the W12 vocal recording.
-- `hotkeys.vocal` (W12: "send a vocal to, and when i press it i have to choose one
-  of you guys") — the permanent "Send a vocal to…" option at 7:30 (mic icon + key, neutral colour), armed while
+- `hotkeys.vocal` (W12) — the permanent "Send a vocal to…" option (it then asks which agent) at 7:30 (mic icon + key, neutral colour), armed while
   the HUD is visible. Default the ⌃+⌥ SET tap (every single modifier is taken by options 1-4 and ⇧; the card's
   caps-lock tap is not used, see hud/README.md "Send a vocal to…"); a SET of 2-3 modifiers or a chord, never a
   single tap (read as the default). Press → the HUD turns into the agent picker at the same four places (fn ⌃ ⌥ ⌘ =
-  Atlas Nova Orion Lyra; the vocal key again = Vega Juno Iris Hera, then Echo, then back) → the
+  the first four recipients; the vocal key again = the next four, and so on, then back) → the
   agent's key (or a click) → the recording panel (on-device dictation, `vocal.max_s` max: default 5 min, countdown in the last 15 s, the vocal key or Enter sends, Esc
   cancels; an empty transcript sends nothing) → `oi vocal-send` delivers it. A file without it gets the default.
 - `vocal_recipients` (W12) — slug → inbox, overriding the built-in table of `oi/vocal.py` per slug (`null` removes
-  one; an invalid entry is ignored). `{"kind": "inject", "path": "<abs local inject file>"}` (atlas, juno) or
+  one; an invalid entry is ignored). `{"kind": "inject", "path": "<abs local inject file>"}` (the example atlas) or
   `{"kind": "a2a", "script": "<abs path of your relay command>", "to": "<host alias>", "state_dir": "<the agent's
-  inbox dir there>"}` (the example table: nova/orion/lyra/iris on agent-host, vega on studio-host, hera/echo on
-  laptop-host), run as `<relay> --to <host> --state-dir <dir> --from atlas`, the line on stdin; the relay command
+  inbox dir there>"}` (the example table: nova and orion on agent-host), run as `<relay> --to <host> --state-dir <dir> --from <sender>`
+  (settings `vocal.from`, default "user"), the line on stdin; the relay command
   (default $OI_RELAY_CMD or ~/.local/bin/agent-send) is yours: ssh, a signed relay, a queue. Optional `name`. oi-menubar keeps the key verbatim.
 - `gate` (W8) — when `oi live` shows the HUD on a context change. Shown only if not `paused`, `hud_enabled`,
   the current context (last token) was seen ≥ `min_history` times in training, P(nothing) ≤ `none_max_p`, at least
@@ -369,8 +368,8 @@ release over any capsule executes it, on empty space / Esc cancels; tap ⌥⌘ u
   binary loads the model, ~30 s, paid at `oi live` start by `warm_ocr`) + context + last actions → haiku on the
   subscription → a 3-5 line note, editable in the note panel, Enter sends. Esc anywhere = nothing sent.
 - Current contact (`oi/contact.py`): newest of, within 15 min: a `title:Telegram…/<slug>` matching
-  `contact_map` (defaults Atlas - R&D → atlas, Nova - CEO → nova, Orion - Fund → orion, Lyra - Sales → lyra, Vega -
-  Marketing → vega, Juno - Ext R&D → juno; the title is never logged), a `vocal:<slug>`, a shot sent;
+  `contact_map` (example defaults Atlas - Tools → atlas, Nova - Planning → nova, Orion - Finance → orion; the title
+  is never logged), a `vocal:<slug>`, a shot sent;
   else `shots.fallback_contact` (default "atlas"). **Measured:** Telegram's macOS window title is
   "Telegram" (not the chat) in ~95% of today's title tokens, so the title map rarely fires: the vocal / shot-sent /
   fallback paths carry it (follow-up: read the chat header through Accessibility).
@@ -596,9 +595,8 @@ shareable ("Lena, architect → SketchUp, 3D render requests to her cloud; us �
   architect 26 items. Day one in Telegram 15h / Safari github / Mail: 4-6 options ≥ show_min_p.
 
 ## Proactive hints (W24)
-The user: "je n'ai pas bougé la souris, mais l'état a changé (un mail reçu, un
-message d'un agent, le Drive, les marchés, une métrique qui a chuté, une panne dans le cockpit) … l'action la plus
-probable que je vais faire après, c'est X". `oi/proactive/` (config, sensors, judge, store, relevance, engine) + oi-hud
+Goal: the mouse did not move, but the state changed (a mail arrived, an agent's message, the Drive, the markets, a
+metric that dropped, an outage on the dashboard): propose the most likely next action. `oi/proactive/` (config, sensors, judge, store, relevance, engine) + oi-hud
 `marker` + the Settings window "Proactive" section.
 - Design rule applied: every sensor reads a STATE and reports both edges: an appear row
   when it starts, a gone row (same id, token `evt:<source>:<class>:gone`) when it ends. No relevance window, no
@@ -678,8 +676,8 @@ probable que je vais faire après, c'est X". `oi/proactive/` (config, sensors, j
 - Latency: mail poll 6 s + `oi live` loop 2 s → a hint ≤ 8 s after Mail shows the message (test on a fake clock).
 
 ## Outward gate
-"il manque une gate de validation pour toutes les actions extérieures … vous allez envoyer ce message à ce
-destinataire, validé ou pas ?" — `oi/gate.py` `outward(cls, to, name, preview)` is the ONE check every sender calls
+Every action that leaves the Mac first asks "you are about to send this message to this recipient: confirm?" —
+`oi/gate.py` `outward(cls, to, name, preview)` is the ONE check every sender calls
 right before it sends, dry runs included: `vocal` (oi.vocal.send: HUD voice note, glide "Ask Atlas" / a send, W25
 hand-over, wish send), `shot` (oi.shots.deliver), `page` (oi.live ui.press unless KNOWN read-only:
 `gate.page_outward` is fail-safe — a link, or a button whose first word is a read-only verb / view (open, view, show,

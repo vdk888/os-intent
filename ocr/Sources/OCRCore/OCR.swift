@@ -5,7 +5,7 @@ import ImageIO
 import UniformTypeIdentifiers
 import Vision
 
-/// W17: on-device OCR. Vision `VNRecognizeTextRequest` (accurate, language correction, fr + en), no
+/// on-device OCR. Vision `VNRecognizeTextRequest` (accurate, language correction, fr + en), no
 /// network: the pixels never leave the Mac. The text is returned to the caller only.
 public enum OCR {
     public enum Failure: Error, Equatable { case unreadable, vision(String) }

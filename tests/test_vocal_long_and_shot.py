@@ -1,5 +1,4 @@
-"""The user 2026-10-21 15:35Z (vocal): « Quand j'envoie un vocal comme ça ce serait bien que ça propose d'envoyer un
-screenshot […] et aussi il faut augmenter les 60 secondes max parce que ça me coupe au milieu ».
+"""A voice note should offer to attach a screenshot, and may run longer than 60 s (60 s cut it mid-sentence).
 Long vocals (the python side: a 5-minute transcript is kept whole, one write) and the screenshot offer in the
 outward gate (offered only when safe, OFF unless chosen, never captured in a dry run, attached to the SAME line).
 Nothing is ever sent or captured for real: fake runner / inject / capture / copy, the gate is tests/conftest.py's."""

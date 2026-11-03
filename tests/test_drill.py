@@ -120,6 +120,9 @@ def test_providers_cache_per_target_with_ttl():
     assert calls == [1, "Jazz", "Rock"]                                      # per target
     t[0] = 50
     p.items({"kind": "telegram"}, {})
+    assert p.reads["telegram"] == 1                                          # Telegram's AX walk: TELEGRAM_TTL_S (60)
+    t[0] = drill.TELEGRAM_TTL_S
+    p.items({"kind": "telegram"}, {})
     assert calls[-1] == 1 and p.reads["telegram"] == 2                      # expired: read again
     broken = drill.Providers(telegram_titles=lambda: 1 / 0)
     assert broken.items({"kind": "telegram"}, {}) == []                      # a failing reader gives nothing

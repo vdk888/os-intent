@@ -279,15 +279,21 @@ def folder_items(path: str, *, scandir=os.scandir, ok: Callable[[str], bool] = s
 
 
 # Telegram: the FIRST text of each row of the chat list (= the title; the preview comes after and is never read).
-TELEGRAM_TITLES_JS = r"""
-function kids(e){try{return e.uiElements();}catch(_){return [];}}
+# Run ON DEMAND only (a glide hold on a Telegram scope: Providers below, cached TELEGRAM_TTL_S; or the chat press);
+# never by a background poll. The listing walk fetches at most TITLES_NODE_MAX AX elements (the press, argv 1 = an
+# explicit pick by the user, is not capped).
+TITLES_NODE_MAX = 600
+TELEGRAM_TTL_S = 60
+TELEGRAM_TITLES_JS = f"const NODE_MAX={TITLES_NODE_MAX};" + r"""
+let N=0,CAP=true;
+function kids(e){if(CAP&&N>=NODE_MAX)return [];try{const k=e.uiElements();N+=k.length;return k;}catch(_){return [];}}
 function role(e){try{return e.role();}catch(_){return '';}}
 function firstText(e,d){if(d>5)return null;for(const k of kids(e)){if(role(k)==='AXStaticText'){try{const v=k.value();if(v)return String(v);}catch(_){}}const t=firstText(k,d+1);if(t)return t;}return null;}
 function rows(p){if(p.windows.length===0)return null;let q=[p.windows[0]];for(let d=0;d<8&&q.length;d++){const nq=[];for(const e of q){for(const k of kids(e)){const r=role(k);if(r==='AXTable'||r==='AXOutline'||r==='AXList'){const rs=kids(k).filter(x=>['AXRow','AXCell','AXGroup'].includes(role(x)));if(rs.length>=3)return rs;}nq.push(k);}}q=nq;}return null;}
 function norm(s){return String(s).normalize('NFKD').replace(/[̀-ͯ]/g,'').toLowerCase().replace(/[^a-z0-9]+/g,'-').replace(/^-+|-+$/g,'').slice(0,30).replace(/-+$/,'');}
 function run(argv){const se=Application('System Events');if(!se.processes.whose({name:'Telegram'}).length){if(argv.length)throw new Error('notfound');return '[]';}
 const p=se.processes.byName('Telegram');
-if(argv.length){Application('Telegram').activate();delay(0.3);const rs=rows(p)||[];const want=norm(argv[0]);
+if(argv.length){CAP=false;Application('Telegram').activate();delay(0.3);const rs=rows(p)||[];const want=norm(argv[0]);
  for(const r of rs.slice(0,40)){const t=firstText(r,0);if(t&&norm(t)===want){try{se.perform(r.actions.byName('AXPress'));}catch(_){try{r.selected=true;}catch(_){throw new Error('nopress');}}return 'ok';}}throw new Error('notfound');}
 const rs=rows(p);if(!rs)return '[]';const out=[];for(const r of rs.slice(0,12)){const t=firstText(r,0);if(t)out.push(t.slice(0,40));}return JSON.stringify(out);}
 """
@@ -303,6 +309,8 @@ def bot_name(x) -> bool:
 
 def _telegram_titles() -> list[str]:
     try:
+        if subprocess.run(["pgrep", "-xq", "Telegram"], timeout=2).returncode != 0:
+            return []                                        # not running: no Apple event (never launches it)
         p = subprocess.run(["osascript", "-l", "JavaScript", "-e", TELEGRAM_TITLES_JS],
                            capture_output=True, text=True, timeout=4)
         got = json.loads(p.stdout.strip() or "[]") if p.returncode == 0 else []
@@ -417,11 +425,11 @@ class Providers:
         self.lock = threading.Lock()
         self.reads = Counter()
 
-    def _cached(self, key: tuple, fn: Callable[[], list[dict]]) -> list[dict]:
+    def _cached(self, key: tuple, fn: Callable[[], list[dict]], ttl: float | None = None) -> list[dict]:
         now = self.clock()
         with self.lock:
             hit = self.cache.get(key)
-            if hit and now - hit[0] < self.ttl:
+            if hit and now - hit[0] < max(self.ttl, ttl or 0):
                 return [dict(n) for n in hit[1]]
         self.reads[key[0]] += 1
         try:
@@ -442,7 +450,8 @@ class Providers:
             return self._cached(("folder", scope.get("path")),
                                 lambda: folder_items(scope.get("path") or "", scandir=self.scandir, ok=self.ok))
         if k == "telegram":
-            return self._cached(("telegram",), lambda: telegram_items(self.telegram_titles(), titles))
+            return self._cached(("telegram",), lambda: telegram_items(self.telegram_titles(), titles),
+                                ttl=TELEGRAM_TTL_S)
         if k == "music":
             return self._cached(("music",), lambda: music_items(self.music_playlists()))
         if k == "playlist":

@@ -10,8 +10,8 @@ the user turns it on. No relevance window: an event is hintable exactly while it
      "respect_focus": true,         # no hint while a macOS Focus is on (when readable)
      "priorities": ["mail:client", "cockpit:outage"],     # source:class (or source:*): skip min_p and the rate limit
      "priorities_break_quiet": false,
-     "mail": {"poll_s": 6, "agent_senders": [], "team_domains": []}, # who is a client: the wiki (judge.py), never a settings list
-     "agents": {"poll_s": 8,
+     "mail": {"poll_s": 180, "agent_senders": [], "team_domains": []}, # every 3 min is enough; who is a client: the wiki (judge.py), never a settings list
+     "agents": {"poll_s": 10,                 # = sensors.BADGE_MIN_S: one shared Dock read per poll (x 3 on battery)
                 "chat_ids": [],                # your Telegram user id(s): the chat your agents' bots write to
                 "outbound": {},                # e.g. {"atlas": {"transcripts": "~/.claude/projects/<atlas workspace>",
                                                #                 "state_dir": "~/.claude/channels/atlas"}}: Mac agents'
@@ -47,8 +47,8 @@ DEFAULTS: dict = {
     "respect_focus": True,
     "priorities": ["mail:client", "cockpit:outage"],
     "priorities_break_quiet": False,
-    "mail": {"poll_s": 6, "agent_senders": [], "team_domains": []},
-    "agents": {"poll_s": 8, "chat_ids": [], "outbound": {}, "bots": {}},
+    "mail": {"poll_s": 180, "agent_senders": [], "team_domains": []},  # a full scan every 3 min (the Dock badge drives the rest)
+    "agents": {"poll_s": 10, "chat_ids": [], "outbound": {}, "bots": {}},
     "files": {"poll_s": 5, "folders": ["~/Desktop"]},
     "cockpit": {"poll_s": 60, "url": COCKPIT_URL, "alerts_file": None, "pr_owners": []},
     "metrics": {"poll_s": 300, "file": None},

@@ -56,8 +56,8 @@ def test_engine_records_sensor_failures_and_exceptions():
     eng = engine.Engine(None, sensors={"mail": FailingMail(), "files": Boom()}, raw_settings=lambda: raw,
                         clock=lambda: NOW, focus=lambda: None, profile=lambda: {}, hud_cmd=lambda p: {})
     for i in range(4):
-        eng.poll_once(NOW + i * 10)
-    eng.health.flush(NOW + 100, ["mail", "files"], force=True)
+        eng.poll_once(NOW + i * 200)
+    eng.health.flush(NOW + 150, ["mail", "files"], force=True)
     d = json.loads(health.health_path().read_text())["sources"]
     assert d["mail"]["consecutive_failures"] == 4 and d["mail"]["last_error_kind"] == "osa_error"
     assert d["files"]["last_error_kind"] == "exception:ValueError" and d["files"]["polls_ok_24h"] == 0

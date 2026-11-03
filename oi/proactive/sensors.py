@@ -23,7 +23,11 @@ injectable (tests use fakes; no real Mail, Telegram, network or folder is touche
                  replied flags (AppleScript, Automation → Mail, only while Mail RUNS: it is never launched). A new
                  unread mail = `evt:mail:<agent|other>` (the engine's wiki judge makes a client's `client`), live until it is read or replied (or leaves the inbox;
                  a live mail beyond the scan is looked up by its id, MAIL_STATE). Both reads are bounded by MAIL_BUDGET_S: an account
-                 too slow to answer is skipped and stays unknown, never fails the whole poll.
+                 too slow to answer is skipped and stays unknown, never fails the whole poll. LIGHT (Mail
+                 at 100 % CPU under a scan every 6 s): pgrep first (no Apple event while Mail is closed), no read at
+                 all while Mail's own CPU is above MAIL_BUSY_CPU (indexing: the back-off), and the full scan only
+                 when Mail's Dock badge (its unread inbox count, read from the Dock, not from Mail) changed, is
+                 unreadable, or every MAIL_SAFETY_S (a read + an arrival between two polls keep the count: caught there).
   AgentSensor    Telegram's Dock badge (the Dock's AX status label of its tile, DOCK_BADGE_JS; lsappinfo no longer
                  reports it on macOS 27) = the total unread count, 0 = every chat read. WHO wrote: the unread count of
                  each chat row (Accessibility, the same chat list the W23 reader walks: the row's title and its numeric
@@ -70,6 +74,7 @@ import os
 import re
 import ssl
 import subprocess
+import threading
 import time
 import urllib.request
 from datetime import datetime, timezone
@@ -84,7 +89,9 @@ from ..orchestrator import pack
 from . import store
 
 MAIL_SCAN = 8                 # newest messages read per account inbox per poll
-MAIL_LOOKUP = 20              # live mails beyond the scan looked up by id per poll
+MAIL_LOOKUP = 5               # live mails beyond the scan looked up by id per scan
+MAIL_SAFETY_S = 300           # a full scan at least this often even when Mail's Dock badge did not change
+MAIL_BUSY_CPU = 60.0          # Mail's own %CPU above this = busy (indexing): no read, the back-off
 MAIL_TIMEOUT_S = 25           # the bulk inbox scan takes ~5-6 s on the user's Mac (5 accounts), spikes to ~20 s when Mail is busy
 MAIL_BUDGET_S = 20            # the scripts' own deadline (< MAIL_TIMEOUT_S): a slow account / lookup is skipped, the rest returns
 MAIL_BACKOFF_S = 60           # after a timed-out Mail read, no Mail read for this long, doubled per timeout in a row ...
@@ -96,7 +103,8 @@ SEP, RS = "\x1f", "\x1e"
 SKIP_PREFIXES = (".", "~$", "Screenshot", "Capture d’écran", "Capture d'écran")
 PARTIAL_EXT = (".download", ".crdownload", ".part", ".partial", ".tmp")
 
-# Read-only: never launches Mail (checked with `application "Mail" is running`), never marks / moves / sends.
+# Read-only: never launches Mail (`application id "com.apple.mail" is running` before every event, below), never
+# marks / moves / sends.
 # BULK per account: one Apple event per property for the newest maxN messages (`message id of (messages 1 thru n)`,
 # ...), and the sender is split into name / address in the script (fromParts, no `extract name from` event per
 # message). The former one-event-per-property-per-message loop (~280 events) took 33-37 s on the user's Mac and hit
@@ -106,22 +114,32 @@ PARTIAL_EXT = (".download", ".crdownload", ".part", ".partial", ".tmp")
 # every Apple event runs `with timeout of` what is left of the script's budget (argv 2, MAIL_BUDGET_S): an account
 # that does not answer in time is SKIPPED, the others still return. A trailing "SKIPPED US <skipped> US <accounts>"
 # record says how many; "TIMEOUT" = even the account list did not answer.
+# NEVER RELAUNCHED (Cmd-Q on Mail mid-scan): an Apple event to an app that quit inside a `tell` block
+# relaunches it (checked on Calculator). So every Apple event to Mail, in MAIL_NEW and MAIL_STATE, is preceded by
+# `my alive()` (`application id "com.apple.mail" is running`: LaunchServices, no event to Mail), and every error
+# handler aborts on a quit (`quitErr`: -600 / -609 / -10810, or Mail no longer running) -> "NOTRUNNING": a partial
+# scan is never reported complete, a live mail never reads as `gone`. The sensor re-checks pgrep after the read too.
+# Residual window: the few ms between an alive() check and the event that follows it (pid targeting would close it,
+# but only JXA addresses an app by pid, and JXA has no `messages 1 thru n` range nor a per-event timeout: the bulk
+# read above would go back to one event per message).
 MAIL_NEW = r'''on run argv
 	set maxN to (item 1 of argv) as integer
 	set budget to (item 2 of argv) as integer
 	set sep to character id 31
 	set rs to character id 30
-	if application "Mail" is not running then return "NOTRUNNING"
+	if not my alive() then return "NOTRUNNING"
 	set t0 to current date
 	set out to ""
 	set nSkip to 0
 	set nAccts to 0
-	tell application "Mail"
+	tell application id "com.apple.mail"
 		try
 			with timeout of budget seconds
+				if not my alive() then return "NOTRUNNING"
 				set vAccts to every account
 			end timeout
 		on error number en
+			if my quitErr(en) then return "NOTRUNNING"
 			if en is -1712 then return "TIMEOUT"
 			error number en
 		end try
@@ -133,49 +151,64 @@ MAIL_NEW = r'''on run argv
 			else
 				try
 					with timeout of vLeft seconds
+						if not my alive() then return "NOTRUNNING"
 						set mb to mailbox "INBOX" of a
 						set vIds to {}
 						try
 							set vMsgs to a reference to (messages 1 thru maxN of mb)
+							if not my alive() then return "NOTRUNNING"
 							set vIds to message id of vMsgs
 						on error number en
+							if my quitErr(en) then return "NOTRUNNING"
 							if en is -1712 then error number en
+							if not my alive() then return "NOTRUNNING"
 							set n to count of messages of mb
 							if n > maxN then set n to maxN
 							if n > 0 then
 								set vMsgs to a reference to (messages 1 thru n of mb)
+								if not my alive() then return "NOTRUNNING"
 								set vIds to message id of vMsgs
 							end if
 						end try
 						if (count of vIds) > 0 then
 							set vFroms to {}
 							try
+								if not my alive() then return "NOTRUNNING"
 								set vFroms to sender of vMsgs
 							on error number en
+								if my quitErr(en) then return "NOTRUNNING"
 								if en is -1712 then error number en
 							end try
 							set vSubjs to {}
 							try
+								if not my alive() then return "NOTRUNNING"
 								set vSubjs to subject of vMsgs
 							on error number en
+								if my quitErr(en) then return "NOTRUNNING"
 								if en is -1712 then error number en
 							end try
 							set vWhens to {}
 							try
+								if not my alive() then return "NOTRUNNING"
 								set vWhens to date received of vMsgs
 							on error number en
+								if my quitErr(en) then return "NOTRUNNING"
 								if en is -1712 then error number en
 							end try
 							set vReads to {}
 							try
+								if not my alive() then return "NOTRUNNING"
 								set vReads to read status of vMsgs
 							on error number en
+								if my quitErr(en) then return "NOTRUNNING"
 								if en is -1712 then error number en
 							end try
 							set vReplies to {}
 							try
+								if not my alive() then return "NOTRUNNING"
 								set vReplies to was replied to of vMsgs
 							on error number en
+								if my quitErr(en) then return "NOTRUNNING"
 								if en is -1712 then error number en
 							end try
 							set vRows to ""
@@ -210,6 +243,7 @@ MAIL_NEW = r'''on run argv
 						end if
 					end timeout
 				on error number en
+					if my quitErr(en) then return "NOTRUNNING"
 					if en is -1712 then set nSkip to nSkip + 1
 				end try
 			end if
@@ -217,6 +251,14 @@ MAIL_NEW = r'''on run argv
 	end tell
 	return "OK" & rs & out & "SKIPPED" & sep & nSkip & sep & nAccts & rs
 end run
+
+on alive()
+	return application id "com.apple.mail" is running
+end alive
+
+on quitErr(en)
+	return en is in {-600, -609, -10810} or not my alive()
+end quitErr
 
 on leftS(t0, budget)
 	return budget - ((current date) - t0)
@@ -269,32 +311,45 @@ MAIL_STATE = r'''on run argv
 	set budget to (item 1 of argv) as integer
 	set sep to character id 31
 	set rs to character id 30
-	if application "Mail" is not running then return "NOTRUNNING"
+	if not my alive() then return "NOTRUNNING"
 	set t0 to current date
 	set out to ""
-	tell application "Mail"
+	tell application id "com.apple.mail"
 		repeat with mid in (rest of argv)
 			set vLeft to my leftS(t0, budget)
 			if vLeft < 1 then exit repeat
 			set vState to "gone"
 			try
 				with timeout of vLeft seconds
+					if not my alive() then return "NOTRUNNING"
 					set ms to (messages of inbox whose message id is (mid as string))
 					if (count of ms) > 0 then
 						set m to item 1 of ms
 						set vState to "unread"
+						if not my alive() then return "NOTRUNNING"
 						if read status of m then set vState to "read"
+						if not my alive() then return "NOTRUNNING"
 						if was replied to of m then set vState to "replied"
 					end if
 				end timeout
 			on error number en
+				if my quitErr(en) then return "NOTRUNNING"
 				if en is -1712 then exit repeat
+				set vState to ""
 			end try
-			set out to out & (mid as string) & sep & vState & rs
+			if vState is not "" then set out to out & (mid as string) & sep & vState & rs
 		end repeat
 	end tell
 	return "OK" & rs & out
 end run
+
+on alive()
+	return application id "com.apple.mail" is running
+end alive
+
+on quitErr(en)
+	return en is in {-600, -609, -10810} or not my alive()
+end quitErr
 
 on leftS(t0, budget)
 	return budget - ((current date) - t0)
@@ -422,6 +477,25 @@ def mail_running() -> bool:
         return False
 
 
+def mail_cpu(run: Callable = subprocess.run) -> float | None:
+    """Mail's own %CPU (pgrep + ps: no Apple event), None = not running / unreadable."""
+    try:
+        pids = run(["pgrep", "-x", "Mail"], capture_output=True, text=True, timeout=2).stdout.split()
+        if not pids:
+            return None
+        p = run(["ps", "-o", "%cpu=", "-p", pids[0]], capture_output=True, text=True, timeout=2)
+        return float((p.stdout or "").strip().replace(",", "."))
+    except (OSError, subprocess.TimeoutExpired, ValueError):
+        return None
+
+
+def mail_badge() -> int | None:
+    """Mail's Dock badge = its unread inbox count, read from the Dock's tile (never an Apple event to Mail). Read
+    FRESH (once per Mail poll, every 3 min; 9 on battery): the badge recorded with a scan must be the one before it,
+    or a read + an arrival in between would keep the count and skip scans until MAIL_SAFETY_S."""
+    return DOCK.get("Mail", fresh=True)
+
+
 def _log(msg: str) -> None:
     from .engine import log                                  # the engine's log line (imported late: no cycle)
     log(msg)
@@ -432,9 +506,15 @@ class MailSensor:
 
     def __init__(self, *, osa: Callable = ca.osascript, claude_cfg: Callable[[], dict] = ca.claude_settings,
                  agents: Callable[[], set[str]] = lambda: set(), log: Callable[[str], None] = _log,
-                 running: Callable[[], bool] = mail_running):
+                 running: Callable[[], bool] | None = None, badge: Callable[[], int | None] | None = None,
+                 cpu: Callable[[], float | None] | None = None):
         self.osa, self.claude_cfg, self.agents = osa, claude_cfg, agents
-        self.log, self.running = log, running
+        self.log = log
+        self.running = running or (lambda: mail_running())  # None: the module readers, looked up at call time
+        self.badge = badge or (lambda: mail_badge())
+        self.cpu = cpu or (lambda: mail_cpu())
+        self.scanned_badge: int | None = None                # the Dock badge at the last full scan
+        self.scanned_at = float("-inf")
         self.last_error: str | None = None                   # the last poll's error kind (engine health), None = ok
         self.states = States()
         self.seen: dict[str, float] = {}
@@ -455,12 +535,15 @@ class MailSensor:
             rc = -1
         self.last_error = "osa_timeout" if rc == -1 else "osa_error" if rc != 0 else "bad_output"
         if rc == -1:                                         # a slow Mail: back off, doubled per timeout in a row
-            self.backoff_s = min(MAIL_BACKOFF_MAX_S, self.backoff_s * 2 or MAIL_BACKOFF_S)
-            self.quiet_until = now + self.backoff_s
+            self._back_off(now)
         if self.err_logged is not None and now - self.err_logged < MAIL_ERR_LOG_S:
             return
         self.err_logged = now
         self.log(f"mail sensor: Mail read failed (rc={rc}); no mail event until it reads again")
+
+    def _back_off(self, now: float) -> None:
+        self.backoff_s = min(MAIL_BACKOFF_MAX_S, self.backoff_s * 2 or MAIL_BACKOFF_S)
+        self.quiet_until = now + self.backoff_s
 
     def _partial(self, now: float, skipped: int, accounts: int) -> None:
         """Some accounts did not answer within MAIL_BUDGET_S: not a failed poll (the others read), one log line per
@@ -484,6 +567,8 @@ class MailSensor:
             return {}
         rc, out = self.osa(MAIL_STATE, [str(MAIL_BUDGET_S), *ids[:MAIL_LOOKUP]], MAIL_TIMEOUT_S)
         got = parse_mail_state(out) if rc == 0 else None
+        if got is not None and not self.running():
+            got, rc, out = None, 0, "NOTRUNNING"             # Mail quit during the lookup: no id reads as gone
         if got is None:
             self._read_failed(now, rc, out)
         return got or {}
@@ -493,8 +578,22 @@ class MailSensor:
         if self.skipped:                                     # backing off a slow Mail: no read, nothing starts or ends
             return []
         self.last_error = None
+        if not self.running():                               # pgrep: no Apple event while Mail is closed
+            self.last_error = "not_running"
+            return []
+        cpu = self.cpu()
+        if cpu is not None and cpu > MAIL_BUSY_CPU:          # Mail busy (indexing): never add load, back off
+            self._back_off(now)
+            self.skipped = True
+            return []
+        badge = self.badge()
+        if (self.states.pre is not None and badge is not None and badge == self.scanned_badge
+                and now - self.scanned_at < MAIL_SAFETY_S):
+            return []                                        # unread count unchanged: the state is what was read
         rc, out = self.osa(MAIL_NEW, [str(MAIL_SCAN), str(MAIL_BUDGET_S)], MAIL_TIMEOUT_S)
         rows = parse_mail_list(out) if rc == 0 else None
+        if rows is not None and not self.running():
+            rows, rc, out = None, 0, "NOTRUNNING"            # Mail quit during the scan: unknown, never a full read
         skipped, accounts = mail_skipped(out) if rows is not None else (0, 0)
         if rows is not None and accounts and skipped >= accounts:
             rows, rc, out = None, -1, ""                     # no account answered in time: a timed-out read
@@ -510,6 +609,9 @@ class MailSensor:
         state = {r["message_id"]: ("replied" if r["replied"] else "read" if r["read"] else "unread") for r in rows}
         if not skipped:                                      # a slow account would only time the lookup out too
             state.update(self.lookup([m for m in self.states.live if m not in state], now))
+            if self.last_error == "not_running":
+                return []                                    # Mail quit during the lookup: nothing starts or ends
+            self.scanned_badge, self.scanned_at = badge, now  # a full read: the badge it matches
         ccfg = None
         on: dict = {}
         for r in rows:
@@ -538,8 +640,12 @@ class MailSensor:
 # Telegram's chat list, read-only: [[title, unread]] per row. The title = the row's first text (as the W23 reader);
 # unread = the row's badge: its last short numeric text after the title ("3", "99+", "1.2K") or a count in the
 # row's description ("3 unread"). Nothing else of a row leaves the script (never a preview / message text).
-TELEGRAM_UNREAD_JS = r"""
-function kids(e){try{return e.uiElements();}catch(_){return [];}}
+# BOUNDED: at most NODE_MAX AX elements are fetched in all (a pathological tree cannot pin System Events); a walk
+# that hit the cap is 'null' (unknown), never partial counts (a row cut before its badge would read as read).
+NODE_MAX = 600
+TELEGRAM_UNREAD_JS = f"const NODE_MAX={NODE_MAX};" + r"""
+let N=0;
+function kids(e){if(N>=NODE_MAX)return [];try{const k=e.uiElements();N+=k.length;return k;}catch(_){return [];}}
 function role(e){try{return e.role();}catch(_){return '';}}
 function texts(e,d,out){if(d>5)return out;for(const k of kids(e)){if(role(k)==='AXStaticText'){try{const v=k.value();if(v)out.push(String(v));}catch(_){}}texts(k,d+1,out);}return out;}
 function rows(p){if(p.windows.length===0)return null;let q=[p.windows[0]];for(let d=0;d<8&&q.length;d++){const nq=[];for(const e of q){for(const k of kids(e)){const r=role(k);if(r==='AXTable'||r==='AXOutline'||r==='AXList'){const rs=kids(k).filter(x=>['AXRow','AXCell','AXGroup'].includes(role(x)));if(rs.length>=3)return rs;}nq.push(k);}}q=nq;}return null;}
@@ -550,7 +656,7 @@ for(const r of rs.slice(0,40)){const t=texts(r,0,[]);if(!t.length)continue;let n
  for(let i=t.length-1;i>=1;i--){const c=count(t[i]);if(c!==null){n=c;break;}}
  if(!n){try{const m=String(r.description()||'').match(/(\d+)\s+unread/i);if(m)n=parseInt(m[1]);}catch(_){}}
  out.push([t[0].slice(0,40),n]);}
-return JSON.stringify(out);}
+if(N>=NODE_MAX)return 'null';return JSON.stringify(out);}
 """
 
 
@@ -598,27 +704,131 @@ def telegram_dock_badge(run: Callable = subprocess.run) -> int | None:
     return _badge_count(m.group(1) if m else "")
 
 
-# The Dock's own tile of Telegram, read-only: its AX status label (the badge text) only; 'null' = no tile.
+# CADENCE (battery drain, 2026-11-03: `oi live` 17 h up kept System Events ~20 % CPU, osascript ~21 %, on battery).
+# Every osascript-backed read runs as rarely as the state needs, never per consumer:
+#  - ONE Dock read per BADGE_MIN_S (× BATTERY_FACTOR on battery) shared by every badge consumer (AgentSensor's
+#    Telegram badge, MailSensor's change detector): DockBadges below. lsappinfo is no source on macOS 27 (checked
+#    again 2026-11-03 on 27.0.1: `lsappinfo list` carries no StatusLabel at all while Telegram's tile shows 9).
+#  - the chat-list walk (TELEGRAM_UNREAD_JS) only when the badge changed or UNREAD_TTL_S passed, and only every
+#    UNREAD_RETRY_S while the client exposes no chat list (Telegram 13: ~1.9 s of System Events per walk, always
+#    None): GatedUnread.
+#  - the engine multiplies the poll_s of OSA_SOURCES by power_factor() (BATTERY_FACTOR on battery, read from
+#    `pmset -g ps` at most every POWER_CHECK_S).
+# The state edges are unchanged (an appear / gone row per state change); only how soon a change is seen moves (AC:
+# ≤ 10 s, battery: ≤ 30 s for a badge). Display cadence, not context lifetime (docs/DESIGN.md « context is state »).
+BADGE_MIN_S = 10.0            # one Dock read per this (AC); × BATTERY_FACTOR on battery
+BADGE_APPS = ("Telegram", "Mail")   # the tiles read (their badge label only)
+BATTERY_FACTOR = 3.0          # osascript-backed intervals × this on battery
+POWER_CHECK_S = 60.0          # `pmset -g ps` at most this often
+OSA_SOURCES = ("mail", "agents", "calendar")   # sources whose poll spawns osascript (the engine scales their poll_s)
+UNREAD_TTL_S = 60.0           # a readable chat list is re-walked when the badge changed, else after this
+UNREAD_RETRY_S = 600.0        # the client exposed no chat list UNREAD_MISSES walks in a row: walk again only after this
+UNREAD_MISSES = 3             # a single failed walk (timeout, window closed) is retried at the next poll, as before
+CACHE_SLACK_S = 0.5           # a cache due "now" is due (the engine's tick jitter must not skip a whole poll)
+
+
+def on_battery(run: Callable = subprocess.run) -> bool | None:
+    """The Mac draws from its battery (`pmset -g ps` first line), None = unknown (a desktop Mac / unreadable)."""
+    try:
+        p = run(["pmset", "-g", "ps"], capture_output=True, text=True, timeout=2)
+    except (OSError, subprocess.TimeoutExpired):
+        return None
+    first = ((p.stdout or "").splitlines() or [""])[0]
+    if p.returncode != 0 or "drawing from" not in first:
+        return None
+    return "Battery Power" in first
+
+
+class Power:
+    """The power source, read at most every POWER_CHECK_S. factor(): BATTERY_FACTOR on battery, else 1."""
+
+    def __init__(self, read: Callable[[], bool | None] | None = None, clock: Callable[[], float] = time.monotonic):
+        self.read = read or (lambda: on_battery())
+        self.clock = clock
+        self.at = float("-inf")
+        self.battery: bool | None = None
+        self.lock = threading.Lock()
+
+    def factor(self) -> float:
+        with self.lock:
+            now = self.clock()
+            if now - self.at >= POWER_CHECK_S:
+                self.at, self.battery = now, self.read()
+            return BATTERY_FACTOR if self.battery else 1.0
+
+
+POWER = Power()
+
+
+def power_factor() -> float:
+    return POWER.factor()
+
+
+# The Dock's tiles, read-only: the AX status label (the badge text) of the tiles named in argv (default BADGE_APPS)
+# only, {name: label}; 'null' = the Dock is unreadable. The tile names come in ONE Apple event (uiElements.name()),
+# then one event per wanted tile (the former per-tile name() loop took ~0.6 s per app, this ~0.1 s for both).
 DOCK_BADGE_JS = r"""
-function run(argv){const se=Application('System Events');let items=[];
-try{items=se.processes.byName('Dock').lists[0].uiElements();}catch(_){return 'null';}
-for(const it of items){let n='';try{n=it.name();}catch(_){continue;}if(n!=='Telegram')continue;
- let s=null;try{s=it.attributes.byName('AXStatusLabel').value();}catch(_){s=null;}
- return JSON.stringify({label:(s===null||s===undefined)?'':String(s).slice(0,8)});}
-return 'null';}
+function run(argv){const want=argv.length?argv:['Telegram','Mail'];const se=Application('System Events');let l=null,names=[];
+try{l=se.processes.byName('Dock').lists[0];names=l.uiElements.name();}catch(_){return 'null';}
+const out={};for(let i=0;i<names.length;i++){const n=String(names[i]||'');if(want.indexOf(n)<0||n in out)continue;
+ let s=null;try{s=l.uiElements[i].attributes.byName('AXStatusLabel').value();}catch(_){s=null;}
+ out[n]=(s===null||s===undefined)?'':String(s).slice(0,8);}
+return JSON.stringify(out);}
 """
 
 
-def dock_tile_badge(run: Callable = subprocess.run) -> int | None:
-    """Telegram's Dock badge from the Dock's AX tile: 0 = no badge, None = no tile / unreadable."""
+def read_dock_badges(run: Callable = subprocess.run, apps: tuple[str, ...] = BADGE_APPS) -> dict[str, str] | None:
+    """{app: badge label} of the wanted Dock tiles (an app without a tile is absent), None = the Dock is unreadable."""
     try:
-        p = run(["osascript", "-l", "JavaScript", "-e", DOCK_BADGE_JS], capture_output=True, text=True, timeout=4)
+        p = run(["osascript", "-l", "JavaScript", "-e", DOCK_BADGE_JS, *apps], capture_output=True, text=True,
+                timeout=4)
         got = json.loads((p.stdout or "").strip() or "null") if p.returncode == 0 else None
     except (OSError, subprocess.TimeoutExpired, ValueError):
         return None
-    if not isinstance(got, dict) or not isinstance(got.get("label"), str):
+    if not isinstance(got, dict):
         return None
-    return _badge_count(got["label"])
+    return {k: v for k, v in got.items() if isinstance(k, str) and isinstance(v, str)}
+
+
+class DockBadges:
+    """ONE Dock read shared by every badge consumer, at most every BADGE_MIN_S × power factor (a failed read is
+    cached too: it is not retried per consumer). `reads` counts the osascript spawns (tests, the PR's measure)."""
+
+    def __init__(self, read: Callable[[], dict[str, str] | None] | None = None,
+                 clock: Callable[[], float] = time.monotonic, factor: Callable[[], float] | None = None):
+        self.read = read or (lambda: read_dock_badges())
+        self.clock = clock
+        self.factor = factor or (lambda: power_factor())
+        self.at = float("-inf")
+        self.labels: dict[str, str] | None = None
+        self.reads = 0
+        self.lock = threading.Lock()
+
+    def labels_now(self) -> dict[str, str] | None:
+        with self.lock:
+            now = self.clock()
+            if now - self.at >= BADGE_MIN_S * self.factor() - CACHE_SLACK_S:
+                self.at, self.labels = now, self.read()
+                self.reads += 1
+            return self.labels
+
+    def get(self, app: str, fresh: bool = False) -> int | None:
+        """An app's badge: 0 = no badge, None = no tile / the Dock unreadable. fresh: read now (refreshes the cache)."""
+        if fresh:
+            with self.lock:
+                self.at = float("-inf")
+        labels = self.labels_now()
+        if labels is None or app not in labels:
+            return None
+        return _badge_count(labels[app])
+
+
+DOCK = DockBadges()
+
+
+def dock_tile_badge(app: str = "Telegram", fresh: bool = False) -> int | None:
+    """An app's Dock badge from the shared Dock read (DOCK): 0 = no badge, None = no tile / unreadable."""
+    return DOCK.get(app, fresh)
 
 
 def telegram_badge() -> int | None:
@@ -633,6 +843,44 @@ def telegram_running() -> bool:
         return subprocess.run(["pgrep", "-xq", "Telegram"], timeout=2).returncode == 0
     except (OSError, subprocess.TimeoutExpired):
         return False
+
+
+class GatedUnread:
+    """AgentSensor's chat-list read (the AX walk, TELEGRAM_UNREAD_JS), as rarely as its state needs: walked again
+    only when the Telegram badge changed or UNREAD_TTL_S passed (× power factor). A failed walk (None) is retried at
+    the next poll; after UNREAD_MISSES in a row (the client exposes no chat list: Telegram 13) only every
+    UNREAD_RETRY_S. In between, the last answer stands (same badge = same unread state; a read + an arrival between
+    two walks keep the badge: caught at the TTL). `forget()` (the badge went to 0: all read) drops the answer."""
+
+    def __init__(self, walk: Callable[[], dict[str, int] | None] | None = None,
+                 badge: Callable[[], int | None] | None = None, clock: Callable[[], float] = time.monotonic,
+                 factor: Callable[[], float] | None = None):
+        self.walk = walk or (lambda: telegram_unread())
+        self.badge = badge or (lambda: telegram_badge())   # the shared Dock read: no extra spawn
+        self.clock = clock
+        self.factor = factor or (lambda: power_factor())
+        self.at = float("-inf")
+        self.seen_badge: int | None = None
+        self.last: dict[str, int] | None = None
+        self.misses = 0                                      # failed walks in a row
+        self.walks = 0
+
+    def forget(self) -> None:
+        """Every chat read (badge 0): the last list is over; the next badge walks again (a client known to expose
+        no list stays on its retry)."""
+        if self.misses < UNREAD_MISSES:
+            self.at, self.last = float("-inf"), None
+
+    def __call__(self) -> dict[str, int] | None:
+        now, badge = self.clock(), self.badge()
+        blind = self.misses >= UNREAD_MISSES
+        wait = (UNREAD_RETRY_S if blind else UNREAD_TTL_S if self.last is not None else 0.0) * self.factor()
+        changed = self.last is not None and badge != self.seen_badge
+        if changed or now - self.at >= wait - CACHE_SLACK_S:
+            self.at, self.seen_badge, self.last = now, badge, self.walk()
+            self.misses = 0 if self.last is not None else self.misses + 1
+            self.walks += 1
+        return self.last
 
 
 REPLY_TOOL = "mcp__plugin_telegram_telegram__reply"
@@ -793,13 +1041,14 @@ class OutboundLog:
 class AgentSensor:
     source = "agents"
 
-    def __init__(self, *, unread: Callable[[], dict[str, int] | None] = telegram_unread,
+    def __init__(self, *, unread: Callable[[], dict[str, int] | None] | None = None,
                  dock_badge: Callable[[], int | None] = telegram_badge,
                  table: Callable[[], dict[str, str]] = lambda: contact.contact_map({}),
                  titles: Callable[[], dict[str, str]] = lambda: contact.chat_titles({}),
                  names: Callable[[], dict[str, str]] = lambda: {},
                  outbound: "OutboundLog | None" = None, running: Callable[[], bool] = telegram_running):
-        self.unread, self.dock_badge, self.table, self.titles, self.names = unread, dock_badge, table, titles, names
+        self.unread = unread or GatedUnread()                 # the AX walk, gated (battery drain 2026-11-03)
+        self.dock_badge, self.table, self.titles, self.names = dock_badge, table, titles, names
         self.outbound = outbound if outbound is not None else OutboundLog()
         self.running = running
         self.last_error: str | None = None                   # the last poll's error kind (engine health), None = ok
@@ -822,6 +1071,7 @@ class AgentSensor:
             return []
         if dock == 0:                                        # no badge: every chat is read
             self.read_at = now
+            getattr(self.unread, "forget", lambda: None)()   # the gated walk's last list is over
             return self.states.step(now, {}, None)
         chats = self.unread()
         if chats:

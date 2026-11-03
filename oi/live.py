@@ -1384,11 +1384,20 @@ class Live:
 
     def on_live_state(self, what: str, shot: dict) -> None:
         """(oi.shots): a live state changed. "appear": its options show at once (the summon's show, no gate);
+        (settings `shots.picker_first`, default on): instead the team picker, then the note panel (Shots.forward;
+        Claude's content actions then wait for ⌥⌘, they never replace the picker);
         "content": Claude's content actions came: the cross still up for it is redrawn in place; "gone": the state
         ended: the cross still up for it is taken down (its relevance ended with it)."""
+        if what == "appear" and self.shots.picker_first():   # the team picker at once, then the note panel
+            show = self.live_show = {"done": False, "picker": True}
+            t = threading.Thread(target=self.shots.forward, args=(shot, show), daemon=True, name="oi-shot-forward")
+            self.threads = [x for x in self.threads if x.is_alive()] + [t]
+            t.start()
+            log("screenshot appear -> team picker")
+            return
         if what in ("appear", "content"):
-            if what == "content" and (self.live_show is None or self.live_show["done"]):
-                return                                # not on screen: the next hint / summon has them
+            if what == "content" and (self.live_show is None or self.live_show["done"] or self.live_show.get("picker")):
+                return                                # not on screen (or the picker is): the next summon has them
             r = self.summon(trigger="shot")
             log(f"screenshot {what} -> {r.get('reason')} ({len((r.get('payload') or {}).get('options', []))} options)")
         elif what == "gone" and self.live_show is not None and not self.live_show["done"] and not self.shots.live_set():

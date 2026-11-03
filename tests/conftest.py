@@ -69,6 +69,16 @@ def no_real_providers(monkeypatch):
 
 
 @pytest.fixture(autouse=True)
+def no_real_remote_copy(monkeypatch):
+    """the screenshot's ssh copy to an agent's host never runs in tests (a test injects `remote_copy`)."""
+    from oi import shots
+
+    def blocked(*a, **kw):
+        raise AssertionError("a real ssh image copy ran in a test")
+    monkeypatch.setattr(shots, "_run_copy", blocked)
+
+
+@pytest.fixture(autouse=True)
 def no_real_calendar(monkeypatch):
     """The EventKit busy reader never runs in tests (a mail proposing a time = "no access" unless faked)."""
     from oi import calendar_slots

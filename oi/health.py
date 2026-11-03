@@ -16,6 +16,12 @@
                  oi-laya.json `refused`, < LAYA_REFUSED_INFO_S old) is info: the rule protecting the Mac, retried by
                  oi-live every 10 min; if it lasts, the error rate makes it a problem. The LaunchAgent is lazy
                  (RunAtLoad false): "not running" is not a service problem, "not loaded" still is.
+  Screenshot read `oi live` runs from launchd, where macOS privacy (TCC) may deny ~/Desktop to its python
+                 (EPERM, while a Terminal can read it). oi live (oi/shots.py) probes the screenshot folder in ITS
+                 context at start, every PROBE_S (60 s), after each new screenshot and after a failed copy or an
+                 unreadable screenshot (probe_shot_read: list it, open the newest screenshot, read
+                 one byte) and writes <data dir>/health/shots.json {ts, folder, ok, error, probed, python};
+                 `oi health` reports a failed probe as a problem with the TCC hint (no probe yet: nothing).
 """
 from __future__ import annotations
 
@@ -26,6 +32,7 @@ import re
 import shutil
 import subprocess
 import sys
+import errno
 import tempfile
 import time
 from datetime import datetime, timezone
@@ -56,8 +63,71 @@ INFO_TEXT = {("mail", "not_running"): "Mail fermé", ("agents", "not_running"): 
              ("files", "watcher_not_running"): "oi-watcher arrêté"}
 
 
+SHOT_EXT = (".png", ".jpg", ".jpeg", ".heic", ".tiff", ".tif")
+
+
 def health_path() -> Path:
     return paths.data_dir() / "health" / "sensors.json"
+
+
+def shot_probe_path() -> Path:
+    return paths.data_dir() / "health" / "shots.json"
+
+
+def _home_rel(p: str) -> str:
+    home = os.path.expanduser("~")
+    return "~" + p[len(home):] if p == home or p.startswith(home + "/") else p
+
+
+def screenshot_folder(read: Callable[[], str | None] | None = None) -> str:
+    """The screenshot location (`defaults read com.apple.screencapture location`), ~/Desktop when unset."""
+    def defaults() -> str | None:
+        try:
+            p = subprocess.run(["defaults", "read", "com.apple.screencapture", "location"],
+                               capture_output=True, text=True, timeout=5)
+        except (OSError, subprocess.TimeoutExpired):
+            return None
+        return p.stdout.strip() if p.returncode == 0 else None
+    loc = (read or defaults)()
+    return os.path.expanduser(loc) if loc else os.path.expanduser("~/Desktop")
+
+
+def probe_shot_read(folder: str, now: float | None = None) -> dict:
+    """Can THIS process read the screenshot folder? List it, then open the newest screenshot and read one byte
+    (none there: the listing is the probe). {ts, folder (~ form), ok, error (an errno name), probed, python}."""
+    out = {"ts": _iso(time.time() if now is None else now), "folder": _home_rel(folder), "ok": False, "error": None,
+           "probed": "folder", "python": os.path.realpath(sys.executable)}
+    try:
+        with os.scandir(folder) as it:
+            shots = [e for e in it if e.is_file() and e.name.lower().endswith(SHOT_EXT)]
+        if shots:
+            out["probed"] = "newest"
+            newest = max(shots, key=lambda e: e.stat().st_mtime)
+            with open(newest.path, "rb") as f:
+                f.read(1)
+        out["ok"] = True
+    except OSError as e:
+        out["error"] = errno.errorcode.get(e.errno or 0, type(e).__name__)
+    return out
+
+
+def write_shot_probe(rec: dict) -> None:
+    p = shot_probe_path()
+    p.parent.mkdir(mode=0o700, parents=True, exist_ok=True)
+    tmp = p.with_suffix(".tmp")
+    tmp.write_text(json.dumps(rec), encoding="utf-8")
+    os.replace(tmp, p)
+
+
+def check_shot_read(rec: dict | None) -> tuple[list[str], list[str]]:
+    """(problems, info) of oi live's screenshot-folder probe."""
+    if rec is None or rec.get("ok"):                           # no probe yet: an oi live from before 
+        return [], []
+    hint = (" (macOS privacy/TCC: System Settings → Privacy & Security → Files and Folders or Full Disk Access →"
+            f" allow {rec.get('python') or 'the oi live python'}, or move the screenshot location out of"
+            " Desktop/Documents/Downloads)") if rec.get("error") in ("EPERM", "EACCES") else ""
+    return [f"shots: FAIL oi live cannot read the screenshot folder {rec.get('folder')} ({rec.get('error')}),"
+            f" screenshots cannot be forwarded{hint}"], []
 
 
 def _iso(t: float | None) -> str | None:
@@ -361,10 +431,16 @@ def run_checks(now: float | None = None, *, listing: Callable[[], dict] = launch
     lprobs, linfo, lsum = check_laya(live, laya_probe(live.get("laya_url") or laya.DEFAULT_URL) if laya_enabled(live)
                                      else None, _laya_status(), laya_rows(paths.hud_log_dir(), now), now)
     probs += lprobs
-    return {"healthy": not probs, "problems": probs, "info": check_info(data, srcs) + linfo, "laya": lsum,
+    try:
+        shot_rec = json.loads(shot_probe_path().read_text(encoding="utf-8"))
+    except (OSError, ValueError):
+        shot_rec = None
+    sprobs, sinfo = check_shot_read(shot_rec)
+    probs += sprobs
+    return {"healthy": not probs, "problems": probs, "info": check_info(data, srcs) + linfo + sinfo, "laya": lsum,
             "sensors": (data or {}).get("sources") or {},
             "enabled_sources": srcs, "services": {s: services.get(f"com.osintent.{s}") for s in SERVICES},
-            "log_errors_24h": logs, "scripts_checked": len(embedded_scripts()), "scripts_failed": len(scripts)}
+            "shot_read": shot_rec, "log_errors_24h": logs, "scripts_checked": len(embedded_scripts()), "scripts_failed": len(scripts)}
 
 
 def cmd_health(args) -> int:

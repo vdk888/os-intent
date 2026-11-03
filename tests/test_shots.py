@@ -153,7 +153,13 @@ def test_deliver_dry_run_inject_and_a2a(png):
     r = shots.deliver("nova", str(png), None, ctx={}, when=WHEN, dry_run=True, table=TABLE, out=out)
     plan = json.loads(out.getvalue())
     assert r["ok"] and plan["kind"] == "a2a" and plan["argv"] == vocal.command(TABLE["nova"])
-    assert plan["stdin"].endswith(f"(image on the user's Mac at {png})") and "GH_TOKEN" in plan["env_unset"]
+    inbox = "/opt/agents/nova/inbox/oi-shot-20261020T161300Z-"   # copied there
+    assert plan["copy"]["argv"][:5] == ["ssh", "-o", "BatchMode=yes", "-o", "ConnectTimeout=10"]
+    assert f"(image: {inbox}" in plan["stdin"] and "GH_TOKEN" in plan["env_unset"]
+    out = io.StringIO()                                          # shots.remote_image false: the Mac path, as before
+    shots.deliver("nova", str(png), None, ctx={}, when=WHEN, dry_run=True, table=TABLE, out=out, remote_image=False)
+    plan = json.loads(out.getvalue())
+    assert "copy" not in plan and plan["stdin"].endswith(f"(image on the user's Mac at {png})")
     assert shots.deliver("ghost", str(png), None, ctx={}, when=WHEN, dry_run=True, table=TABLE)["error"]
     assert shots.deliver("atlas", "/nope.png", None, ctx={}, when=WHEN, dry_run=True, table=TABLE)["error"] == "image missing"
 
@@ -175,7 +181,7 @@ def test_deliver_inject_into_a_temp_channel(tmp_path, png):
 
 def test_deliver_a2a_runner_gets_the_line_on_stdin(png):
     calls = []
-    r = shots.deliver("orion", str(png), "n", ctx={}, when=WHEN, table=TABLE,
+    r = shots.deliver("orion", str(png), "n", ctx={}, when=WHEN, table=TABLE, remote_image=False,
                       runner=lambda argv, data: calls.append((argv, data)) or (0, ""))
     assert r["ok"] and calls[0][0] == vocal.command(TABLE["orion"]) and str(png) not in " ".join(calls[0][0])
     assert calls[0][1].decode().endswith(f"(image on the user's Mac at {png})\n")
@@ -277,26 +283,31 @@ def rows_of(kind="shot", event=None):
             if r.get("kind") == kind and (event is None or r.get("event") == event)]
 
 
-def test_a_screenshot_is_in_the_context_exactly_while_its_thumbnail_is_up(png, data_dir):
+def test_a_screenshot_is_in_the_context_from_its_thumbnail_and_then_by_its_file(png, data_dir):
+    """(a real trace): thumbnail live 11:57:40, the file 11:58:02.506, thumbnail gone 11:58:02.927:
+    macOS writes the file as the thumbnail slides away. The offer then lives with the FILE, not the vanished window."""
     so, _, _ = make(rows=[row(120, "title:Telegram/atlas-tools")])
     assert so.live_set() == set() and so.options() == []
-    so.apply(state_ev("live"))
-    assert so.live_set() == {"shot"} and so.options() == []          # live, its image not landed yet: no option
-    s = so.apply(shot_ev(png))
-    assert s["window"] and so.live.states == ["appear"]
+    so.apply(state_ev("live", sec_before=22))
+    assert so.live_set() == {"shot"} and so.options() == []          # being taken, its image not landed yet: no option
+    s = so.apply(shot_ev(png, sec_before=0.5))
+    assert s and so.live.states == ["appear"]
     opts = so.options()
     assert [o["label"] for o in opts] == ["→ Atlas", "→ other", "Annotate"]
     assert all(o["live"] == "shot" and o["outward"] and o["primitive"].startswith("shot.") for o in opts)
     assert opts[0]["claude"] is True and opts[0]["token"] == "shot.send:atlas"
-    assert so.token_rows() == [shots.token_row(shot_ev(png))] and so.token_rows()[0]["token"] == "shot:new"
-    so.on_context([row(0, "activate:Safari")])                         # The user switches app: the thumbnail is still up
+    assert so.token_rows() == [shots.token_row(shot_ev(png, sec_before=0.5))] and so.token_rows()[0]["token"] == "shot:new"
+    so.on_context([row(0, "activate:Safari")])                         # a thumbnail still up: not a context change yet
     assert so.live_set() == {"shot"}
     so.offered(opts[:2])
-    so.apply(state_ev("gone", sec_before=0))                           # dragged out / clicked / dismissed / saved
+    so.apply(state_ev("gone", sec_before=0))                           # the thumbnail slid away (the file is written)
+    assert so.live_set() == {"shot"} and [o["label"] for o in so.options()] == ["→ Atlas", "→ other", "Annotate"]
+    assert so.live.states == ["appear"] and rows_of(event="gone") == []   # the offer is NOT taken down
+    so.on_context([row(120, "title:Telegram/atlas-tools"), row(0, "activate:Safari")])   # the usual context change
     assert so.live_set() == set() and so.options() == [] and so.token_rows() == []
     assert so.live.states == ["appear", "gone"]
     gone, = rows_of(event="gone")
-    assert gone["reason"] == "window_gone" and gone["slots"] == ["pick", "send"] and gone["to"] == "atlas"
+    assert gone["reason"] == "context_changed" and gone["slots"] == ["pick", "send"] and gone["to"] == "atlas"
 
 
 def test_clipboard_shot_is_live_until_the_clipboard_changes(png, data_dir):
@@ -335,14 +346,207 @@ def test_a_shot_without_window_lives_until_the_context_changes(png, data_dir):
     assert so.live_set() == set() and rows_of(event="gone")[0]["reason"] == "context_changed"
 
 
-def test_the_thumbnail_seen_after_the_file_binds_the_shot_to_it(png, data_dir):
+def test_a_new_screenshot_replaces_the_live_one(png, tmp_path, data_dir):
+    """a file screenshot lives with its file; the next one taken replaces it (a thumbnail of the next one in
+    between holds the context, it does not end the file one)."""
+    newer = tmp_path / "Screenshot 2026-10-20 at 18.14.00.png"
+    newer.write_bytes(png.read_bytes())
     so, _, _ = make()
-    so.apply(shot_ev(png))
-    so.apply(state_ev("live", sec_before=0.5))
+    first = so.apply(shot_ev(png, sec_before=5))
+    so.apply(state_ev("live", sec_before=2))                           # the next screenshot is being taken
     so.on_context([row(0, "activate:Mail")])
-    assert so.live_set() == {"shot"}                                   # the window decides now, not the context
+    assert so.live_set() == {"shot"} and so.newest() is first        # not a context change while it is taken
+    so.apply(state_ev("gone", sec_before=1))
+    assert so.newest() is first and rows_of(event="gone") == []
+    second = so.apply(shot_ev(newer, sec_before=0.9, i=9))
+    assert so.newest() is second and option(so, "→ other")["shot"]["id"] == second["id"]
+    gone, = rows_of(event="gone")
+    assert gone["reason"] == "replaced" and so.get(first["id"]) is first   # a late press may still name it
+
+
+def test_a_file_screenshot_ends_when_its_file_is_gone(png, data_dir):
+    so, _, _ = make(rows=[row(30, "activate:Safari")])
+    so.apply(shot_ev(png))
+    so.on_context([row(30, "activate:Safari")])
+    assert so.live_set() == {"shot"}
+    png.unlink()                                                       # deleted / moved by the user: the state ended
+    so.on_context([row(30, "activate:Safari")])
+    assert so.live_set() == set() and rows_of(event="gone")[0]["reason"] == "file_gone"
+
+
+def test_an_answered_offer_leaves_the_context(png, data_dir):
+    so, delivered, _ = make(rows=[row(120, "title:Telegram/atlas-tools")])
+    live_shot(so, png)
+    press(so, "→ Atlas")
+    assert delivered and so.options() == [] and rows_of(event="gone")[0]["reason"] == "answered"
     so.apply(state_ev("gone", sec_before=0))
     assert so.live_set() == set()
+
+
+def test_a_cancelled_or_failed_send_keeps_the_offer(png, data_dir):
+    so, _, _ = make(rows=[row(120, "title:Telegram/atlas-tools")])
+    so.deliver_fn = lambda to, image, note, **kw: {"ok": False, "to": to, "error": "cancelled (esc)"}
+    live_shot(so, png)
+    press(so, "→ Atlas")
+    assert so.live_set() == {"shot"} and rows_of(event="gone") == []
+    assert all(p.get("cmd") != "notice" for p in so.request.sent)       # the user's own cancel: no failure notice
+
+
+# ---- a failed forward is labelled and surfaced ---------------------------------------------------------
+
+def OK_GATE(req, timeout):
+    return {"event": "outward", "id": req["id"], "decision": "validated"}
+
+
+def test_copy_eperm_is_labelled_copy_not_inject(tmp_path, png, data_dir):
+    inject = tmp_path / "chan" / "inject"
+    inject.parent.mkdir()
+    inject.write_text("")
+    table = {"atlas": {"name": "Atlas", "kind": "inject", "path": str(inject)}}
+
+    def denied(src, dst):
+        raise PermissionError(1, "Operation not permitted", src)
+    injected = []
+    r = shots.deliver("atlas", str(png), None, ctx={}, when=WHEN, table=table, copy=denied,
+                      inject=lambda p, line: injected.append(line), ask=OK_GATE)
+    assert r == {"ok": False, "to": "atlas", "name": "Atlas", "error": "copy: Operation not permitted", "denied": True}
+    assert not injected and inject.read_text() == ""                   # nothing appended after a failed copy
+
+    def broken(p, line):
+        raise OSError(28, "No space left on device")
+    r = shots.deliver("atlas", str(png), None, ctx={}, when=WHEN, table=table, inject=broken,
+                      ask=OK_GATE)
+    assert r["error"] == "inject: No space left on device" and not r.get("denied")
+
+
+def test_a_failed_forward_is_shown_on_the_hud_and_reprobes(png, data_dir, monkeypatch):
+    so, _, _ = make(rows=[row(120, "title:Telegram/atlas-tools")])
+    so.deliver_fn = lambda to, image, note, **kw: {"ok": False, "to": to, "name": "Atlas",
+                                                   "error": "copy: Operation not permitted", "denied": True}
+    probes = []
+    monkeypatch.setattr(shots.health, "screenshot_folder", lambda: "/nonexistent-shots")
+    monkeypatch.setattr(shots.health, "write_shot_probe", probes.append)
+    live_shot(so, png)
+    press(so, "→ Atlas")
+    notice, = [p for p in so.request.sent if p.get("cmd") == "notice"]
+    assert notice["text"] == "Not sent to Atlas: macOS denies oi live the screenshot folder (see oi health)"
+    assert str(png) not in notice["text"]
+    assert probes and probes[0]["ok"] is False and probes[0]["error"] == "ENOENT"
+    pressed = rows_of(event="press")[-1]
+    assert pressed["ok"] is False and pressed["error"] == "copy: Operation not permitted"
+    assert so.live_set() == {"shot"}                                   # not answered: the offer stays
+
+
+def test_failure_notice_other_errors_one_line():
+    assert shots.failure_notice("Nova", {"error": "exit 2: relay\ndown"}) == "Not sent to Nova: exit 2: relay / down"
+    assert len(shots.failure_notice("Nova", {"error": "x" * 300})) == 90
+
+
+@pytest.fixture
+def locked(png):
+    """A screenshot in its own folder, made untraversable: its stat fails with EACCES (as TCC's EPERM would).
+    -> (folder, image)."""
+    if os.geteuid() == 0:
+        pytest.skip("root ignores directory permissions")
+    folder = png.parent / "Shots"
+    folder.mkdir()
+    image = folder / png.name
+    image.write_bytes(png.read_bytes())
+    folder.chmod(0o600)
+    try:
+        yield folder, image
+    finally:
+        folder.chmod(0o700)
+
+
+def test_file_state_tells_a_missing_file_from_a_denied_one(png, tmp_path, monkeypatch):
+    assert shots.file_state(str(png)) == "present"
+    assert shots.file_state(str(tmp_path / "nope.png")) == "gone"
+    assert shots.file_state(str(png / "x")) == "gone"                  # ENOTDIR
+    assert shots.file_state(str(tmp_path)) == "gone"                   # not a regular file
+    real = os.stat
+
+    def eperm(path, *a, **kw):
+        if str(path) == str(png):
+            raise PermissionError(1, "Operation not permitted", str(path))
+        return real(path, *a, **kw)
+    monkeypatch.setattr(shots.os, "stat", eperm)
+    assert not os.path.isfile(str(png)) and shots.file_state(str(png)) == "unreadable"   # isfile: False on EPERM
+
+
+def test_an_unreadable_file_keeps_the_offer_and_is_said(data_dir, monkeypatch, locked):
+    """Review: EPERM on stat is a file present but unreadable, never `file_gone`; the failure is shown."""
+    locked, png = locked
+    probes = []
+    monkeypatch.setattr(shots.health, "screenshot_folder", lambda: str(locked))
+    monkeypatch.setattr(shots.health, "write_shot_probe", probes.append)
+    so, _, _ = make(rows=[row(30, "activate:Safari")])
+    locked.chmod(0o700)
+    so.apply(shot_ev(png))
+    locked.chmod(0o600)                                                # TCC denies the folder after it landed
+    so.on_context([row(30, "activate:Safari")])
+    so.on_context([row(30, "activate:Safari")])
+    assert so.live_set() == {"shot"} and rows_of(event="gone") == []
+    notices = [p for p in so.request.sent if p.get("cmd") == "notice"]
+    assert [n["text"] for n in notices] == [shots.UNREADABLE_NOTICE]   # said once, no path
+    assert str(png) not in notices[0]["text"] and len(probes) == 1 and probes[0]["ok"] is False
+    locked.chmod(0o700)
+    png.unlink()                                                       # really gone now: it ends
+    so.on_context([row(30, "activate:Safari")])
+    assert so.live_set() == set() and rows_of(event="gone")[0]["reason"] == "file_gone"
+
+
+def test_an_unreadable_new_screenshot_is_offered_and_said(data_dir, monkeypatch, locked):
+    png = locked[1]
+    monkeypatch.setattr(shots.health, "write_shot_probe", lambda rec: None)
+    so, _, _ = make(rows=[row(30, "activate:Safari")])
+    assert so.apply(shot_ev(png)) is not None and so.live_set() == {"shot"}
+    assert [p["text"] for p in so.request.sent if p.get("cmd") == "notice"] == [shots.UNREADABLE_NOTICE]
+
+
+def test_deliver_an_unreadable_image_is_denied_not_missing(locked):
+    png = locked[1]
+    asked = []
+    r = shots.deliver("atlas", str(png), None, ctx={}, when=WHEN, table=TABLE, ask=lambda req, t: asked.append(req))
+    assert r["error"] == "read: Operation not permitted" and r["denied"] is True and not asked
+    assert shots.failure_notice("Atlas", r) == "Not sent to Atlas: macOS denies oi live the screenshot folder (see oi health)"
+
+
+def test_the_folder_probe_is_rerun_so_a_grant_clears_the_fail(png, data_dir, monkeypatch):
+    """Review: oi live re-probes every PROBE_S and after each new screenshot; `oi health` follows a TCC
+    grant (FAIL clears) and a revoke (FAIL shows) without restarting oi live."""
+    from oi import health
+    folder = png.parent
+    monkeypatch.setattr(shots.health, "screenshot_folder", lambda: str(folder))
+    t = [NOW]
+    so, _, _ = make(rows=[row(30, "activate:Safari")])
+    so.clock = lambda: t[0]
+    real_scandir, deny = os.scandir, [True]
+
+    def scandir(path):
+        if deny[0] and str(path) == str(folder):
+            raise PermissionError(1, "Operation not permitted", str(path))
+        return real_scandir(path)
+    monkeypatch.setattr(health.os, "scandir", scandir)
+
+    def problems():
+        return health.check_shot_read(json.loads(health.shot_probe_path().read_text()))[0]
+    so.probe_due()                                                     # first loop: probed
+    assert problems() and "EPERM" in problems()[0]
+    deny[0] = False                                                    # the user grants access
+    t[0] += 10
+    so.probe_due()
+    assert problems()                                                  # not yet due
+    t[0] += shots.PROBE_S
+    so.probe_due()
+    assert problems() == []                                            # cleared, no restart
+    deny[0] = True                                                     # revoked
+    t[0] += 1
+    so.probe_due()
+    assert problems() == []
+    so.apply(shot_ev(png))                                             # a new screenshot: due at once
+    so.probe_due()
+    assert problems() and "EPERM" in problems()[0]
 
 
 def test_tap_is_tier1_to_the_current_contact(png, data_dir):
@@ -426,7 +630,7 @@ def test_a_send_carries_the_newest_live_shot(png, tmp_path, data_dir):
     assert sent == [("atlas", str(newer), "this one")]
     logged = rows_of(event="press")[-1]
     assert logged["ok"] and logged["newer"] is True and logged["src"] == "file"
-    assert option(so, "Annotate")["shot"]["id"] != old["id"]             # the next cross is the newest one's
+    assert [(g["src"], g["reason"]) for g in rows_of(event="gone")] == [("clipboard", "replaced"), ("file", "answered")]
 
 
 def test_a_send_keeps_its_shot_when_none_newer_is_live(png, data_dir):
@@ -567,8 +771,10 @@ def test_content_actions_join_the_live_options_when_claude_answers(png, data_dir
     assert model == "sonnet" and "IBAN FR76" in prompt and "Atlas" in prompt and not fc.prompts
     r = rows_of(event="press")[-1]
     assert r["picked"] == "url.open" and r["content"] == {"type": "url.open", "slot": 1} and r["ok"] is True
+    assert so.live_set() == {"shot"}                                   # opening a link does not answer the offer
     so.offered(opts[:4])
     so.apply(state_ev("gone", sec_before=0))
+    so.on_context([row(0, "activate:Mail")])
     g = rows_of(event="gone")[-1]
     assert g["slots"] == ["agent.send", "calendar.event", "send", "url.open"]
     assert g["suggest"]["ok"] and g["suggest"]["n"] == 3 and g["suggest"]["ocr_ms"] == 12
@@ -600,6 +806,7 @@ def test_an_answer_after_the_shot_is_gone_is_dropped_and_logged_late(png, data_d
     so.apply(state_ev("live"))
     s = so.apply(shot_ev(png))
     so.apply(state_ev("gone", sec_before=0))
+    so.on_context([row(0, "activate:Mail")])
     release.set()
     for t in so.threads:
         t.join(5)
@@ -695,9 +902,8 @@ def test_past_picks_feed_the_next_prompt(png, data_dir):
     so, _, _ = make(actions=True, ocr_text=SCREEN, suggest=sg)
     live_shot(so, png)
     assert "url.open picked 1 of 2" in sg.prompts[0][0]
-    press(so, "→ Atlas")                        # a press row (picked) + the gone row (slots offered)
     so.offered(so.options())
-    so.apply(state_ev("gone", sec_before=0))
+    press(so, "→ Atlas")                        # a press row (picked) + the gone row (slots offered, answered)
     assert "send to the agent picked 1 of 3" in shots.pick_history(NOW)
 
 
@@ -723,7 +929,10 @@ def no_claude(monkeypatch):
     monkeypatch.setattr(claude_actions, "run_claude", blocked)
 
 
-def live_with(rows, model, *, reply=None, suggest=None, delivered=None):
+CROSS = {"shots": {"picker_first": False}}   # the cross on a new screenshot (the setting off)
+
+
+def live_with(rows, model, *, reply=None, suggest=None, delivered=None, raw=CROSS):
     delivered = delivered if delivered is not None else []
     lv = live.Live(pull=False, sender=HoldSender(reply), out=io.StringIO(), resolve_app=lambda a: f"/Applications/{a}.app",
                    is_executable=lambda o: True)
@@ -731,11 +940,11 @@ def live_with(rows, model, *, reply=None, suggest=None, delivered=None):
     lv.hud_cmds = []
     lv._hud_cmd = lambda payload: lv.hud_cmds.append(payload) or {"event": "ok"}
     so = lv.shots
-    so.raw_settings, so.clock, so.ocr = (lambda: {}), (lambda: NOW), (lambda image: (SCREEN, 9))
+    so.raw_settings, so.clock, so.ocr = (lambda: raw), (lambda: NOW), (lambda image: (SCREEN, 9))
     so.actions_on, so.suggest_fn = suggest is not None, suggest
 
     def fake_deliver(to, image, note, **kw):
-        delivered.append({"to": to, "note": note})
+        delivered.append({"to": to, "note": note, **({"dictated": True} if kw.get("dictated") else {})})
         return {"ok": True, "to": to}
     so.deliver_fn = fake_deliver
     return lv, lv.sender
@@ -749,8 +958,8 @@ def test_thumbnail_up_summon_gives_the_shot_options_gone_gives_the_normal_ones(r
     lv, sender = live_with(rows, model)
     normal = labels(lv.summon()["payload"])
     assert normal and not any(x.startswith("→") for x in normal)
-    lv.shots.apply(state_ev("live"))                          # the watcher saw the thumbnail (window list)
-    lv.shots.apply(shot_ev(png))                              # the image landed while it is up
+    lv.shots.apply(state_ev("live", sec_before=22))           # the watcher saw the thumbnail (window list)
+    lv.shots.apply(shot_ev(png, sec_before=0.5))              # the image landed as it slides away
     first = sender.sent[-1]                                   # shown at once: the full cross, bound to the shot
     assert first["live"] == "shot" and "mode" not in first and labels(first) == ["→ Atlas", "→ other", "Annotate"]
     assert first["ttl_ms"] == shots.SHOW_TTL_MS
@@ -759,7 +968,11 @@ def test_thumbnail_up_summon_gives_the_shot_options_gone_gives_the_normal_ones(r
     assert "live: shot (on screen now)" in live.serialise.render(live.forms.route(m["context"]), m)[0]   # Laya
     summoned = lv.summon()["payload"]                         # ⌥⌘ while it is live: the shot's options first
     assert labels(summoned)[0] == "→ Atlas" and summoned["live"] == "shot"
-    lv.shots.apply(state_ev("gone", sec_before=0))            # dragged out / dismissed / saved
+    lv.shots.apply(state_ev("gone", sec_before=0))            # the thumbnail's gone 0.4 s after the file
+    assert lv.hud_cmds == [] and not lv.live_show["done"]     # the cross stays: the file is the state
+    assert lv.current_moment()["context"]["live"] == ["shot"]
+    lv.shots.on_context(lv.rows + [{"ts": vocab.iso_utc(WHEN), "dur": 0, "token": "activate:Mail", "app": "Mail",
+                                    "src": "aw-window", "raw_id": None}])   # the usual context change
     assert lv.hud_cmds == [{"cmd": "hide"}]                   # the cross still up for it is taken down
     assert "live" not in (lv.current_moment() or {}).get("context", {})
     after = lv.summon()["payload"]

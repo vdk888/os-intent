@@ -6,6 +6,10 @@ import QuartzCore
 /// multi-line field: title ("→ Atlas · Claude note"), the note (editable, prefilled), "Enter sends · ⇧Enter new
 /// line · Esc cancels". Takes keyboard focus without activating oi-hud (same trick as the wish panel). The
 /// reply goes back on the connection that asked: `note` (Enter) or `dismissed`. The text is never logged.
+/// Type or dictate the note: with `dictate` the panel has the wish
+/// panel's mic button and Tab starts / stops the on-device dictation (oi-hud's Dictation: the wish locale, the
+/// vocal time limit, nothing recorded to disk); the transcript lands in the field after what is there, editable;
+/// typing stops the listening (the words stay). Enter sends what the field holds, Esc cancels (the mic stops).
 final class ShotNotePanelController: NSObject, NSTextViewDelegate {
     static let size = NSSize(width: 500, height: 176)
 
@@ -15,6 +19,13 @@ final class ShotNotePanelController: NSObject, NSTextViewDelegate {
     private let text = NSTextView()
     private let placeholder = NSTextField(labelWithString: "")
     private let hint = NSTextField(labelWithString: "Enter sends · ⇧Enter new line · Esc cancels")
+    private let mic = NSButton()
+    private let dictation = Dictation()
+    private var dictState = ShotNoteDictation()
+    private var dictate = false
+    /// settings.json `wish.locale` and `vocal.max_s`, read when dictation starts.
+    var localeProvider: () -> String = { "fr-FR" }
+    var limitProvider: () -> Double = { dictationLimitS }
     private var reply: ((HUDEvent) -> Void)?
     private var mouseMonitor: Any?
     private var resignObserver: NSObjectProtocol?
@@ -39,6 +50,18 @@ final class ShotNotePanelController: NSObject, NSTextViewDelegate {
         panel.appearance = NSAppearance(named: .vibrantDark)
         panel.onCancel = { [weak self] in self?.close(.dismissed(reason: "esc")) }
         build()
+        dictation.onPartial = { [weak self] partial in
+            guard let self, let t = self.dictState.compose(partial) else { return }
+            self.text.string = t
+            self.placeholder.isHidden = !t.isEmpty
+            self.text.setSelectedRange(NSRange(location: (t as NSString).length, length: 0))
+        }
+        dictation.onEnd = { [weak self] why in           // time limit, or unavailable / denied: back to typing
+            guard let self, self.isOpen, !self.dictation.running else { return }   // a late end of an older session
+            self.dictState.stop()
+            self.micShown()
+            if let why { self.hint.stringValue = why }
+        }
     }
 
     private func build() {
@@ -85,8 +108,53 @@ final class ShotNotePanelController: NSObject, NSTextViewDelegate {
 
         hint.font = .systemFont(ofSize: 11)
         hint.textColor = .secondaryLabelColor
-        hint.frame = NSRect(x: 18, y: 10, width: size.width - 36, height: 16)
+        hint.frame = NSRect(x: 18, y: 10, width: size.width - 60, height: 16)
         bg.addSubview(hint)
+
+        mic.bezelStyle = .regularSquare                  // the wish panel's mic button
+        mic.isBordered = false
+        mic.imagePosition = .imageOnly
+        mic.refusesFirstResponder = true                 // the caret stays in the note
+        mic.target = self
+        mic.action = #selector(micPressed)
+        mic.toolTip = "Dictate (on-device) · Tab"
+        mic.frame = NSRect(x: size.width - 42, y: 4, width: 28, height: 28)
+        bg.addSubview(mic)
+        micShown()
+    }
+
+    // MARK: dictation
+
+    @objc private func micPressed() { toggleDictation() }
+
+    private func toggleDictation() {
+        guard isOpen, dictate else { return }
+        if dictState.listening {
+            stopDictation()
+        } else {
+            dictState.start(from: text.string)
+            dictation.start(preferredLocale: localeProvider(), limitS: limitProvider())   // never recordTo: no audio kept
+            log("shot note: dictation on")
+        }
+        micShown()
+    }
+
+    private func stopDictation() {
+        guard dictState.listening else { return }
+        dictState.stop()
+        dictation.stop()
+        micShown()
+        log("shot note: dictation off")
+    }
+
+    private func micShown() {
+        mic.isHidden = !dictate
+        let on = dictState.listening
+        mic.image = NSImage(systemSymbolName: on ? "mic.fill" : "mic", accessibilityDescription: on ? "Stop dictation" : "Dictate")
+        mic.contentTintColor = on ? .systemRed : .secondaryLabelColor
+        hint.stringValue = !dictate ? "Enter sends · ⇧Enter new line · Esc cancels"
+            : on ? "Listening… Tab stops · Enter sends · Esc cancels"
+            : "Enter sends · Tab dictates · ⇧Enter new line · Esc cancels"
     }
 
     // MARK: open / close
@@ -100,6 +168,9 @@ final class ShotNotePanelController: NSObject, NSTextViewDelegate {
         text.string = req.text
         placeholder.stringValue = req.placeholder
         placeholder.isHidden = !req.text.isEmpty
+        dictate = req.dictate && Dictation.allowedHere
+        dictState = ShotNoteDictation()
+        micShown()
         placeAtPointer()
         panel.alphaValue = 0
         panel.makeKeyAndOrderFront(nil)
@@ -127,14 +198,16 @@ final class ShotNotePanelController: NSObject, NSTextViewDelegate {
     }
 
     private func send() {
+        stopDictation()
         let t = ShotNoteRequest.clean(text.string)
-        log("shot note sent (\(t.count) chars)")
-        close(.note(text: t))
+        log("shot note sent (\(t.count) chars\(dictState.used ? ", dictated" : ""))")
+        close(.note(text: t, dictated: dictState.used))
     }
 
     private func close(_ event: HUDEvent, animate: Bool = true) {
         guard let r = reply else { return }
         reply = nil
+        stopDictation()                              // the mic never outlives the panel
         stopOutsideWatch()
         r(event)
         if case .dismissed(let why) = event { log("shot note panel closed (\(why))") }
@@ -160,8 +233,10 @@ final class ShotNotePanelController: NSObject, NSTextViewDelegate {
         let isReturn = sel == #selector(NSResponder.insertNewline(_:))
             || sel == #selector(NSResponder.insertNewlineIgnoringFieldEditor(_:))
         let key = ShotNoteKey.classify(isReturn: isReturn, isEscape: sel == #selector(NSResponder.cancelOperation(_:)),
-                                       shift: flags.contains(.shift), option: flags.contains(.option))
+                                       shift: flags.contains(.shift), option: flags.contains(.option),
+                                       isTab: sel == #selector(NSResponder.insertTab(_:)), dictate: dictate)
         switch key {
+        case .dictate: toggleDictation(); return true
         case .send: send(); return true
         case .cancel: close(.dismissed(reason: "esc")); return true
         case .newline: textView.insertText("\n", replacementRange: textView.selectedRange()); return true
@@ -170,6 +245,7 @@ final class ShotNotePanelController: NSObject, NSTextViewDelegate {
     }
 
     func textDidChange(_ notification: Notification) {
+        stopDictation()                              // the user types: the listening stops, the words stay
         placeholder.isHidden = !text.string.isEmpty
     }
 

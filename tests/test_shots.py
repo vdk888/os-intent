@@ -286,7 +286,7 @@ def rows_of(kind="shot", event=None):
 def test_a_screenshot_is_in_the_context_from_its_thumbnail_and_then_by_its_file(png, data_dir):
     """(a real trace): thumbnail live 11:57:40, the file 11:58:02.506, thumbnail gone 11:58:02.927:
     macOS writes the file as the thumbnail slides away. The offer then lives with the FILE, not the vanished window."""
-    so, _, _ = make(rows=[row(120, "title:Telegram/atlas-r-d")])
+    so, _, _ = make(rows=[row(120, "title:Telegram/atlas-tools")])
     assert so.live_set() == set() and so.options() == []
     so.apply(state_ev("live", sec_before=22))
     assert so.live_set() == {"shot"} and so.options() == []          # being taken, its image not landed yet: no option
@@ -303,7 +303,7 @@ def test_a_screenshot_is_in_the_context_from_its_thumbnail_and_then_by_its_file(
     so.apply(state_ev("gone", sec_before=0))                           # the thumbnail slid away (the file is written)
     assert so.live_set() == {"shot"} and [o["label"] for o in so.options()] == ["→ Atlas", "→ other", "Annotate"]
     assert so.live.states == ["appear"] and rows_of(event="gone") == []   # the offer is NOT taken down
-    so.on_context([row(120, "title:Telegram/atlas-r-d"), row(0, "activate:Safari")])   # the usual context change
+    so.on_context([row(120, "title:Telegram/atlas-tools"), row(0, "activate:Safari")])   # the usual context change
     assert so.live_set() == set() and so.options() == [] and so.token_rows() == []
     assert so.live.states == ["appear", "gone"]
     gone, = rows_of(event="gone")
@@ -375,7 +375,7 @@ def test_a_file_screenshot_ends_when_its_file_is_gone(png, data_dir):
 
 
 def test_an_answered_offer_leaves_the_context(png, data_dir):
-    so, delivered, _ = make(rows=[row(120, "title:Telegram/atlas-r-d")])
+    so, delivered, _ = make(rows=[row(120, "title:Telegram/atlas-tools")])
     live_shot(so, png)
     press(so, "→ Atlas")
     assert delivered and so.options() == [] and rows_of(event="gone")[0]["reason"] == "answered"
@@ -384,7 +384,7 @@ def test_an_answered_offer_leaves_the_context(png, data_dir):
 
 
 def test_a_cancelled_or_failed_send_keeps_the_offer(png, data_dir):
-    so, _, _ = make(rows=[row(120, "title:Telegram/atlas-r-d")])
+    so, _, _ = make(rows=[row(120, "title:Telegram/atlas-tools")])
     so.deliver_fn = lambda to, image, note, **kw: {"ok": False, "to": to, "error": "cancelled (esc)"}
     live_shot(so, png)
     press(so, "→ Atlas")
@@ -420,7 +420,7 @@ def test_copy_eperm_is_labelled_copy_not_inject(tmp_path, png, data_dir):
 
 
 def test_a_failed_forward_is_shown_on_the_hud_and_reprobes(png, data_dir, monkeypatch):
-    so, _, _ = make(rows=[row(120, "title:Telegram/atlas-r-d")])
+    so, _, _ = make(rows=[row(120, "title:Telegram/atlas-tools")])
     so.deliver_fn = lambda to, image, note, **kw: {"ok": False, "to": to, "name": "Atlas",
                                                    "error": "copy: Operation not permitted", "denied": True}
     probes = []

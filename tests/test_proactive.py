@@ -79,7 +79,7 @@ def test_settings_default_every_source_off():
     assert c["min_p"] == 0.5 and c["min_interval_min"] == 10 and c["quiet_hours"] == {"start": "22:00", "end": "08:00"}
     assert c["priorities"] == ["mail:client", "cockpit:outage"] and c["respect_focus"] is True
     assert "max_age_s" not in c                   # no relevance window: an event is valid while its state is live
-    assert c["mail"]["poll_s"] + 2 <= 10          # a new mail -> a hint within 10 s (sensor poll + oi live's 2 s loop)
+    assert c["mail"]["poll_s"] == 180             # was 6 (a hint within 10 s); every 3 min is enough, Mail unloaded
 
 
 def test_settings_parse_and_reject_bad_values():
@@ -91,7 +91,7 @@ def test_settings_parse_and_reject_bad_values():
     assert config.enabled_sources(c) == ["mail", "files"]
     assert c["min_p"] == 0.7 and c["min_interval_min"] == 10 and c["quiet_hours"] is None
     assert c["priorities"] == ["agent:*", "mail:client"] and c["respect_focus"] is False
-    assert c["mail"] == {"poll_s": 6, "agent_senders": ["bot@x.example"], "team_domains": []}          # who is a client: the wiki judge
+    assert c["mail"] == {"poll_s": 180, "agent_senders": ["bot@x.example"], "team_domains": []}          # who is a client: the wiki judge
     assert "pipeline_file" not in c
     assert c["files"]["folders"] == ["~/Desktop"] and c["cockpit"]["url"] is None          # not https: refused
     assert c["cockpit"]["alerts_file"] == "/tmp/a.json" and c["markets"]["move_pct"] == 3.0
@@ -302,7 +302,7 @@ def test_mail_event_ends_when_read_or_replied_or_gone():
     assert s.poll(NOW + 10 ** 5 + 6, cfg) == []
     state["lookup"] = {"<3>": "gone"}                                                  # archived / deleted
     assert [(e["id"], e["state"]) for e in s.poll(NOW + 10 ** 5 + 12, cfg)] == [(ids["<3>"], "gone")]
-    assert "was replied to" in sensors.MAIL_STATE and "is not running" in sensors.MAIL_STATE
+    assert "was replied to" in sensors.MAIL_STATE and "my alive()" in sensors.MAIL_STATE
 
 
 def test_mail_slow_osascript_is_capped_and_fail_soft(tmp_path, monkeypatch):
@@ -371,10 +371,132 @@ def test_mail_scripts_are_bounded():
     assert sensors.MAIL_TIMEOUT_S == 25
 
 
-def test_mail_script_never_launches_mail():
-    assert 'if application "Mail" is not running then return "NOTRUNNING"' in sensors.MAIL_NEW
-    assert sensors.MAIL_NEW.index("is not running") < sensors.MAIL_NEW.index('tell application "Mail"')
-    assert sensors.parse_mail_list("NOTRUNNING") is None and sensors.parse_mail_list("OK" + sensors.RS) == []
+# Every statement of the two scripts that sends an Apple event to Mail (the rest is local: lists, text, dates).
+MAIL_EVENTS = ("every account", 'mailbox "INBOX" of a', " of vMsgs", "count of messages of mb",
+               "messages of inbox whose", "read status of m then", "was replied to of m then")
+
+
+@pytest.mark.parametrize("script", [sensors.MAIL_NEW, sensors.MAIL_STATE], ids=["MAIL_NEW", "MAIL_STATE"])
+def test_mail_script_never_launches_mail(script):
+    """(Cmd-Q on Mail must stick): an event to a Mail that quit inside the `tell` block relaunches it, so
+    each event is preceded by the running check, and every error handler aborts on a quit (never swallowed)."""
+    guard = 'if not my alive() then return "NOTRUNNING"'
+    lines = [ln.strip() for ln in script.splitlines()]
+    assert 'tell application "Mail"' not in script and lines.index(guard) < lines.index('tell application id "com.apple.mail"')
+    events = [i for i, ln in enumerate(lines) if any(e in ln for e in MAIL_EVENTS) and not ln.startswith("set vMsgs to a reference")]
+    assert len(events) == (10 if script is sensors.MAIL_NEW else 3)
+    assert all(lines[i - 1] == guard for i in events), [lines[i] for i in events if lines[i - 1] != guard]
+    handlers = [i for i, ln in enumerate(lines) if ln == "on error number en"]
+    assert handlers and all(lines[i + 1] == 'if my quitErr(en) then return "NOTRUNNING"' for i in handlers)
+    assert 'return application id "com.apple.mail" is running' in script
+    assert "en is in {-600, -609, -10810} or not my alive()" in script
+    assert sensors.parse_mail_list("NOTRUNNING") is None and sensors.parse_mail_state("NOTRUNNING") is None
+
+
+def test_mail_quit_mid_loop_aborts_untouched():
+    """Mail quit (Cmd-Q) during the scan or the lookup: no further Apple event, not_running, the live states stay
+    as they were (no event starts, no live mail reads as gone, the partial scan is never a full read)."""
+    calls, up = [], [True]
+    m = lambda mid: (mid, "N", "n@x.example", "Hi", "", "0", "0")  # noqa: E731
+    out = [mail_out()]
+
+    def osa(script, args, timeout=6):
+        calls.append(script)
+        if not up[-1]:
+            return 0, "NOTRUNNING"
+        if script == sensors.MAIL_STATE and len(out) > 2:
+            up.append(False)                                                       # quit during the lookup
+            return 0, "NOTRUNNING"
+        return 0, out[-1]
+    s = sensors.MailSensor(osa=osa, claude_cfg=lambda: {"local_only_domains": []}, running=lambda: up[-1],
+                           badge=lambda: None, cpu=lambda: 1.0)
+    cfg = config.proactive_settings({})
+    s.poll(NOW, cfg)                                                               # primes
+    out.append(mail_out(m("<a>"), m("<b>")))
+    assert len(s.poll(NOW + 200, cfg)) == 2 and set(s.states.live) == {"<a>", "<b>"}
+    live, scanned = dict(s.states.live), (s.scanned_badge, s.scanned_at)
+
+    def quits_mid_scan(script, args, timeout=6):                                   # an OK cut short, then Mail gone
+        calls.append(script)
+        up.append(False)
+        return 0, mail_out(m("<a>"))
+    s.osa = quits_mid_scan
+    n = len(calls)
+    assert s.poll(NOW + 400, cfg) == [] and s.last_error == "not_running"
+    assert calls[n:] == [sensors.MAIL_NEW] and s.states.live == live and (s.scanned_badge, s.scanned_at) == scanned
+    assert s.poll(NOW + 600, cfg) == [] and calls[n + 1:] == []                    # closed: no osascript at all
+
+    up.append(True)                                                                # reopened; <a>, <b> left the scan
+    s.osa = osa
+    out.append(mail_out())
+    n = len(calls)
+    assert s.poll(NOW + 800, cfg) == [] and s.last_error == "not_running"          # quit during the lookup
+    assert calls[n:] == [sensors.MAIL_NEW, sensors.MAIL_STATE] and s.states.live == live
+
+
+def test_mail_scans_only_when_the_dock_badge_changes():
+    """(Mail at 100 % CPU): the full scan runs on the first poll, then only when Mail's Dock badge changed,
+    is unreadable, or every MAIL_SAFETY_S; an unchanged badge = no Apple event to Mail at all."""
+    calls, badge = [], [2]
+    m = lambda mid: (mid, "N", "n@x.example", "Hi", "", "0", "0")  # noqa: E731
+    out = [mail_out(m("<old>"))]
+
+    def osa(script, args, timeout=6):
+        calls.append(script)
+        return 0, out[-1]
+    s = sensors.MailSensor(osa=osa, claude_cfg=lambda: {"local_only_domains": []}, running=lambda: True,
+                           badge=lambda: badge[-1], cpu=lambda: 5.0)
+    cfg = config.proactive_settings({})
+    assert s.poll(NOW, cfg) == [] and calls == [sensors.MAIL_NEW]                      # primes
+    assert s.poll(NOW + 30, cfg) == [] and len(calls) == 1 and s.last_error is None   # unchanged: no scan
+    out.append(mail_out(m("<new>"), m("<old>")))
+    badge.append(3)                                                                    # a new unread mail
+    assert [e["ref"]["message_id"] for e in s.poll(NOW + 60, cfg)] == ["<new>"] and len(calls) == 2
+    assert s.poll(NOW + 90, cfg) == [] and len(calls) == 2
+    s.poll(NOW + 60 + sensors.MAIL_SAFETY_S, cfg)                                      # the safety scan
+    assert len(calls) == 3
+    badge.append(None)                                                                 # badge unreadable: scan
+    s.poll(NOW + 70 + sensors.MAIL_SAFETY_S, cfg)
+    assert len(calls) == 4
+
+
+def test_mail_busy_or_closed_is_never_read():
+    """Mail's own CPU above MAIL_BUSY_CPU (indexing) = no read, the back-off; Mail closed (pgrep) = no osascript."""
+    calls, cpu, up = [], [95.0], [True]
+
+    def osa(script, args, timeout=6):
+        calls.append(script)
+        return 0, mail_out()
+    s = sensors.MailSensor(osa=osa, claude_cfg=lambda: {}, running=lambda: up[-1], badge=lambda: None,
+                           cpu=lambda: cpu[-1], log=lambda m: None)
+    cfg = config.proactive_settings({})
+    assert s.poll(NOW, cfg) == [] and calls == [] and s.skipped and s.backoff_s == sensors.MAIL_BACKOFF_S
+    assert s.poll(NOW + 30, cfg) == [] and calls == [] and s.skipped                   # backing off
+    cpu.append(10.0)
+    s.poll(NOW + sensors.MAIL_BACKOFF_S, cfg)
+    assert calls == [sensors.MAIL_NEW] and s.backoff_s == 0 and not s.skipped          # idle again: read, reset
+    up.append(False)
+    assert s.poll(NOW + 10 ** 4, cfg) == [] and len(calls) == 1 and s.last_error == "not_running"
+
+
+def test_mail_lookups_are_capped():
+    looked = []
+    m = lambda mid: (mid, "N", "n@x.example", "Hi", "", "0", "0")  # noqa: E731
+    out = [mail_out()]
+
+    def osa(script, args, timeout=6):
+        if script == sensors.MAIL_STATE:
+            looked.append(args[1:])
+            return 0, "OK" + sensors.RS
+        return 0, out[-1]
+    s = sensors.MailSensor(osa=osa, claude_cfg=lambda: {"local_only_domains": []})
+    cfg = config.proactive_settings({})
+    s.poll(NOW, cfg)
+    out.append(mail_out(*[m(f"<{i}>") for i in range(12)]))
+    assert len(s.poll(NOW + 30, cfg)) == 12
+    out.append(mail_out())                                                             # all 12 left the scan
+    s.poll(NOW + 60, cfg)
+    assert sensors.MAIL_LOOKUP == 5 and len(looked) == 1 and len(looked[0]) == sensors.MAIL_LOOKUP
 
 
 def test_agent_sensor_unread_badge_state():
@@ -602,9 +724,12 @@ def test_telegram_unread_readers_are_read_only():
     assert rd(0, '"StatusLabel"={ "label"="•" }') == 1
     # macOS 27: lsappinfo prints no StatusLabel key at all, even for a badged app -> unreadable, never "no badge"
     assert rd(0, '[ NULL ]  ASN:0x0-0x15a25a1: \n    bundleID=[ NULL ] \n') is None
-    tile = lambda rc, out: sensors.dock_tile_badge(run=lambda *a, **k: P(rc, out))  # noqa: E731
-    assert tile(0, '{"label":"4"}') == 4 and tile(0, '{"label":""}') == 0 and tile(0, '{"label":"•"}') == 1
-    assert tile(0, "null") is None and tile(1, "") is None and tile(0, "garbage") is None
+    tiles = lambda rc, out: sensors.read_dock_badges(run=lambda *a, **k: P(rc, out))  # noqa: E731
+    assert tiles(0, '{"Telegram":"4","Mail":""}') == {"Telegram": "4", "Mail": ""}
+    assert tiles(0, "null") is None and tiles(1, "") is None and tiles(0, "garbage") is None
+    dock = sensors.DockBadges(read=lambda: {"Telegram": "4", "Mail": "", "Notes": "•"}, factor=lambda: 1.0)
+    assert dock.get("Telegram") == 4 and dock.get("Mail") == 0 and dock.get("Notes") == 1
+    assert dock.get("Music") is None and dock.reads == 1                   # no tile = unknown; ONE read for all
     dj = sensors.DOCK_BADGE_JS
     assert "AXStatusLabel" in dj and "activate" not in dj and "AXPress" not in dj and "keystroke" not in dj
 
@@ -1132,8 +1257,9 @@ def test_event_lines_withhold_private_details():
     assert engine.event_line(dict(ev, private=True), tz) == "16:00 mail (client): details withheld"
 
 
-def test_one_hint_within_ten_seconds_of_a_new_mail(data_dir):
-    """The evaluation bar: sensor poll (mail poll_s 6) + oi live's loop (2 s) — measured on the fake clock."""
+def test_one_hint_within_one_mail_poll_of_a_new_mail(data_dir):
+    """The evaluation bar: sensor poll (mail poll_s 180; was 6 = 10 s) + oi live's loop (2 s) — measured on
+    the fake clock."""
     t = [NOW]
     pending = []
     fs = {"mail": FakeSensor("mail", [[], []])}
@@ -1141,7 +1267,7 @@ def test_one_hint_within_ten_seconds_of_a_new_mail(data_dir):
     from oi import settings
     arrived = NOW + 0.5
     hint_at = None
-    while t[0] < NOW + 20 and hint_at is None:
+    while t[0] < NOW + 240 and hint_at is None:
         if t[0] >= arrived and not pending:
             pending.append(store.make("mail", "client", ts=t[0], key="<n@x>", who="G", ref={"message_id": "<n@x>"}))
             fs["mail"].batches = [pending]
@@ -1150,7 +1276,7 @@ def test_one_hint_within_ten_seconds_of_a_new_mail(data_dir):
             if any(r["reason"] == "hint" for r in lv.proactive.drain(settings.load(), t[0])):
                 hint_at = t[0]
         t[0] += 1
-    assert hint_at is not None and hint_at - arrived <= 10
+    assert hint_at is not None and hint_at - arrived <= 180 + 2
 
 
 def test_probe_prints_tokens_only(data_dir, monkeypatch, capsys):

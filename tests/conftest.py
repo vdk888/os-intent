@@ -208,3 +208,22 @@ def no_real_wiki(monkeypatch):
     from oi.orchestrator import pack
     monkeypatch.setattr(rag, "default", lambda repo_dir=None: None)
     monkeypatch.setattr(pack, "_DEFAULT", None)
+
+
+@pytest.fixture(autouse=True)
+def no_real_mail_probes(monkeypatch):
+    """The Mail sensor's cheap probes (pgrep, ps, the Dock badge) never run in tests: Mail runs, is idle,
+    its badge is unreadable (= the full scan every poll, as before the change detector). Tests inject their own."""
+    from oi.proactive import sensors
+    monkeypatch.setattr(sensors, "mail_running", lambda: True)
+    monkeypatch.setattr(sensors, "mail_cpu", lambda: None)
+    monkeypatch.setattr(sensors, "mail_badge", lambda: None)
+
+
+@pytest.fixture(autouse=True)
+def no_real_cadence_probes(monkeypatch):
+    """2026-11-03 cadence: the shared Dock read and the power probe (pmset) never run in tests: the Dock is
+    unreadable, the power source unknown (= AC: factor 1). Tests inject their own DockBadges / Power."""
+    from oi.proactive import sensors
+    monkeypatch.setattr(sensors, "DOCK", sensors.DockBadges(read=lambda: None, factor=lambda: 1.0))
+    monkeypatch.setattr(sensors, "POWER", sensors.Power(read=lambda: None))

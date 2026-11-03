@@ -1,6 +1,7 @@
 """the proactive engine run by `oi live`.
 
-Sensor thread (`start`): every second, each ENABLED source whose `poll_s` is due is polled (nothing while logging is
+Sensor thread (`start`): every second, each ENABLED source whose `poll_s` is due is polled (× sensors.BATTERY_FACTOR
+for the osascript-backed sources, sensors.OSA_SOURCES, while on battery: 2026-11-03 drain; nothing while logging is
 paused); its rows (appear AND gone: sensors.py) are appended to events/<day>.jsonl and queued. The driver's loop
 (`Live.step` -> `drain`, the loop's own thread, so the token stream and the model are never touched from two
 threads): each queued row's token joins the stream at once (`live.rows`) and updates `self.current` (store.Live:
@@ -208,8 +209,9 @@ class Engine:
                  clock: Callable[[], float] = time.time, focus: Callable[[], bool | None] = sensors_mod.focus_on,
                  profile: Callable[[], dict] = relevance.load_profile, names: Callable[[], dict] = _names,
                  hud_cmd: Callable[[dict], dict] | None = None, health: "health_mod.SensorHealth | None" = None,
-                 judge: Callable[[dict], dict] | None = None):
+                 judge: Callable[[dict], dict] | None = None, power: Callable[[], float] | None = None):
         self.live = live
+        self.power = power or (lambda: sensors_mod.power_factor())   # osascript-backed polls × 3 on battery
         self.judge = judge or judge_mod.Judge()        # the ONE relevance judge (wiki), run here on the sensor thread
         self.hud_cmd = hud_cmd or (lambda payload: live._hud_cmd(payload))
         self.current = store.Live()                     # the events whose state is live now
@@ -244,8 +246,10 @@ class Engine:
         if raw.get("paused") is True:
             return []
         got: list[dict] = []
+        slow = self.power() if any(src in sensors_mod.OSA_SOURCES for src in srcs) else 1.0
         for src in srcs:
-            if now - self.last_poll.get(src, float("-inf")) < float(cfg[src]["poll_s"]):
+            every = float(cfg[src]["poll_s"]) * (slow if src in sensors_mod.OSA_SOURCES else 1.0)   # battery: × 3
+            if now - self.last_poll.get(src, float("-inf")) < every:
                 continue
             self.last_poll[src] = now
             s = self.sensors.get(src)

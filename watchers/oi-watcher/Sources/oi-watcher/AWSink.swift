@@ -12,6 +12,10 @@ actor AWSink {
     private var created: Set<BucketKind> = []
     private var pending: [(BucketKind, AWEvent)] = []
     private var downLogged = false
+    /// True while a flush is running. The actor is reentrant: `flush` suspends on each request, and a
+    /// second `post` arriving meanwhile must not start a second loop over the same queue (it would send
+    /// the head event twice and then `removeFirst` on an emptied queue, which traps).
+    private var flushing = false
     /// settings.json `paused`: when true, `post` drops every event (nothing reaches aw-server).
     private(set) var paused = false
     private let session: URLSession
@@ -42,6 +46,9 @@ actor AWSink {
 
     /// Send everything queued, in order; stop at the first failure (retry later).
     func flush() async {
+        if flushing { return }   // the running loop picks up what was just queued
+        flushing = true
+        defer { flushing = false }
         while let (kind, event) = pending.first {
             guard await ensureBucket(kind), await send(kind, [event]) else {
                 if !downLogged {
@@ -50,7 +57,7 @@ actor AWSink {
                 }
                 return
             }
-            pending.removeFirst()
+            if !pending.isEmpty { pending.removeFirst() }
             if downLogged { downLogged = false; Log.info("aw-server reachable again; queue flushed") }
         }
     }

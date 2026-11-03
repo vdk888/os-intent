@@ -1,0 +1,55 @@
+# Example only: a remote Laya server for OS-intent on a Linux machine you control (docs/LAYA-REMOTE.md).
+# Two processes, one unit file each:
+#   oi-laya-remote.service      laya-serve on 127.0.0.1:8782 (laya-serve has no authentication: never expose it)
+#   oi-laya-auth-proxy.service  the bearer-token front on your PRIVATE interface address, port 8781
+# Replace every __PLACEHOLDER__, copy to /etc/systemd/system/oi-laya-remote.service, then
+#   systemctl daemon-reload && systemctl enable --now oi-laya-remote oi-laya-auth-proxy
+#
+# __LAYA_DIR__   a laya checkout with its venv (…/.venv/bin/laya-serve), readable by everyone, e.g. /opt/laya
+# __HF_HOME__    a Hugging Face cache that ALREADY holds the laya weights (the hub is offline), e.g. /var/lib/oi-laya/hf
+
+[Unit]
+Description=Laya reranker for OS-intent (loopback only; reached through oi-laya-auth-proxy)
+After=network.target
+
+[Service]
+Type=simple
+DynamicUser=yes
+StateDirectory=oi-laya
+ExecStart=__LAYA_DIR__/.venv/bin/laya-serve
+Environment=LAYA_HOST=127.0.0.1
+Environment=LAYA_PORT=8782
+Environment=LAYA_MODELS=english
+Environment=LAYA_PRELOAD=1
+# cpu works but is slow (about 2.5 s per warm answer on 2 vCPU, docs/LAYA-REMOTE.md): use your GPU device
+# here if your laya build supports it
+Environment=LAYA_DEVICE=cpu
+Environment=LAYA_THREADS=2
+# warning: no per-request (access) log lines, so no moment text ever reaches the journal
+Environment=LAYA_LOG_LEVEL=warning
+Environment=HF_HOME=__HF_HOME__
+Environment=HF_HUB_OFFLINE=1
+Environment=TRANSFORMERS_OFFLINE=1
+Environment=TOKENIZERS_PARALLELISM=false
+MemoryMax=3.5G
+CPUQuota=200%
+Restart=on-failure
+RestartSec=10
+NoNewPrivileges=yes
+ProtectSystem=strict
+ProtectHome=yes
+PrivateTmp=yes
+PrivateDevices=yes
+ProtectKernelTunables=yes
+ProtectKernelModules=yes
+ProtectControlGroups=yes
+RestrictAddressFamilies=AF_INET AF_INET6 AF_UNIX
+LockPersonality=yes
+RestrictNamespaces=yes
+CapabilityBoundingSet=
+# loopback only, and the hub is offline: no network beyond the proxy on the same machine
+IPAddressDeny=any
+IPAddressAllow=localhost
+
+[Install]
+WantedBy=multi-user.target

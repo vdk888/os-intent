@@ -31,9 +31,13 @@ STARTING_FRESH_S = 30      # a supervisor `running` row younger than this, serve
 
 def health_json(url: str, timeout_s: float = 1.0) -> dict | None:
     """The server's /health JSON (laya-serve: {"status", "loaded": [...], "device"}), {} when it answers 200 with
-    something else, None when down."""
+    something else, None when down. Remote mode: with the bearer token, same origin only (oi.laya_remote)."""
+    kw = laya._configured_kw(url)
+    if kw is None:
+        return None
     try:
-        with urllib.request.urlopen(url.rstrip("/") + "/health", timeout=timeout_s) as r:
+        req = urllib.request.Request(url.rstrip("/") + "/health", headers=kw.get("headers") or {})
+        with (kw.get("opener") or urllib.request.urlopen)(req, timeout=timeout_s) as r:
             if r.status != 200:
                 return None
             try:
@@ -78,8 +82,11 @@ def status(*, probe=health_json, now: float | None = None) -> dict:
     cfg = settings.load()
     url = cfg["live"].get("laya_url") or laya.DEFAULT_URL
     info = probe(url)
-    state, detail = classify(cfg["laya"]["enabled"], info, read_status(), time.time() if now is None else now)
-    return {"enabled": cfg["laya"]["enabled"], "state": state, "detail": detail, "up": info is not None, "url": url}
+    mode = cfg["live"].get("laya_mode", "local")
+    st = {} if mode == "remote" else read_status()      # remote: the local supervisor's file says nothing about it
+    state, detail = classify(cfg["laya"]["enabled"], info, st, time.time() if now is None else now)
+    return {"enabled": cfg["laya"]["enabled"], "state": state, "detail": detail, "up": info is not None, "url": url,
+            **({"mode": mode} if mode != "local" else {})}
 
 
 def _is_laya_serve(pid: int, run=subprocess.run) -> bool:

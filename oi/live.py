@@ -1214,7 +1214,8 @@ class Live:
 
     # -- W13 Laya layer ------------------------------------------------------------------------------
     def laya_client(self, lv: dict):
-        key = (lv.get("laya_url"), lv.get("laya_checkpoint"), lv.get("laya_model"), lv.get("laya_timeout_ms"))
+        key = (lv.get("laya_url"), lv.get("laya_checkpoint"), lv.get("laya_model"), lv.get("laya_timeout_ms"),
+               lv.get("laya_mode"), lv.get("laya_remote_timeout_ms"))
         if self._laya_client is None or key != self._laya_key:
             self._laya_client, self._laya_key = self.laya_client_factory(lv), key
         return self._laya_client

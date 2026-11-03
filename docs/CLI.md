@@ -31,6 +31,20 @@ python3.12 -m venv .venv && .venv/bin/pip install -e .[dev]
   did, plus the promotion bar); `live.laya_rank: shadow|blend|live` (default shadow) is your switch. `oi laya-switch
   on|off|status` = the menu bar's Laya toggle (settings `laya.enabled`; off stops the server and frees its memory).
   Shadow mode: settings.json `live.laya_shadow: true`. One heavy ML process at a time (4 GB cap, swap < 4 GB).
+- `oi relevance-eval --days A..B [--test-last 2] [--alpha 1,3,10] [--depth o1,o2hs] [--starters [PATH]] [--proactive] [--json]`
+  — offline relevance of what the HUD can actually show (measurement only; it changes no ranking). Same day split as
+  `oi replay` (train days strictly before the test days). For every test moment it builds the live menu, keeps only the
+  options the live gate can show (`nothing`, `app.focus`, `key.send` excluded), ranks them like the gate (show_p, then
+  key) and scores the next action (within 120 s): top-1, top-3 and MRR@10 on acted moments, the ceiling (next action in
+  the menu at all), and the live gate's coverage / precision (default thresholds, no cooldown). Breakdowns: per source of
+  the gold option (markov, fixed, starter, proactive; they add up to the total), per label kind, per test day.
+  Variants: every `--alpha` × `--depth` (the deepest Markov context level kept) against the current model (alpha 1,
+  o2hs); `--starters` adds a +starter row (the data dir's `starter_catalogue.yaml` or PATH, item stats re-learnt in time
+  order, never saved); `--proactive` adds +proactive rows (events/ of the test days: each live event's options first, the
+  relevance gate is not replayed, so an upper bound). When hud-log rows carry Laya shadow answers, Laya vs Markov on the
+  showable keys of the same rows (no Laya server started). Report: `reports/relevance-<stamp>.{md,json}` (0600),
+  aggregates only. Try it on synthetic data: `python tests/relevance_fixture.py /tmp/oi-synth` then
+  `OI_DATA_DIR=/tmp/oi-synth OI_TZ=UTC oi relevance-eval --days 2026-10-12..2026-10-19 --alpha 1,3,10 --starters --proactive`.
 - `python -m oi.claude_actions check` — W14: one harmless headless `claude -p --model haiku` call on your Claude
   subscription (never an API key); prints the auth path and the latency. `python -m oi.claude_actions run --action
   mail.reply --context-file <synthetic.json> --dry-run` runs the draft pipeline on a given context (no Mail read) and

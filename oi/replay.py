@@ -35,12 +35,13 @@ from datetime import datetime, timezone
 from pathlib import Path
 
 from . import aw, candidates, forms, laya, paths, serialise
+from .live import ALLOWED_PRIMITIVES
 from .markov import Markov
 from .moments import NOTHING, build_moments
 
 CALIB_FRAC = 0.2
 SMOKE_TEST_FRAC = 0.2
-SHOW_PRIMITIVES = ("app.open", "url.open", "space.move")   # = live.ALLOWED_PRIMITIVES
+SHOW_PRIMITIVES = ALLOWED_PRIMITIVES       # what the HUD can show: ONE list, the live gate's (was a stale copy)
 MAX_SHOW = 3
 TARGET_PRECISION = 0.40
 MIN_CALIB_SHOWN = 5
@@ -96,6 +97,11 @@ def load_moments(days: list[str], reader=read_day) -> tuple[list[dict], list[dic
 
 # ---- per-moment scoring ----------------------------------------------------------------------------------
 
+def is_showable(option: dict) -> bool:
+    """True when the HUD can show this menu option (the live gate's primitive list)."""
+    return option.get("primitive") in SHOW_PRIMITIVES
+
+
 def gold_key(menu: list[dict], label: str) -> str | None:
     for o in menu:
         if o.get("token") == label:
@@ -126,7 +132,7 @@ def prepare(moments: list[dict], model: Markov, count=None) -> list[dict]:
         text, n_tok, trunc = serialise.render(form, m, **({"count": count} if count else {}))
         out.append({"moment": m, "form": form, "menu": menu, "text": text, "tokens": n_tok,
                     "over_budget": "over_budget" in trunc, "gold": gold_key(menu, m["label"]),
-                    "label": m["label"], "showable": {o["key"] for o in menu if o.get("primitive") in SHOW_PRIMITIVES},
+                    "label": m["label"], "showable": {o["key"] for o in menu if is_showable(o)},
                     "markov": markov_probs(menu, model, m)})
     return out
 

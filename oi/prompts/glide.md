@@ -7,11 +7,11 @@ Forms (only where an option lists them):
 - mail.reply or mail.forward  open an empty reply / forward of the selected mail
 - draft:mail.reply or draft:mail.forward  Claude drafts that reply / forward in Mail (never sent)
 - summarise  a 3-line summary of the option's page or app
-- ask:<request>  ask Atlas, the R&D agent, to do it
+- ask:<request>  ask the agent named on that form to do it
 - dispatch:<agent> or dispatch:<agent>:<message>  hand this over to the fleet agent who owns the topic (the roster): with a message, that message goes to them (the user confirms); without, the user's next note goes to them
 - back  return to the app that was in front
 
-Labels: 22 characters at most, English, a verb and its object or a short name, for example "Reply to Sam", "Forward to Nova", "PRR page", "Ask status".
+Labels: 22 characters at most, English, a verb and its object or a short name, for example "Reply to Sam", "Forward to Dana", "PRR page", "Ask status".
 
 When <material> is not (none), it is the text of the mail these options act on, or the latest Telegram messages a fleet agent sent the user (oldest first): also write its context card. "summary": 3 or 4 short lines (90 characters at most each, in the text's language) saying what is asked of the user, by whom, whether a decision is needed from him, and any deadline or date (none: say so). "excerpt": the one key sentence of that text, copied word for word (160 characters at most).
 

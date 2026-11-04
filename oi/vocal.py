@@ -129,6 +129,18 @@ def sender(raw: dict | None = None) -> str:
     return s if isinstance(s, str) and _SLUG.match(s) else FROM
 
 
+def ask_target(raw: dict | None = None) -> str | None:
+    """Who the glide's "Ask <agent>" goes to: settings.json `vocal.ask` (a configured recipient slug), else the first
+    inject recipient (an agent on this Mac), else the first recipient; None when no recipient is configured."""
+    raw = raw if raw is not None else _raw_settings()
+    rs = recipients(raw)
+    v = raw.get("vocal") or {}
+    s = v.get("ask") if isinstance(v, dict) else None
+    if isinstance(s, str) and s in rs:
+        return s
+    return next((k for k, spec in rs.items() if spec.get("kind") == "inject"), next(iter(rs), None))
+
+
 def command(spec: dict, sender_name: str | None = None) -> list[str] | None:
     """argv of the relay command for an "a2a" recipient (the line goes on its stdin); None for "inject"."""
     if spec["kind"] != "a2a":

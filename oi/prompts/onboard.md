@@ -8,7 +8,7 @@ Catalogue rules:
   - "agent.ask" {"to": "<slug from the team list>"}  (opens a voice note to that agent) — only when a team list is given
 - "trigger" = when to propose it: {"apps": [front apps where it fits], "hosts": [page hosts where it fits], "hours": [start, end) local hours 0-24, "days": ["mon".."sun"] optional}. Prefer specific contexts (the app or site right before, the usual hours). Leave apps and hosts empty only for an action useful anywhere.
 - "prior" = your confidence 0.05-0.6 that the person wants this action when the trigger fits (0.4+ only for something they said they do every day in that context).
-- "label" ≤ 22 characters, imperative, in the person's language ("Render request", "Ask Orion NAV", "Weekly report").
+- "label" ≤ 22 characters, imperative, in the person's language ("Render request", "Ask <agent> NAV", "Weekly report").
 - "id" a short kebab-case slug, unique. "why" one short clause.
 - Cover: their main tools, their recurring tasks (as a mail.draft template, an app deep link or a site), the people / agents / services they hand work to (agent.ask for team agents; mail.draft or url.open of the service otherwise). Never invent an app that is not in the lists, an agent that is not in the team list, an email address they did not give, or a fact.
 

@@ -155,7 +155,7 @@ def forms(scope: dict) -> list[str]:
     k = scope["kind"]
     out = {"host": ["summarise"], "app": ["summarise"],
            "mail": ["mail.reply", "mail.forward", "draft:mail.reply", "draft:mail.forward", "vocal:<agent>:<message>",
-                    "ask:<request for Atlas>"],
+                    "ask:<request>"],
            "agent": [f"vocal:{scope.get('slug')}:<message>"]}.get(k, [])
     return out + (["back"] if k not in ("leaf", "space") else [])
 

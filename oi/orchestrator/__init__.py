@@ -78,7 +78,9 @@ def roster(path: Path | None = None) -> list[dict]:
     try:
         from .. import vocal
         known = set(vocal.recipients(vocal._raw_settings()))
-    except Exception:
+    except Exception as e:                      # a broken settings file: no agent, but say why
+        from .. import claude_actions as ca
+        ca.log(f"roster: recipients unreadable ({type(e).__name__}), no agent")
         return []
     return [a for a in agents if a["slug"] in known]
 

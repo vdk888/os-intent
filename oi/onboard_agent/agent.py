@@ -154,7 +154,7 @@ def opening(io: onboard.IO, home: Path, cfg: dict, ccfg: dict, *, preset: dict |
     roster_ok = has_roster if has_roster is not None else bool(onboard._agents_for(True))
     team = preset.get("team")
     if team is None:
-        team = roster_ok and io.yes("Do you work with your agent team (the roster: Atlas, Nova, Orion, …)?")
+        team = roster_ok and io.yes("Do you work with your agent team (the agents configured in your settings)?")
     plan.team = bool(team)
     return plan
 

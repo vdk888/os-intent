@@ -1359,9 +1359,10 @@ class MarketsSensor:
         bdate = str(brief.get("date") or "")
         if bdate and brief.get("read") is not True:
             ref = {"slug": "orion", "date": bdate[:10]}
+            bwho = brief["from"][:40] if isinstance(brief.get("from"), str) and brief["from"] else "Market"
             if isinstance(brief.get("url"), str):
                 ref["url"] = brief["url"]
-            on[("brief", bdate)] = lambda ref=ref: store.make("market", "brief", ts=now, key=["brief", bdate], who="Orion",
+            on[("brief", bdate)] = lambda ref=ref: store.make("market", "brief", ts=now, key=["brief", bdate], who=bwho,
                                                               subject="Daily brief", ref=ref)
         # the state = a symbol beyond ±move_pct (its direction); a move fires on entering it, again only after it ended
         for x in feed.get("moves") or []:

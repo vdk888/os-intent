@@ -72,10 +72,11 @@ def test_every_picker_agent_has_a_recipient():
                                              "hera", "echo"}                  # the test team (conftest)
 
 
-def test_shipped_recipients_are_a_small_example_and_the_sender_is_a_setting():
-    from conftest import SHIPPED_CONTACT_MAP, SHIPPED_RECIPIENTS
-    assert set(SHIPPED_RECIPIENTS) == {"atlas", "nova", "orion"}
-    assert set(SHIPPED_CONTACT_MAP.values()) <= set(SHIPPED_RECIPIENTS)
+def test_no_agent_is_shipped_and_the_sender_is_a_setting():
+    """No invented agent ever reaches the HUD: the recipients, the chat-title map and the screenshot default contact
+    ship empty; the agents come only from settings.json `vocal_recipients`."""
+    from conftest import SHIPPED_CONTACT_MAP, SHIPPED_RECIPIENTS, SHIPPED_SHOT_FALLBACK
+    assert SHIPPED_RECIPIENTS == {} and SHIPPED_CONTACT_MAP == {} and SHIPPED_SHOT_FALLBACK is None
     assert vocal.FROM == "user" and vocal.sender({}) == "user"
     assert vocal.sender({"vocal": {"from": "sam"}}) == "sam" and vocal.sender({"vocal": {"from": "Bad Name"}}) == "user"
     assert vocal.command(vocal.DEFAULT_RECIPIENTS["nova"], "sam")[-2:] == ["--from", "sam"]

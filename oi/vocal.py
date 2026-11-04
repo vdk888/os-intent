@@ -21,7 +21,7 @@ local inject recipient (atlas, juno): an A2A recipient on another host cannot op
 Context: app and desk from oi-hud (the moment the vocal key was pressed), the page host from oi live's status
 (status/oi-live.json `context`, when fresh); never a window title or a URL path.
 
-Recipients: `DEFAULT_RECIPIENTS`, overridden per slug by settings.json `vocal_recipients`
+Recipients: settings.json `vocal_recipients` (`DEFAULT_RECIPIENTS` ships empty: no configured agent = none shown)
 ({"nova": {"kind": "a2a", "script": "...", "to": "...", "state_dir": "..."}, "x": null} removes x).
 Every attempt (sent or not, dry run included) is one hud-log row {"kind": "vocal", "to", "ok", ...}; a sent
 one becomes the token `vocal:<slug>` (oi.normalise).
@@ -80,14 +80,14 @@ def _remote(slug: str, name: str, host: str) -> dict:
     return {"name": name, "kind": "a2a", "script": RELAY_CMD, "to": host, "state_dir": f"/opt/agents/{slug}/inbox"}
 
 
-# EXAMPLE agents (fictional): replace them with your own in settings.json `vocal_recipients` (a slug set to null
-# removes one). One on this Mac (an inject file), two on another host (the relay command). Keep in step with
-# settings/Sources/OISettings/VocalRecipients.swift (the HUD picker and the menu bar list them).
-DEFAULT_RECIPIENTS: dict[str, dict] = {
-    "atlas": {"name": "Atlas", "kind": "inject", "path": os.path.expanduser("~/.claude/channels/atlas/inject")},
-    "nova": _remote("nova", "Nova", "agent-host"),
-    "orion": _remote("orion", "Orion", "agent-host"),
-}
+# No shipped agents: every recipient comes from settings.json `vocal_recipients`, so the HUD never proposes an agent
+# the user does not have (no roster configured = no agent at all). Example of that setting (fictional agents, one on
+# this Mac through an inject file, one on another host through the relay command):
+#   "vocal_recipients": {"atlas": {"name": "Atlas", "kind": "inject", "path": "/Users/you/.claude/channels/atlas/inject"},
+#                        "nova": {"name": "Nova", "kind": "a2a", "script": "/usr/local/bin/agent-send",
+#                                 "to": "agent-host", "state_dir": "/opt/agents/nova/inbox"}}
+# Keep in step with settings/Sources/OISettings/VocalRecipients.swift (the HUD picker and the menu bar list them).
+DEFAULT_RECIPIENTS: dict[str, dict] = {}
 
 
 class VocalError(ValueError):
@@ -106,8 +106,8 @@ def _valid(spec) -> bool:
 
 
 def recipients(raw_settings: dict | None = None) -> dict[str, dict]:
-    """The defaults, overridden per slug by settings.json `vocal_recipients` (an invalid entry is ignored,
-    null removes the slug)."""
+    """settings.json `vocal_recipients` over the (empty by default) `DEFAULT_RECIPIENTS` (an invalid entry is
+    ignored, null removes the slug). Nothing configured = {}: no agent is ever proposed."""
     out = {k: dict(v) for k, v in DEFAULT_RECIPIENTS.items()}
     over = (raw_settings or {}).get("vocal_recipients")
     if isinstance(over, dict):
@@ -127,6 +127,18 @@ def sender(raw: dict | None = None) -> str:
     v = ((raw if raw is not None else _raw_settings()).get("vocal") or {})
     s = v.get("from") if isinstance(v, dict) else None
     return s if isinstance(s, str) and _SLUG.match(s) else FROM
+
+
+def ask_target(raw: dict | None = None) -> str | None:
+    """Who the glide's "Ask <agent>" goes to: settings.json `vocal.ask` (a configured recipient slug), else the first
+    inject recipient (an agent on this Mac), else the first recipient; None when no recipient is configured."""
+    raw = raw if raw is not None else _raw_settings()
+    rs = recipients(raw)
+    v = raw.get("vocal") or {}
+    s = v.get("ask") if isinstance(v, dict) else None
+    if isinstance(s, str) and s in rs:
+        return s
+    return next((k for k, spec in rs.items() if spec.get("kind") == "inject"), next(iter(rs), None))
 
 
 def command(spec: dict, sender_name: str | None = None) -> list[str] | None:

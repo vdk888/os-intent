@@ -30,7 +30,7 @@ Attention = what deserves their attention versus noise (newsletters, notificatio
 
 `starter_catalogue.yaml` (YAML mapping with one key `items`), {{min_items}}-{{max_items}} items, each:
   id: short-kebab-slug (unique)
-  label: ≤ 22 characters, imperative, in the person's language ("Render request", "Ask Orion NAV", "Weekly report")
+  label: ≤ 22 characters, imperative, in the person's language ("Render request", "Ask <agent> NAV", "Weekly report")
   primitive: one of app.open | url.open | mail.draft | agent.ask
   params:
     app.open   {app: "<exact name from the installed apps list>", deeplink: "<optional custom-scheme URL of that app>"}

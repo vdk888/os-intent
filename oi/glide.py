@@ -19,14 +19,14 @@ an earlier one), and a mail action runs only on the mail it was built for (messa
 Follow-ups map to what the driver can execute: the catalogue primitives (app.open of an installed app, url.open of
 a site seen today, space.move, mail.reply / mail.forward), the W14 Claude actions (draft:mail.reply /
 draft:mail.forward, summarise) and a message to a fleet agent (vocal:<slug>:<text>, the W12 path). Anything else
-becomes "Ask Atlas: <text>" (the W12 path to atlas: a local inject). Nothing runs on hover: only on a release or a
-click.
+becomes "Ask <agent>: <text>" (the W12 path to the configured ask agent, ask_agent; no agent = dropped).
+Nothing runs on hover: only on a release or a click.
 
 W23 drill-down: each level acts INSIDE / ON its parent (oi/drill.py): the parent's scope picks local
 providers (Finder files / folders, Telegram chats, Music playlists, a site's pages, the mail's reply / forward),
 ranked by history (Markov on the parent token + the logged glide choices); Claude (haiku) only orders / labels /
 fills the generative scopes (a fleet agent, the mail) from those items + the scope's forms, with the path chain;
-the scope rejector drops any other app / site switch (except "back"). A send ("Ask Atlas" included) runs on release
+the scope rejector drops any other app / site switch (except "back"). A send ("Ask <agent>" included) runs on release
 and waits for oi.gate's confirm panel, the ONE confirmation: no "Send ✓" child any more.
 Cache per (parent chain ids, context); each chosen branch is logged as a training pair (ids only).
 
@@ -135,11 +135,12 @@ def describe(opt: dict) -> str:
 # ---- follow-up -> executable node -----------------------------------------------------------------------
 
 def resolve(fu, parent: dict, env: dict, strict: bool = False) -> dict | None:
-    """A model follow-up {"label", "action"} -> an executable node, or "Ask Atlas: <text>" when the action is
-    unknown, not allowed here (an app not installed, a site not seen today) or malformed. None = nothing usable.
-    Node: {label, icon, action (the id logged: "app.open", "draft:mail.reply", "vocal:nova", "ask"...), kind
+    """A model follow-up {"label", "action"} -> an executable node, or "Ask <agent>: <text>" (the configured ask agent,
+    ask_agent) when the action is unknown, not allowed here (an app not installed, a site not seen today) or malformed.
+    None = nothing usable (and no agent configured = no ask node).
+    Node: {label, icon, action (the id logged: "app.open", "draft:mail.reply", "vocal:<agent>", "ask"...), kind
     ("primitive" | "draft" | "summary" | "vocal" | "ask"), primitive, params, token, claude}.
-    W23 `strict`: no "Ask Atlas" fallback (an unknown / not-allowed action is dropped; only an explicit ask: stays);
+    W23 `strict`: no "Ask <agent>" fallback (an unknown / not-allowed action is dropped; only an explicit ask: stays);
     "back" = switch back to the app in front at the show (env["front_app"])."""
     if not isinstance(fu, dict):
         return None
@@ -192,18 +193,28 @@ def resolve(fu, parent: dict, env: dict, strict: bool = False) -> dict | None:
         slug, _, msg = arg.partition(":")
         slug, msg = slug.strip().lower(), _text(msg, TEXT_MAX)
         name = env.get("agents", {}).get(slug)
-        if name and msg and slug != "atlas":
+        if name and msg and slug != ask_agent(env):
             return _node(label, f"initial:{name[:1].upper()}", f"vocal:{slug}", "vocal", params={"to": slug, "text": msg})
-        if slug == "atlas" and msg:
+        if slug == ask_agent(env) and msg:
             arg, kind = msg, "ask"
     if strict and kind != "ask":
         return None
     text = _text(arg if kind == "ask" and arg else (label or action), TEXT_MAX)
-    if not text or "atlas" not in env.get("agents", {}):
+    to = ask_agent(env)
+    if not text or not to:
         return None
+    name = env["agents"][to]
     shown = label or text
-    shown = shown if shown.lower().startswith("ask atlas") else f"Ask Atlas: {shown}"
-    return _node(_text(shown, LABEL_MAX), ICONS["ask"], "ask", "ask", params={"to": "atlas", "text": text})
+    shown = shown if shown.lower().startswith(f"ask {name.lower()}") else f"Ask {name}: {shown}"
+    return _node(_text(shown, LABEL_MAX), ICONS["ask"], "ask", "ask", params={"to": to, "text": text})
+
+
+def ask_agent(env: dict) -> str | None:
+    """The configured agent "Ask <agent>" goes to: env["ask"] (oi.vocal.ask_target) when it is a configured agent,
+    else the first configured agent; None = no agent configured, no ask node."""
+    agents = env.get("agents") or {}
+    a = env.get("ask")
+    return a if a in agents else next(iter(agents), None)
 
 
 def resolve_list(raw, parent: dict, env: dict, *, scope: dict | None = None, items: dict | None = None) -> list[dict]:
@@ -314,7 +325,7 @@ def local_summary(ev: dict) -> list[str] | None:
         lines = [f"{ev.get('who') or '?'} {pct:+.1f} %" if isinstance(pct, (int, float)) else ev.get("subject"),
                  f"Au-delà de ±{_num(ref.get('move_pct'))} % depuis {since}" if since else None]
     elif src == "market":
-        lines = [f"Brief de Orion du {ref['date']}, non lu" if isinstance(ref.get("date"), str) else "Brief de Orion, non lu"]
+        lines = [f"Brief du {ref['date']}, non lu" if isinstance(ref.get("date"), str) else "Brief, non lu"]
     elif src == "cockpit" and str(cls).startswith("decide-"):   # « À décider »: the cockpit's own description lines
         risk = {"low": "faible", "medium": "moyen", "moderate": "moyen", "high": "élevé", "critical": "critique"}
         head = _join(f"risque {risk.get(ref.get('risk'), ref.get('risk'))}" if ref.get("risk") else None,
@@ -541,16 +552,21 @@ ITEM_KINDS = {"folder.open": "folder", "file.open": "file", "telegram.chat": "ch
               "url.open": "page", "mail.reply": "mail", "mail.forward": "mail"}
 
 
-def option_block(k: int, chain: str, items: list[dict], scope: dict, agents: dict) -> tuple[str, dict]:
-    """one option of the prompt: its path, its allowed items (ids i1..), its forms -> (text, id -> item)."""
+def option_block(k: int, chain: str, items: list[dict], scope: dict, agents: dict,
+                 ask: str | None = None) -> tuple[str, dict]:
+    """one option of the prompt: its path, its allowed items (ids i1..), its forms -> (text, id -> item).
+    `ask` = the configured ask agent (ask_agent): the ask form names it, and is left out when there is none."""
     ids = {f"i{i + 1}": n for i, n in enumerate(items)}
     listed = "; ".join(f'{i} = {ITEM_KINDS.get(n.get("primitive"), "item")} "{n["label"]}"' for i, n in ids.items())
     fs = drill.forms(scope)
     if scope["kind"] not in ("leaf", "space"):
         fs = fs + [DISPATCH_FORM]                             # the agent from the roster by topic
     if "vocal:<agent>:<message>" in fs:
-        names = ", ".join(f"{s} ({n})" for s, n in agents.items() if s != "atlas") or "(none)"
+        names = ", ".join(f"{s} ({n})" for s, n in agents.items() if s != ask) or "(none)"
         fs = [f if f != "vocal:<agent>:<message>" else f"vocal:<agent>:<message> (agents: {names})" for f in fs]
+    if "ask:<request>" in fs:
+        fs = [f for f in fs if f != "ask:<request>"] if ask not in agents else \
+            [f if f != "ask:<request>" else f"ask:<request> (to {agents[ask]})" for f in fs]
     return "\n".join([f"{k}. Path: {chain}", f"   Items: {listed or '(none)'}",
                       f"   Forms: {', '.join(fs) or '(none)'}"]), ids
 
@@ -561,7 +577,7 @@ def build_prompt(ctx: dict, env: dict, options: list[tuple[int, str, list[dict],
     `material` = the mail text to summarise for the level-3 context card (None = no card asked)."""
     blocks, ids = [], {}
     for k, chain, items, scope in options:
-        text, ids[k] = option_block(k, chain, items, scope, env.get("agents", {}))
+        text, ids[k] = option_block(k, chain, items, scope, env.get("agents", {}), ask_agent(env))
         blocks.append(text)
     # the orchestrator's context pack for this moment (gated host / mail, the path chain, the agent)
     agent = next((sc.get("slug") for _, _, _, sc in options if sc.get("kind") == "agent"), None)

@@ -145,8 +145,8 @@ One file, `~/.local/share/os-intent/settings.json` (or `$OI_DATA_DIR/settings.js
   the first four recipients; the vocal key again = the next four, and so on, then back) → the
   agent's key (or a click) → the recording panel (on-device dictation, `vocal.max_s` max: default 5 min, countdown in the last 15 s, the vocal key or Enter sends, Esc
   cancels; an empty transcript sends nothing) → `oi vocal-send` delivers it. A file without it gets the default.
-- `vocal_recipients` (W12) — slug → inbox, overriding the built-in table of `oi/vocal.py` per slug (`null` removes
-  one; an invalid entry is ignored). `{"kind": "inject", "path": "<abs local inject file>"}` (the example atlas) or
+- `vocal_recipients` (W12) — slug → inbox, the ONLY source of agents (the built-in table of `oi/vocal.py` ships
+  empty: none configured = no agent in the picker, the prompts or the routes; `null` removes one; an invalid entry is ignored). `{"kind": "inject", "path": "<abs local inject file>"}` (the example atlas) or
   `{"kind": "a2a", "script": "<abs path of your relay command>", "to": "<host alias>", "state_dir": "<the agent's
   inbox dir there>"}` (the example table: nova and orion on agent-host), run as `<relay> --to <host> --state-dir <dir> --from <sender>`
   (settings `vocal.from`, default "user"), the line on stdin; the relay command
@@ -368,9 +368,8 @@ release over any capsule executes it, on empty space / Esc cancels; tap ⌥⌘ u
   binary loads the model, ~30 s, paid at `oi live` start by `warm_ocr`) + context + last actions → haiku on the
   subscription → a 3-5 line note, editable in the note panel, Enter sends. Esc anywhere = nothing sent.
 - Current contact (`oi/contact.py`): newest of, within 15 min: a `title:Telegram…/<slug>` matching
-  `contact_map` (example defaults Atlas - Tools → atlas, Nova - Planning → nova, Orion - Finance → orion; the title
-  is never logged), a `vocal:<slug>`, a shot sent;
-  else `shots.fallback_contact` (default "atlas"). **Measured:** Telegram's macOS window title is
+  `contact_map` (none shipped, e.g. {"Atlas - Tools": "atlas"}; the title is never logged), a `vocal:<slug>`, a shot sent;
+  else `shots.fallback_contact` (default none). **Measured:** Telegram's macOS window title is
   "Telegram" (not the chat) in ~95% of today's title tokens, so the title map rarely fires: the vocal / shot-sent /
   fallback paths carry it (follow-up: read the chat header through Accessibility).
 - Delivery (`shots.deliver`): atlas / juno → image copied to `<channel>/inbox/oi-shot-<stamp>-<hex>.png` (0600) +

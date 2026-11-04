@@ -960,7 +960,8 @@ def converse(io: IO, *, preset: dict | None = None, use_claude: bool = True, ask
     roster_ok = has_roster if has_roster is not None else bool(_agents_for(True))
     team = preset.get("team")
     if team is None:
-        team = roster_ok and io.yes("Do you work with your agent team (the roster: Atlas, Nova, Orion, …)?")
+        names = ", ".join(a.get("name") or a["slug"] for a in _agents_for(True)[:3])
+        team = roster_ok and io.yes(f"Do you work with your agent team (the roster: {names}, …)?")
     confirmed: set[tuple[str, str]] = set()
     if use_claude:
         cfg = ca.claude_settings()

@@ -11,8 +11,8 @@ import pytest
 
 from oi import vocal as _vocal
 
-# The shipped example recipients (three) are kept here for the tests that check them; every other test runs against
-# a larger fictional team, so pickers page, fall back and route across hosts.
+# The shipped recipients (none: agents come only from the user's settings) are kept here for the tests that check
+# them; every other test runs against a larger fictional team, so pickers page, fall back and route across hosts.
 SHIPPED_RECIPIENTS = {k: dict(v) for k, v in _vocal.DEFAULT_RECIPIENTS.items()}
 TEST_TEAM = {
     "atlas": {"name": "Atlas", "kind": "inject", "path": _vocal.os.path.expanduser("~/.claude/channels/atlas/inject")},
@@ -29,8 +29,11 @@ _vocal.DEFAULT_RECIPIENTS.clear()
 _vocal.DEFAULT_RECIPIENTS.update(TEST_TEAM)
 
 from oi import contact as _contact  # noqa: E402
+from oi import shots as _shots  # noqa: E402
 
 SHIPPED_CONTACT_MAP = dict(_contact.DEFAULT_CONTACT_MAP)
+SHIPPED_SHOT_FALLBACK = _shots.SHOT_DEFAULTS["fallback_contact"]
+_shots.SHOT_DEFAULTS["fallback_contact"] = "atlas"            # the test team's default contact
 _contact.DEFAULT_CONTACT_MAP.clear()
 _contact.DEFAULT_CONTACT_MAP.update({"Atlas - Tools": "atlas", "Nova - Planning": "nova", "Orion - Finance": "orion",
                                      "Lyra - Sales": "lyra", "Vega - Marketing": "vega", "Juno - Support": "juno"})

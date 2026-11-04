@@ -5,26 +5,37 @@ import OISettings
 
 // W12 "Send a vocal to…"
 
+/// Nothing is shipped (VocalPicker.defaultAgents is empty: agents come only from settings.json), so the tests that
+/// drive the live picker install a three-agent fictional roster, as oi-hud does at launch from `vocal_recipients`.
+/// A `static let` runs once, thread-safe: every suite below touches it in its init before reading the roster.
+enum TestRoster {
+    static let installed: Void = {
+        VocalPicker.agents = [VocalAgent("atlas", "Atlas"), VocalAgent("nova", "Nova"), VocalAgent("orion", "Orion")]
+    }()
+}
+
 @Suite struct VocalPickerTests {
-    /// a larger fictional team, to page through (the shipped default is three agents)
+    init() { _ = TestRoster.installed }
+
+    /// a larger fictional team, to page through (nothing is shipped: agents come only from settings)
     static let team = ["atlas:Atlas", "nova:Nova", "orion:Orion", "lyra:Lyra", "vega:Vega", "juno:Juno", "iris:Iris",
                        "hera:Hera", "echo:Echo"].map { p -> VocalAgent in
         let s = p.split(separator: ":"); return VocalAgent(String(s[0]), String(s[1])) }
 
-    @Test func defaultsAreTheSharedThreeAgentExample() {
-        #expect(VocalPicker.defaultAgents.map(\.slug) == ["atlas", "nova", "orion"])
-        #expect(VocalPicker.defaultAgents.map(\.slug) == VocalRecipients.defaults.map(\.slug))
-        #expect(VocalPicker.pageCount(VocalPicker.defaultAgents) == 1)
-        let p = VocalPicker.page(0, in: VocalPicker.defaultAgents)
-        #expect(p.count == 3 && p[.fn]?.slug == "atlas" && p[.ctrl]?.slug == "nova" && p[.option]?.slug == "orion")
-        #expect(VocalPicker.nextPage(0, in: VocalPicker.defaultAgents) == 0)
+    @Test func noAgentIsShippedSoNoneIsInvented() {
+        #expect(VocalRecipients.defaults.isEmpty && VocalPicker.defaultAgents.isEmpty)
+        #expect(VocalPicker.fromSettings(OISettings()).isEmpty)                   // no settings = no agent bubble
+        #expect(VocalPicker.page(0, in: []).isEmpty && VocalPicker.options(page: 0, hotkeys: .defaults, in: []).isEmpty)
+        #expect(VocalPicker.pageCount([]) == 1 && VocalPicker.nextPage(0, in: []) == 0)
     }
 
     @Test func theSettingsListFeedsThePicker() {
         var s = OISettings()
-        s.vocalRecipients = .object(["orion": .null, "sam": .object(["name": .string("Sam")])])
-        #expect(VocalPicker.fromSettings(s).map(\.slug) == ["atlas", "nova", "sam"])
-        #expect(VocalPicker.fromSettings(OISettings()) == VocalPicker.defaultAgents)
+        s.vocalRecipients = .object(["orion": .null, "sam": .object(["name": .string("Sam")]),
+                                     "tom": .object(["name": .string("Tom")])])
+        #expect(VocalPicker.fromSettings(s).map(\.slug) == ["sam", "tom"])        // only the configured ones
+        let p = VocalPicker.page(0, in: VocalPicker.fromSettings(s))
+        #expect(p.count == 2 && p[.fn]?.name == "Sam" && p[.ctrl]?.name == "Tom")
     }
 
     @Test func pagesAndSlotMapping() {
@@ -71,6 +82,8 @@ import OISettings
 }
 
 @Suite struct VocalFlowTests {
+    init() { _ = TestRoster.installed }
+
     let nova = VocalAgent("nova", "Nova")
 
     @Test func pickRecordSend() {
@@ -98,6 +111,8 @@ import OISettings
 }
 
 @Suite struct VocalTextAndStoreTests {
+    init() { _ = TestRoster.installed }
+
     @Test func emptyTranscriptIsNeverSent() {
         #expect(VocalText.clean("") == nil && VocalText.clean("  \n\t ") == nil)
         #expect(VocalText.clean(" bonjour\nNova ") == "bonjour Nova")
@@ -132,6 +147,8 @@ import OISettings
 }
 
 @Suite struct VocalHUDTests {
+    init() { _ = TestRoster.installed }
+
     @Test func vocalOptionAtSevenThirtyMirrorsTheWish() {
         let opts = optionsWithWishAndVocal([HUDOption(key: 1, label: "Mail")])
         #expect(opts.map(\.key) == [1, wishOptionKey, vocalOptionKey])
@@ -193,6 +210,8 @@ import OISettings
 // Clicks (the user 16:5x): every capsule is a click target, hit-tested by its own shape.
 
 @Suite struct ClickTests {
+    init() { _ = TestRoster.installed }
+
     let slots = hudSlots(options: optionsWithWishAndVocal((1...4).map { HUDOption(key: $0, label: "x") }),
                          positions: FixedSlots.positions(hotkeys: .defaults, slots: HUDSettings.defaultSlots),
                          radius: 80, capsuleHeight: 32) { _ in 100 }
@@ -230,6 +249,8 @@ import OISettings
 }
 
 @Suite struct DictationSegmentsTests {
+    init() { _ = TestRoster.installed }
+
     @Test func segmentsAreConcatenatedWithASpace() {
         var d = DictationSegments()
         #expect(d.handle(partial: "bonjour", final: false, failed: false) == .keepGoing)
@@ -291,6 +312,8 @@ import OISettings
 
 // Demo mode (`oi demo`): OI_HUD_AGENTS replaces the roster with fictional agents.
 @Suite struct VocalDemoRosterTests {
+    init() { _ = TestRoster.installed }
+
     @Test func parsesSlugNamePairs() {
         let a = VocalPicker.parseAgents("atlas:Atlas, nova:Nova,orion:Orion,lyra:Lyra")
         #expect(a?.map(\.slug) == ["atlas", "nova", "orion", "lyra"])
@@ -303,7 +326,7 @@ import OISettings
                     (1...13).map { "a\($0):A" }.joined(separator: ","), "atlas:Atlas,"] {
             #expect(VocalPicker.parseAgents(bad) == nil)
         }
-        #expect(VocalPicker.agents == VocalPicker.defaultAgents)   // tests run without OI_HUD_AGENTS
+        #expect(VocalPicker.demoAgents == nil)                     // tests run without OI_HUD_AGENTS
     }
 
     @Test func stateCarriesTheRosterNames() {

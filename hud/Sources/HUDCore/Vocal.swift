@@ -46,18 +46,17 @@ public struct VocalAgent: Equatable, Hashable, Sendable {
 /// bound to a modifier (fn ⌃ ⌥ ⌘, so fn = left, ⌃ = top, ⌥ = right, ⌘ = bottom by default); the vocal
 /// key again shows the next page (wrapping), four agents a page.
 public enum VocalPicker {
-    /// The example recipients, shared with oi-menubar (OISettings.VocalRecipients = oi.vocal.DEFAULT_RECIPIENTS).
+    /// The shipped recipients, shared with oi-menubar (OISettings.VocalRecipients = oi.vocal.DEFAULT_RECIPIENTS): none.
     public static let defaultAgents: [VocalAgent] = VocalRecipients.defaults.map { VocalAgent($0.slug, $0.name) }
     /// Demo mode (`oi demo`): `OI_HUD_AGENTS="atlas:Atlas,nova:Nova,…"` replaces the roster, so a screen recording
-    /// shows fictional agents only. Absent or invalid = the defaults, which oi-hud replaces at launch with the
+    /// shows fictional agents only. Absent or invalid = the defaults (none), which oi-hud replaces at launch with the
     /// settings.json `vocal_recipients` list (`fromSettings`), so every picker entry is a recipient `oi vocal-send` knows.
     public static let demoAgents: [VocalAgent]? = parseAgents(ProcessInfo.processInfo.environment["OI_HUD_AGENTS"])
     public static var agents: [VocalAgent] = demoAgents ?? defaultAgents
 
-    /// The recipients of `settings` (defaults + `vocal_recipients`), at most 12 (three pages).
+    /// The recipients of `settings` (`vocal_recipients`), at most 12 (three pages); none configured = [] (no picker).
     public static func fromSettings(_ settings: OISettings) -> [VocalAgent] {
-        let list = VocalRecipients.list(settings).prefix(12).map { VocalAgent($0.slug, String($0.name.prefix(20))) }
-        return list.isEmpty ? defaultAgents : Array(list)
+        Array(VocalRecipients.list(settings).prefix(12).map { VocalAgent($0.slug, String($0.name.prefix(20))) })
     }
 
     /// `slug:Name` pairs, comma-separated: slug [a-z0-9-], name 1-20 characters, 1-12 agents, unique slugs.

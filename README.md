@@ -130,6 +130,7 @@ outside, a timeout or no HUD cancel. Never an auto-send.
 ### Orchestrator
 
 An example roster of agents with topics (`oi/orchestrator/roster.yaml`, a fictional example of three: Atlas, Nova, Orion).
+Only the agents you configured in settings `vocal_recipients` are ever used or shown: with none, the HUD proposes no agent.
 "Ask someone for the Q4 numbers" routes to the agent who owns the topic, always through the outward gate.
 
 ### Laya switch and health
@@ -211,8 +212,8 @@ Then grant, when macOS asks: **Input Monitoring** (oi-hud, oi-watcher: modifier 
 **Speech Recognition + Microphone** (wish and vocal dictation, on-device), **Calendars** (the meeting
 sensor, and the free / busy check of the times a mail proposes, for its reply draft; read-only, granted once). The menu bar shows what is missing.
 
-Configure your own setup in `~/.local/share/os-intent/settings.json`: `vocal_recipients` (the built-in roster,
-Atlas, Nova, Orion…, is a fictional example), `proactive` (sources, folders, your Telegram chat id, your agents'
+Configure your own setup in `~/.local/share/os-intent/settings.json`: `vocal_recipients` (your agents: none is
+built in, so with none configured no agent is proposed), `proactive` (sources, folders, your Telegram chat id, your agents'
 bots and local records, the repos to watch), `claude.local_only_domains`; and `oi/orchestrator/roster_overlay.yaml`.
 Every key is documented in `docs/DESIGN.md`; every command in `docs/CLI.md`.
 

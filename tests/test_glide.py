@@ -190,6 +190,42 @@ def test_followups_map_to_executable_primitives_or_ask_atlas():
     assert glide.resolve_list(None, top_space, e) == []
 
 
+def test_ask_node_goes_to_the_configured_agent_only():
+    top = TOPS[3]
+
+    def r(action, **kw):
+        return glide.resolve({"label": "Plan the demo", "action": action}, top, env(**kw))
+    # a configured agent with any name: its name in the label, its slug as the target (no built-in "Atlas")
+    n = r("ask:Plan it", agents={"kai": "Kai"}, ask="kai")
+    assert (n["label"], n["params"]) == ("Ask Kai: Plan the demo", {"to": "kai", "text": "Plan it"})
+    assert r("launch.rocket", agents={"kai": "Kai"})["params"]["to"] == "kai"   # no env["ask"]: the first agent
+    n = r("ask:Plan it", agents={"nova": "Nova", "kai": "Kai"}, ask="kai")       # env["ask"] wins over the order
+    assert n["label"] == "Ask Kai: Plan the demo" and n["params"]["to"] == "kai"
+    n = r("vocal:kai:Plan it", agents={"nova": "Nova", "kai": "Kai"}, ask="kai")  # a vocal to the ask agent = the ask
+    assert n["action"] == "ask" and n["params"]["to"] == "kai"
+    assert r("ask:Plan it", agents={"nova": "Nova"}, ask="atlas")["params"]["to"] == "nova"  # unconfigured: ignored
+    # none configured: no ask node, and the prompt offers neither the ask form nor any agent
+    assert r("ask:Plan it", agents={}) is None and r("launch.rocket", agents={}) is None
+    scope = {"kind": "mail"}
+    text, _ = glide.option_block(1, "Mail", [], scope, {}, None)
+    assert "ask:" not in text and "Atlas" not in text and "agents: (none)" in text
+    text, _ = glide.option_block(1, "Mail", [], scope, {"kai": "Kai", "nova": "Nova"}, "kai")
+    assert "ask:<request> (to Kai)" in text and "agents: nova (Nova)" in text
+
+
+def test_vocal_ask_target_from_settings(monkeypatch):
+    from oi import vocal
+    monkeypatch.setattr(vocal, "DEFAULT_RECIPIENTS", {})          # as shipped: only the user's settings count
+    inj = {"kind": "inject", "path": "/Users/you/.claude/channels/x/inject"}
+    a2a = {"kind": "a2a", "script": "/usr/local/bin/agent-send", "to": "h", "state_dir": "/opt/agents/x/inbox"}
+    assert vocal.ask_target({"vocal_recipients": {}}) is None
+    assert vocal.ask_target({"vocal_recipients": {"nova": a2a, "kai": inj}}) == "kai"          # the first inject
+    assert vocal.ask_target({"vocal_recipients": {"nova": a2a}}) == "nova"                     # else the first
+    raw = {"vocal_recipients": {"nova": a2a, "kai": inj}, "vocal": {"ask": "nova"}}
+    assert vocal.ask_target(raw) == "nova"                                                      # vocal.ask wins
+    assert vocal.ask_target(dict(raw, vocal={"ask": "ghost"})) == "kai"                        # unknown: ignored
+
+
 # ---- privacy + request-time context -----------------------------------------------------------------------
 
 def test_mail_local_only_covers_sender_cc_and_reply_to():

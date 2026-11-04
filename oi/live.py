@@ -1013,9 +1013,11 @@ class Live:
                 hs = tok.split(":", 1)[1]
                 urls.setdefault(hs.split("/", 1)[0], hs)
         try:
-            agents = {s: spec.get("name") or s.title() for s, spec in vocal_mod.recipients(vocal_mod._raw_settings()).items()}
+            raw = vocal_mod._raw_settings()
+            agents = {s: spec.get("name") or s.title() for s, spec in vocal_mod.recipients(raw).items()}
+            ask = vocal_mod.ask_target(raw)
         except Exception:
-            agents = {}
+            agents, ask = {}, None
         pages: dict[str, list[str]] = {}               # today's pages per host (newest first)
         history: list[tuple[float, str]] = []           # today's tokens (history provider)
         titles: list[str] = []                          # newest window titles (Telegram chats, project folder)
@@ -1041,7 +1043,7 @@ class Live:
             bots = proactive_config.proactive_settings(proactive_engine._raw_settings())["agents"].get("bots") or {}
         except Exception:
             pass
-        return {"apps": apps, "urls": urls, "agents": agents, "resolve_app": self.resolve_app,
+        return {"apps": apps, "urls": urls, "agents": agents, "ask": ask, "resolve_app": self.resolve_app,
                 "host": status_context(ctx)["host"], "pages": pages, "history": history[-2000:],
                 "title_tokens": titles, "live_events": live_events, "bots": bots}
 

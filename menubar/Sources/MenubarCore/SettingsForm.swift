@@ -44,7 +44,7 @@ public struct SettingsForm: Equatable, Sendable {
     public static let pointerSpeedRange = 200...5000                  // gate.pointer_fast_px_s
     public static let defaultHintCooldownS = 8                        // oi.settings GATE_DEFAULTS
     public static let claudeModel = "Sonnet"                          // runtime calls (commit c8ad0b0), read-only
-    public static let defaultFallbackContact = "atlas"                 // oi.shots SHOT_DEFAULTS
+    public static let defaultFallbackContact = ""                      // none: oi.shots SHOT_DEFAULTS (null)
     // oi/proactive/config.py DEFAULTS and RANGES
     public static let proactiveSources = ["mail", "agents", "files", "cockpit", "metrics", "markets", "decisions", "calendar", "prs"]
     public static let proactiveMinPctRange = 0...100                  // min_p × 100
@@ -177,7 +177,7 @@ public struct SettingsForm: Equatable, Sendable {
         oset(&sh, "enabled", \.shotsEnabled, .bool(shotsEnabled), .bool(d.shotsEnabled))
         oset(&sh, "clipboard", \.shotsClipboard, .bool(shotsClipboard), .bool(d.shotsClipboard))
         let fc = fallbackContact.trimmingCharacters(in: .whitespaces)
-        oset(&sh, "fallback_contact", \.fallbackContact, fc.isEmpty ? .null : .string(fc), .string(SettingsForm.defaultFallbackContact))
+        oset(&sh, "fallback_contact", \.fallbackContact, fc.isEmpty ? .null : .string(fc), .null)
         if s.shots != nil || !sh.isEmpty { s.shots = .object(sh) }
         if changed(\.paused) { s.paused = paused }
         if changed(\.denylistApps) { s.denylistApps = OISettings.cleanDenylist(denylistApps) }
@@ -303,9 +303,8 @@ public struct SettingsForm: Equatable, Sendable {
         }
     }
 
-    /// The vocal recipients oi vocal-send knows: the defaults (oi/vocal.py DEFAULT_RECIPIENTS, the HUD picker
-    /// order), overridden per slug by settings `vocal_recipients` (null removes, a new slug is appended).
-    /// oi.vocal DEFAULT_RECIPIENTS (a fictional example; yours come from settings.json `vocal_recipients`).
+    /// The vocal recipients oi vocal-send knows: settings `vocal_recipients` (null removes, a new slug is appended)
+    /// over oi.vocal DEFAULT_RECIPIENTS, which ships empty (no agent configured = none listed).
     public static var defaultRecipients: [(slug: String, name: String)] { VocalRecipients.defaults }
     public static func recipients(_ s: OISettings) -> [(slug: String, name: String)] { VocalRecipients.list(s) }
 

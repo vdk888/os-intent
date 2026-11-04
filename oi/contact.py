@@ -19,12 +19,9 @@ from datetime import datetime, timedelta, timezone
 from .vocab import parse_ts, slug
 
 WINDOW_S = 15 * 60
-# EXAMPLE chat titles of the example agents (oi.vocal.DEFAULT_RECIPIENTS); yours go in settings.json `contact_map`.
-DEFAULT_CONTACT_MAP: dict[str, str] = {
-    "Atlas - Tools": "atlas",
-    "Nova - Planning": "nova",
-    "Orion - Finance": "orion",
-}
+# Chat title -> agent slug: none shipped (no shipped agents); yours go in settings.json `contact_map`,
+# e.g. {"Atlas - Tools": "atlas"}.
+DEFAULT_CONTACT_MAP: dict[str, str] = {}
 _AGENT = re.compile(r"^[a-z][a-z0-9-]{0,30}$")
 
 

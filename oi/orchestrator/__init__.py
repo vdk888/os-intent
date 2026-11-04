@@ -63,14 +63,24 @@ def _read_cached(path: Path, parse):
 
 
 def roster(path: Path | None = None) -> list[dict]:
-    """The generated roster's agents ([] when missing)."""
+    """The roster's agents ([] when missing). From the committed roster.yaml (`path` None), only the agents the user
+    can reach (a slug in settings.json `vocal_recipients`, oi.vocal.recipients()): the shipped example roster never
+    reaches a prompt, a route or the HUD, and no recipient configured = no agent."""
     def parse(text):
         try:
             d = yaml.safe_load(text) or {}
         except yaml.YAMLError:
             return []
         return [a for a in d.get("agents") or [] if isinstance(a, dict) and a.get("slug")]
-    return _read_cached(path or ROSTER, parse)
+    agents = _read_cached(path or ROSTER, parse)
+    if path is not None:
+        return agents
+    try:
+        from .. import vocal
+        known = set(vocal.recipients(vocal._raw_settings()))
+    except Exception:
+        return []
+    return [a for a in agents if a["slug"] in known]
 
 
 def roster_text(agents: list[dict] | None = None) -> str:

@@ -143,13 +143,28 @@ def test_gen_roster_merges_the_registry_and_never_copies_paths(tmp_path):
     assert "NOPE" not in text and "/home/" not in text and "/Users/" not in text and "state_dir" not in text
 
 
-def test_committed_roster_covers_every_vocal_recipient_and_holds_no_secret():
-    agents = orchestrator.roster()
-    from conftest import SHIPPED_RECIPIENTS
-    assert {a["slug"] for a in agents} == set(SHIPPED_RECIPIENTS)
+def test_committed_roster_is_an_example_that_holds_no_secret():
+    agents = orchestrator.roster(orchestrator.ROSTER)                        # the file itself, unfiltered
+    assert {a["slug"] for a in agents} == {"atlas", "nova", "orion"}
     raw = orchestrator.ROSTER.read_text(encoding="utf-8")
     assert "/Users/" not in raw and "/home/" not in raw and not any(w in raw.lower() for w in ("token:", "secret", "password"))
     assert all(a.get("ask_for") and a.get("topics") for a in agents)
+
+
+def test_roster_keeps_only_the_configured_recipients(monkeypatch):
+    """The example roster never reaches a prompt or a route: only agents the user configured
+    (settings.json `vocal_recipients`) remain, and none configured = no agent at all."""
+    from oi import vocal
+    monkeypatch.setattr(vocal, "DEFAULT_RECIPIENTS", {})                      # what ships
+    monkeypatch.setattr(vocal, "_raw_settings", lambda: {})
+    assert orchestrator.roster() == []
+    sys_text = orchestrator.system_text()
+    assert not any(n in sys_text for n in ("Atlas", "Nova", "Orion"))
+    assert orchestrator.route("ask someone for the budget report") == (None, 0.0)
+    monkeypatch.setattr(vocal, "_raw_settings", lambda: {"vocal_recipients": {
+        "orion": {"name": "Orion", "kind": "inject", "path": "/tmp/orion-inject"}}})
+    assert [a["slug"] for a in orchestrator.roster()] == ["orion"]
+    assert orchestrator.route("ask someone for the budget report")[0] == "orion"
 
 
 @pytest.mark.parametrize("wish,want", [

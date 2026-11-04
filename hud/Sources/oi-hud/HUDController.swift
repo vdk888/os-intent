@@ -199,7 +199,7 @@ final class HUDController {
         settingsPoll = t
     }
 
-    /// The agent picker lists the recipients `oi vocal-send` knows: the defaults + settings.json `vocal_recipients`
+    /// The agent picker lists the recipients `oi vocal-send` knows: settings.json `vocal_recipients` (none shipped)
     /// (a demo's OI_HUD_AGENTS wins). Read again when settings.json changes, applied while no picker is up.
     private func syncVocalAgents() {
         guard VocalPicker.demoAgents == nil, vocal.stateName == "idle" else { return }
@@ -917,6 +917,9 @@ final class HUDController {
     /// send while recording. Ignored otherwise (it is armed only then anyway).
     private func vocalKey() {
         guard model.visible || vocal.isRecording else { return }
+        guard vocal.isRecording || !VocalPicker.agents.isEmpty else {    // no agent configured: no picker, never a fake one
+            log("vocal: no agent (settings.json vocal_recipients is empty)"); return
+        }
         vocalInput(.vocalKey)
     }
 

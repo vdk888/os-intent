@@ -106,7 +106,7 @@ ACTIONS_WINDOW_S = 600
 PICKER_PAGE = 3
 IMAGE_EXT = (".png", ".jpg", ".jpeg", ".heic", ".tiff", ".tif")
 TELEGRAM_APP = "/Applications/Telegram.app"
-SHOT_DEFAULTS = {"enabled": True, "clipboard": True, "fallback_contact": "atlas", "ttl_ms": SHOW_TTL_MS, "actions": True,
+SHOT_DEFAULTS = {"enabled": True, "clipboard": True, "fallback_contact": None, "ttl_ms": SHOW_TTL_MS, "actions": True,
                  "picker_first": True, "note_dictation": True, "remote_image": True}   # the last three: section 6
 REMOTE_COPY_TIMEOUT_S = 60   # the image over ssh (a few MB on a private network)
 SUGGEST_SAFETY_S = 90        # a safety bound on the Claude call only: its answer is used whenever it comes while live
@@ -138,7 +138,7 @@ def log(msg: str) -> None:
 
 def shot_settings(raw: dict | None) -> dict:
     """settings.json `shots` (every key optional, wrongly typed = default):
-    {"enabled": true, "clipboard": true, "fallback_contact": "atlas" | null, "ttl_ms": 15000, "actions": true,
+    {"enabled": true, "clipboard": true, "fallback_contact": "<agent slug>" | null (default), "ttl_ms": 15000, "actions": true,
      "picker_first": true, "note_dictation": true, "remote_image": true}.
     `clipboard` is read by oi-watcher (clipboard images); null fallback_contact = no default contact. 
     `picker_first` = a new screenshot opens the team picker then the note panel (false: the cross as before),

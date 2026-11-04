@@ -1,10 +1,11 @@
 import Foundation
 
-/// The vocal recipients the Swift side shows (oi-hud's agent picker, oi-menubar's Settings): the same example
-/// defaults as `oi.vocal.DEFAULT_RECIPIENTS` (keep the two in step), then settings.json `vocal_recipients` per slug
-/// (`null` removes one, a new slug is added, `name` renames). The python side owns delivery and validation.
+/// The vocal recipients the Swift side shows (oi-hud's agent picker, oi-menubar's Settings): settings.json
+/// `vocal_recipients` per slug (`null` removes one, a new slug is added, `name` renames) over `defaults`, which ship
+/// EMPTY like `oi.vocal.DEFAULT_RECIPIENTS` (keep the two in step): no agent configured = no agent shown, never an
+/// invented one. The python side owns delivery and validation.
 public enum VocalRecipients {
-    public static let defaults: [(slug: String, name: String)] = [("atlas", "Atlas"), ("nova", "Nova"), ("orion", "Orion")]
+    public static let defaults: [(slug: String, name: String)] = []
 
     public static func list(_ s: OISettings) -> [(slug: String, name: String)] {
         var out = defaults

@@ -31,7 +31,7 @@ import OISettings
         #expect(f.pointerHide && f.pointerGraceMs == 2000 && f.pointerFastPxS == 1200)
         #expect(f.colors == HUDColors.defaults && f.fillOrder == [.ctrl, .option, .cmd, .fn])
         #expect(!f.claudeEnabled && !f.claudeEnrich && f.localOnlyDomains.isEmpty)   // Claude is opt-in
-        #expect(f.shotsEnabled && f.shotsClipboard && f.fallbackContact == "atlas")
+        #expect(f.shotsEnabled && f.shotsClipboard && f.fallbackContact == "")   // no shipped default contact
         #expect(!f.paused && f.denylistApps == OISettings.defaultDenylist)
         #expect(f.isValid)
     }
@@ -97,7 +97,7 @@ import OISettings
         var s = OISettings(); F().apply(to: &s)
         let o = try json(s)
         #expect(o["gate"] == nil && o["claude"] == nil && o["shots"] == nil)
-        var f = F(); f.fallbackContact = ""; f.apply(to: &s)
+        var f = F(); f.fallbackContact = "sam"; f.apply(to: &s)
         #expect(Set(sub(try json(s), "shots").keys) == ["fallback_contact"])
     }
 
@@ -170,8 +170,8 @@ import OISettings
         #expect(F.laya(OISettings(), live: nil).predictor == "markov")
         s.vocalRecipients = .object(["orion": .null, "nova": .object(["name": .string("Nova B")]), "zed": .object([:])])
         let r = F.recipients(s)
-        #expect(!r.contains { $0.slug == "orion" } && r.first { $0.slug == "nova" }?.name == "Nova B" && r.last?.slug == "zed")
-        #expect(F.recipients(OISettings()).count == 3)
+        #expect(r.map(\.slug) == ["nova", "zed"] && r.first?.name == "Nova B")   // only the configured agents
+        #expect(F.recipients(OISettings()).isEmpty)                                 // none shipped, none invented
         let k = F.keyMap(.defaults)
         #expect(k.count == HotkeySet.actions.count && k[0].label == "Option 1 (fn)" && k[0].value.hasSuffix("tap"))
     }
